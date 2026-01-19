@@ -1,0 +1,770 @@
+/**
+ * BidSmart Database Service
+ * 
+ * Core CRUD operations for projects, bids, and related data.
+ */
+
+import { supabase } from '../supabaseClient';
+import type {
+  Project,
+  ContractorBid,
+  BidLineItem,
+  BidEquipment,
+  BidAnalysis,
+  PdfUpload,
+  MindPalExtraction,
+  RebateProgram,
+  ProjectRebate,
+  UserExt,
+  ProjectStatus,
+  PdfStatus,
+  ProjectSummary,
+  BidComparisonTableRow,
+} from '../types';
+
+// ============================================
+// USERS
+// ============================================
+
+export async function getUserById(userId: string): Promise<UserExt | null> {
+  const { data, error } = await supabase
+    .from('users_ext')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateUser(
+  userId: string,
+  updates: Partial<UserExt>
+): Promise<UserExt | null> {
+  const { data, error } = await supabase
+    .from('users_ext')
+    .update(updates)
+    .eq('id', userId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+// ============================================
+// PROJECTS
+// ============================================
+
+export async function createProject(
+  userId: string,
+  projectData: Partial<Project> = {}
+): Promise<Project> {
+  const { data, error } = await supabase
+    .from('projects')
+    .insert({
+      user_id: userId,
+      project_name: projectData.project_name || 'My Heat Pump Project',
+      status: projectData.status || 'draft',
+      ...projectData,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getProject(projectId: string): Promise<Project | null> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getProjectsByUser(userId: string): Promise<Project[]> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateProject(
+  projectId: string,
+  updates: Partial<Project>
+): Promise<Project | null> {
+  const { data, error } = await supabase
+    .from('projects')
+    .update(updates)
+    .eq('id', projectId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateProjectStatus(
+  projectId: string,
+  status: ProjectStatus
+): Promise<Project | null> {
+  return updateProject(projectId, { status });
+}
+
+export async function deleteProject(projectId: string): Promise<void> {
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', projectId);
+
+  if (error) throw error;
+}
+
+// ============================================
+// CONTRACTOR BIDS
+// ============================================
+
+export async function createBid(
+  projectId: string,
+  bidData: Partial<ContractorBid>
+): Promise<ContractorBid> {
+  const { data, error } = await supabase
+    .from('contractor_bids')
+    .insert({
+      project_id: projectId,
+      contractor_name: bidData.contractor_name || 'Unknown Contractor',
+      total_bid_amount: bidData.total_bid_amount || 0,
+      extraction_confidence: bidData.extraction_confidence || 'manual',
+      financing_offered: bidData.financing_offered || false,
+      verified_by_user: bidData.verified_by_user || false,
+      is_favorite: bidData.is_favorite || false,
+      ...bidData,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getBid(bidId: string): Promise<ContractorBid | null> {
+  const { data, error } = await supabase
+    .from('contractor_bids')
+    .select('*')
+    .eq('id', bidId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getBidsByProject(projectId: string): Promise<ContractorBid[]> {
+  const { data, error } = await supabase
+    .from('contractor_bids')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('overall_score', { ascending: false, nullsFirst: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateBid(
+  bidId: string,
+  updates: Partial<ContractorBid>
+): Promise<ContractorBid | null> {
+  const { data, error } = await supabase
+    .from('contractor_bids')
+    .update(updates)
+    .eq('id', bidId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteBid(bidId: string): Promise<void> {
+  const { error } = await supabase
+    .from('contractor_bids')
+    .delete()
+    .eq('id', bidId);
+
+  if (error) throw error;
+}
+
+export async function toggleBidFavorite(bidId: string): Promise<ContractorBid | null> {
+  const bid = await getBid(bidId);
+  if (!bid) return null;
+
+  return updateBid(bidId, { is_favorite: !bid.is_favorite });
+}
+
+export async function verifyBid(bidId: string): Promise<ContractorBid | null> {
+  return updateBid(bidId, {
+    verified_by_user: true,
+    verified_at: new Date().toISOString(),
+  });
+}
+
+// ============================================
+// BID LINE ITEMS
+// ============================================
+
+export async function createLineItem(
+  bidId: string,
+  itemData: Partial<BidLineItem>
+): Promise<BidLineItem> {
+  const { data, error } = await supabase
+    .from('bid_line_items')
+    .insert({
+      bid_id: bidId,
+      item_type: itemData.item_type || 'other',
+      description: itemData.description || '',
+      quantity: itemData.quantity || 1,
+      total_price: itemData.total_price || 0,
+      confidence: itemData.confidence || 'manual',
+      ...itemData,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getLineItemsByBid(bidId: string): Promise<BidLineItem[]> {
+  const { data, error } = await supabase
+    .from('bid_line_items')
+    .select('*')
+    .eq('bid_id', bidId)
+    .order('line_order', { nullsFirst: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateLineItem(
+  itemId: string,
+  updates: Partial<BidLineItem>
+): Promise<BidLineItem | null> {
+  const { data, error } = await supabase
+    .from('bid_line_items')
+    .update(updates)
+    .eq('id', itemId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteLineItem(itemId: string): Promise<void> {
+  const { error } = await supabase
+    .from('bid_line_items')
+    .delete()
+    .eq('id', itemId);
+
+  if (error) throw error;
+}
+
+export async function bulkCreateLineItems(
+  bidId: string,
+  items: Partial<BidLineItem>[]
+): Promise<BidLineItem[]> {
+  const itemsToInsert = items.map((item, index) => ({
+    bid_id: bidId,
+    item_type: item.item_type || 'other',
+    description: item.description || '',
+    quantity: item.quantity || 1,
+    total_price: item.total_price || 0,
+    confidence: item.confidence || 'manual',
+    line_order: index,
+    ...item,
+  }));
+
+  const { data, error } = await supabase
+    .from('bid_line_items')
+    .insert(itemsToInsert)
+    .select();
+
+  if (error) throw error;
+  return data || [];
+}
+
+// ============================================
+// BID EQUIPMENT
+// ============================================
+
+export async function createEquipment(
+  bidId: string,
+  equipmentData: Partial<BidEquipment>
+): Promise<BidEquipment> {
+  const { data, error } = await supabase
+    .from('bid_equipment')
+    .insert({
+      bid_id: bidId,
+      equipment_type: equipmentData.equipment_type || 'other',
+      brand: equipmentData.brand || 'Unknown',
+      confidence: equipmentData.confidence || 'manual',
+      ...equipmentData,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getEquipmentByBid(bidId: string): Promise<BidEquipment[]> {
+  const { data, error } = await supabase
+    .from('bid_equipment')
+    .select('*')
+    .eq('bid_id', bidId);
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateEquipment(
+  equipmentId: string,
+  updates: Partial<BidEquipment>
+): Promise<BidEquipment | null> {
+  const { data, error } = await supabase
+    .from('bid_equipment')
+    .update(updates)
+    .eq('id', equipmentId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteEquipment(equipmentId: string): Promise<void> {
+  const { error } = await supabase
+    .from('bid_equipment')
+    .delete()
+    .eq('id', equipmentId);
+
+  if (error) throw error;
+}
+
+export async function bulkCreateEquipment(
+  bidId: string,
+  equipment: Partial<BidEquipment>[]
+): Promise<BidEquipment[]> {
+  const equipmentToInsert = equipment.map((eq) => ({
+    bid_id: bidId,
+    equipment_type: eq.equipment_type || 'other',
+    brand: eq.brand || 'Unknown',
+    confidence: eq.confidence || 'manual',
+    ...eq,
+  }));
+
+  const { data, error } = await supabase
+    .from('bid_equipment')
+    .insert(equipmentToInsert)
+    .select();
+
+  if (error) throw error;
+  return data || [];
+}
+
+// ============================================
+// BID ANALYSIS
+// ============================================
+
+export async function createAnalysis(
+  projectId: string,
+  analysisData: Partial<BidAnalysis>
+): Promise<BidAnalysis> {
+  const { data, error } = await supabase
+    .from('bid_analysis')
+    .insert({
+      project_id: projectId,
+      analysis_version: '1.0',
+      ...analysisData,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getLatestAnalysis(projectId: string): Promise<BidAnalysis | null> {
+  const { data, error } = await supabase
+    .from('bid_analysis')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateAnalysis(
+  analysisId: string,
+  updates: Partial<BidAnalysis>
+): Promise<BidAnalysis | null> {
+  const { data, error } = await supabase
+    .from('bid_analysis')
+    .update(updates)
+    .eq('id', analysisId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+// ============================================
+// PDF UPLOADS
+// ============================================
+
+export async function createPdfUpload(
+  projectId: string,
+  uploadData: Partial<PdfUpload>
+): Promise<PdfUpload> {
+  const { data, error } = await supabase
+    .from('pdf_uploads')
+    .insert({
+      project_id: projectId,
+      file_name: uploadData.file_name || 'unknown.pdf',
+      file_path: uploadData.file_path || '',
+      status: uploadData.status || 'uploaded',
+      retry_count: 0,
+      ...uploadData,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getPdfUpload(uploadId: string): Promise<PdfUpload | null> {
+  const { data, error } = await supabase
+    .from('pdf_uploads')
+    .select('*')
+    .eq('id', uploadId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getPdfUploadsByProject(projectId: string): Promise<PdfUpload[]> {
+  const { data, error } = await supabase
+    .from('pdf_uploads')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('uploaded_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updatePdfUploadStatus(
+  uploadId: string,
+  status: PdfStatus,
+  additionalData: Partial<PdfUpload> = {}
+): Promise<PdfUpload | null> {
+  const { data, error } = await supabase
+    .from('pdf_uploads')
+    .update({
+      status,
+      ...(status === 'processing' && { processing_started_at: new Date().toISOString() }),
+      ...(status === 'extracted' || status === 'failed' && { processing_completed_at: new Date().toISOString() }),
+      ...additionalData,
+    })
+    .eq('id', uploadId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function incrementPdfRetryCount(uploadId: string): Promise<PdfUpload | null> {
+  const upload = await getPdfUpload(uploadId);
+  if (!upload) return null;
+
+  const { data, error } = await supabase
+    .from('pdf_uploads')
+    .update({ retry_count: upload.retry_count + 1 })
+    .eq('id', uploadId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+// ============================================
+// MINDPAL EXTRACTIONS
+// ============================================
+
+export async function createMindPalExtraction(
+  pdfUploadId: string,
+  rawJson: Record<string, unknown>
+): Promise<MindPalExtraction> {
+  const { data, error } = await supabase
+    .from('mindpal_extractions')
+    .insert({
+      pdf_upload_id: pdfUploadId,
+      raw_json: rawJson,
+      parsed_successfully: false,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateMindPalExtraction(
+  extractionId: string,
+  updates: Partial<MindPalExtraction>
+): Promise<MindPalExtraction | null> {
+  const { data, error } = await supabase
+    .from('mindpal_extractions')
+    .update(updates)
+    .eq('id', extractionId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getExtractionByPdfUpload(
+  pdfUploadId: string
+): Promise<MindPalExtraction | null> {
+  const { data, error } = await supabase
+    .from('mindpal_extractions')
+    .select('*')
+    .eq('pdf_upload_id', pdfUploadId)
+    .order('extracted_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+// ============================================
+// REBATE PROGRAMS
+// ============================================
+
+export async function getActiveRebates(): Promise<RebateProgram[]> {
+  const { data, error } = await supabase
+    .from('rebate_programs')
+    .select('*')
+    .eq('is_active', true)
+    .order('program_name');
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getRebatesByState(stateCode: string): Promise<RebateProgram[]> {
+  const { data, error } = await supabase
+    .from('rebate_programs')
+    .select('*')
+    .eq('is_active', true)
+    .or(`available_nationwide.eq.true,available_states.cs.{${stateCode}}`);
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getProjectRebates(projectId: string): Promise<Array<{
+  program: RebateProgram;
+  projectRebate: ProjectRebate;
+}>> {
+  const { data, error } = await supabase
+    .from('project_rebates')
+    .select(`
+      *,
+      rebate_programs (*)
+    `)
+    .eq('project_id', projectId);
+
+  if (error) throw error;
+
+  return (data || []).map((item: any) => ({
+    program: item.rebate_programs,
+    projectRebate: {
+      id: item.id,
+      project_id: item.project_id,
+      rebate_program_id: item.rebate_program_id,
+      is_eligible: item.is_eligible,
+      eligibility_notes: item.eligibility_notes,
+      estimated_amount: item.estimated_amount,
+      applied_amount: item.applied_amount,
+      application_status: item.application_status,
+      application_date: item.application_date,
+      approval_date: item.approval_date,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    },
+  }));
+}
+
+export async function addProjectRebate(
+  projectId: string,
+  rebateProgramId: string,
+  estimatedAmount?: number
+): Promise<ProjectRebate> {
+  const { data, error } = await supabase
+    .from('project_rebates')
+    .insert({
+      project_id: projectId,
+      rebate_program_id: rebateProgramId,
+      is_eligible: true,
+      estimated_amount: estimatedAmount,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// ============================================
+// COMPOSITE QUERIES
+// ============================================
+
+export async function getProjectSummary(projectId: string): Promise<ProjectSummary | null> {
+  // Get project
+  const project = await getProject(projectId);
+  if (!project) return null;
+
+  // Get bids with their line items and equipment
+  const bids = await getBidsByProject(projectId);
+  const bidsWithDetails: BidComparisonTableRow[] = await Promise.all(
+    bids.map(async (bid) => {
+      const [lineItems, equipment] = await Promise.all([
+        getLineItemsByBid(bid.id),
+        getEquipmentByBid(bid.id),
+      ]);
+
+      return {
+        bid,
+        equipment,
+        lineItems,
+        scores: {
+          overall: bid.overall_score || 0,
+          price: 0, // Calculated from price comparison
+          quality: bid.quality_score || 0,
+          value: bid.value_score || 0,
+          completeness: bid.completeness_score || 0,
+        },
+      };
+    })
+  );
+
+  // Get analysis
+  const analysis = await getLatestAnalysis(projectId);
+
+  // Get rebates
+  const rebates = await getProjectRebates(projectId);
+
+  // Calculate stats
+  const prices = bids.map((b) => b.total_bid_amount).filter((p) => p > 0);
+  const stats = {
+    totalBids: bids.length,
+    averagePrice: prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : 0,
+    lowestPrice: prices.length > 0 ? Math.min(...prices) : 0,
+    highestPrice: prices.length > 0 ? Math.max(...prices) : 0,
+    bestValueBidId: bids.reduce((best, bid) =>
+      (bid.value_score || 0) > (best?.value_score || 0) ? bid : best,
+      bids[0]
+    )?.id || null,
+    bestQualityBidId: bids.reduce((best, bid) =>
+      (bid.quality_score || 0) > (best?.quality_score || 0) ? bid : best,
+      bids[0]
+    )?.id || null,
+  };
+
+  return {
+    project,
+    bids: bidsWithDetails,
+    analysis,
+    rebates,
+    stats,
+  };
+}
+
+/**
+ * Get project summary using the database function
+ * This is more efficient as it does a single round trip
+ */
+export async function getProjectSummaryRPC(projectId: string): Promise<any> {
+  const { data, error } = await supabase.rpc('get_project_summary', {
+    p_project_id: projectId,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+// ============================================
+// STORAGE
+// ============================================
+
+export async function uploadPdfToStorage(
+  projectId: string,
+  file: File
+): Promise<{ path: string; url: string }> {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+  const filePath = `bids/${projectId}/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('bid-pdfs')
+    .upload(filePath, file);
+
+  if (uploadError) throw uploadError;
+
+  // Get signed URL for MindPal (expires in 1 hour)
+  const { data: urlData, error: urlError } = await supabase.storage
+    .from('bid-pdfs')
+    .createSignedUrl(filePath, 3600);
+
+  if (urlError) throw urlError;
+
+  return {
+    path: filePath,
+    url: urlData.signedUrl,
+  };
+}
+
+export async function getPdfSignedUrl(filePath: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from('bid-pdfs')
+    .createSignedUrl(filePath, 3600);
+
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+export async function deletePdfFromStorage(filePath: string): Promise<void> {
+  const { error } = await supabase.storage
+    .from('bid-pdfs')
+    .remove([filePath]);
+
+  if (error) throw error;
+}
