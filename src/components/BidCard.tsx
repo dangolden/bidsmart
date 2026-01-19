@@ -12,7 +12,7 @@ interface BidCardProps {
   onUpdate: () => void;
 }
 
-export function BidCard({ bid, pdfUpload, onUpdate }: BidCardProps) {
+export function BidCard({ bid, pdfUpload: _pdfUpload, onUpdate }: BidCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   async function toggleFavorite() {

@@ -18,7 +18,7 @@ interface GeneratedQuestion {
   missingField: string;
 }
 
-export function ContractorQuestions({ projectId, bids }: ContractorQuestionsProps) {
+export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQuestionsProps) {
   const [questions, setQuestions] = useState<Record<string, BidQuestion[]>>({});
   const [expandedBid, setExpandedBid] = useState<string | null>(bids[0]?.id || null);
   const [loading, setLoading] = useState(true);

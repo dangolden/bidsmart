@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { 
+import {
   ClipboardCheck, CheckCircle2, Circle, AlertTriangle, Info,
-  ChevronDown, ChevronUp, Printer, Download
+  ChevronDown, ChevronUp, Printer
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import type { QIIChecklistItem, ProjectQIIChecklist, QIICategory } from '../lib/types';

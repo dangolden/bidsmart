@@ -11,18 +11,15 @@ import type {
   MindPalExtractionRequest,
   MindPalExtractionResponse,
   ContractorBid,
-  BidLineItem,
-  BidEquipment,
-  PdfUpload,
   Project,
   ConfidenceLevel,
   LineItemType,
 } from '../types';
 
 // Configuration
-const MINDPAL_WEBHOOK_URL = import.meta.env.VITE_MINDPAL_WEBHOOK_URL;
-const MINDPAL_API_KEY = import.meta.env.VITE_MINDPAL_API_KEY;
-const CALLBACK_BASE_URL = import.meta.env.VITE_CALLBACK_BASE_URL || window.location.origin;
+const MINDPAL_WEBHOOK_URL = (import.meta as unknown as { env: Record<string, string> }).env.VITE_MINDPAL_WEBHOOK_URL;
+const MINDPAL_API_KEY = (import.meta as unknown as { env: Record<string, string> }).env.VITE_MINDPAL_API_KEY;
+const CALLBACK_BASE_URL = (import.meta as unknown as { env: Record<string, string> }).env.VITE_CALLBACK_BASE_URL || window.location.origin;
 
 interface TriggerExtractionResult {
   success: boolean;
@@ -99,10 +96,10 @@ function buildExtractionRequest(
       project_id: project.id,
       heat_pump_type: project.heat_pump_type,
       system_size_tons: project.system_size_tons ?? undefined,
-      property_state: undefined, // Would come from user record
-      property_zip: undefined, // Would come from user record
-      square_footage: undefined, // Would come from user record
-      preferred_brands: project.preferred_brands ?? undefined,
+      property_state: undefined,
+      property_zip: undefined,
+      square_footage: undefined,
+      preferred_brands: undefined,
     },
     extraction_options: {
       extract_line_items: true,

@@ -350,9 +350,9 @@ export function generateWarrantyComparison(bids: BidWithDetails[]): WarrantyComp
     by_bid: warrantyData.map((wd) => ({
       bid_id: wd.bid.id,
       contractor_name: wd.bid.contractor_name,
-      labor_years: wd.labor_years,
-      equipment_years: wd.equipment_years,
-      compressor_years: wd.compressor_years,
+      labor_years: wd.labor_years ?? null,
+      equipment_years: wd.equipment_years ?? null,
+      compressor_years: wd.compressor_years ?? null,
       extended_available: wd.extended_available,
       total_warranty_value: wd.value,
     })),
@@ -735,7 +735,7 @@ Best regards,
  * Generate questions to ask contractors
  */
 function generateQuestionsToAsk(
-  bids: BidWithDetails[],
+  _bids: BidWithDetails[],
   missingInfo: MissingInfo[]
 ): string[] {
   const questions = new Set<string>();

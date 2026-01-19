@@ -4,7 +4,7 @@ import {
   Zap, Shield, Clock, DollarSign, ThermometerSun
 } from 'lucide-react';
 import * as db from '../lib/database/bidsmartService';
-import type { ContractorBid, BidEquipment, SpecComparison, ContractorComparison } from '../lib/types';
+import type { ContractorBid, BidEquipment } from '../lib/types';
 
 interface BidComparisonTableProps {
   projectId: string;
@@ -13,7 +13,7 @@ interface BidComparisonTableProps {
 
 type CompareView = 'specs' | 'contractor' | 'pricing';
 
-export function BidComparisonTable({ projectId, bids }: BidComparisonTableProps) {
+export function BidComparisonTable({ projectId: _projectId, bids }: BidComparisonTableProps) {
   const [equipment, setEquipment] = useState<Record<string, BidEquipment[]>>({});
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<CompareView>('specs');
@@ -60,8 +60,8 @@ export function BidComparisonTable({ projectId, bids }: BidComparisonTableProps)
 
     switch (sortBy) {
       case 'overall_score':
-        aVal = a.overall_score;
-        bVal = b.overall_score;
+        aVal = a.overall_score ?? null;
+        bVal = b.overall_score ?? null;
         break;
       case 'total_bid_amount':
         aVal = a.total_bid_amount;

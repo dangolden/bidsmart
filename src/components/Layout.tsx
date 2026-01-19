@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { Zap, LogOut, Plus, LayoutDashboard } from 'lucide-react';
+import { Zap, LogOut, LayoutDashboard } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import type { UserExt } from '../lib/types';
 

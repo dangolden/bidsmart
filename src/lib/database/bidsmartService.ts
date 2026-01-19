@@ -481,14 +481,19 @@ export async function updatePdfUploadStatus(
   status: PdfStatus,
   additionalData: Partial<PdfUpload> = {}
 ): Promise<PdfUpload | null> {
+  const updateData: Partial<PdfUpload> & { status: PdfStatus } = {
+    status,
+    ...additionalData,
+  };
+  if (status === 'processing') {
+    updateData.processing_started_at = new Date().toISOString();
+  }
+  if (status === 'extracted' || status === 'failed') {
+    updateData.processing_completed_at = new Date().toISOString();
+  }
   const { data, error } = await supabase
     .from('pdf_uploads')
-    .update({
-      status,
-      ...(status === 'processing' && { processing_started_at: new Date().toISOString() }),
-      ...(status === 'extracted' || status === 'failed' && { processing_completed_at: new Date().toISOString() }),
-      ...additionalData,
-    })
+    .update(updateData)
     .eq('id', uploadId)
     .select()
     .maybeSingle();

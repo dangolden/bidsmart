@@ -21,7 +21,7 @@ interface ProjectPageProps {
 
 type TabId = 'bids' | 'compare' | 'questions' | 'checklist';
 
-export function ProjectPage({ user }: ProjectPageProps) {
+export function ProjectPage({ user: _user }: ProjectPageProps) {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   

@@ -21,7 +21,7 @@ function App() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         if (session?.user) {
           const userExt = await getOrCreateUserExt(session.user.id, session.user.email!);
           setUser(userExt);
