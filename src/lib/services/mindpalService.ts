@@ -17,9 +17,9 @@ import type {
 } from '../types';
 
 // Configuration
-const MINDPAL_WEBHOOK_URL = (import.meta as unknown as { env: Record<string, string> }).env.VITE_MINDPAL_WEBHOOK_URL;
-const MINDPAL_API_KEY = (import.meta as unknown as { env: Record<string, string> }).env.VITE_MINDPAL_API_KEY;
-const CALLBACK_BASE_URL = (import.meta as unknown as { env: Record<string, string> }).env.VITE_CALLBACK_BASE_URL || window.location.origin;
+const MINDPAL_WEBHOOK_URL = import.meta.env.VITE_MINDPAL_WEBHOOK_URL;
+const MINDPAL_API_KEY = import.meta.env.VITE_MINDPAL_API_KEY;
+const CALLBACK_BASE_URL = import.meta.env.VITE_CALLBACK_BASE_URL || window.location.origin;
 
 interface TriggerExtractionResult {
   success: boolean;
