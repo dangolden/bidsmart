@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, HelpCircle, ChevronDown, ChevronUp, Copy, Check, ArrowRight, Star, CheckCircle } from 'lucide-react';
+import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, Award } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { supabase } from '../../lib/supabaseClient';
 import type { BidQuestion, RebateProgram } from '../../lib/types';
 
-type DecideTab = 'rebates' | 'questions';
-
 export function DecidePhase() {
   const { bids, questions, refreshQuestions, completePhase } = usePhase();
-  const [activeTab, setActiveTab] = useState<DecideTab>('rebates');
   const [rebatePrograms, setRebatePrograms] = useState<RebateProgram[]>([]);
-  const [expandedContractor, setExpandedContractor] = useState<string | null>(null);
+  const [selectedContractor, setSelectedContractor] = useState<string | null>(null);
   const [copiedContractor, setCopiedContractor] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,39 +66,54 @@ export function DecidePhase() {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-100 text-red-700 border-red-200';
       case 'medium':
-        return 'bg-amber-100 text-amber-700';
+        return 'bg-amber-100 text-amber-700 border-amber-200';
       default:
-        return 'bg-gray-100 text-gray-600';
+        return 'bg-gray-100 text-gray-600 border-gray-200';
     }
   };
 
-  const getBidCostBreakdown = () => {
+  const getBidData = () => {
     return bids.map((b) => {
+      const mainEquipment = b.equipment.find(
+        (e) => e.equipment_type === 'outdoor_unit' || e.equipment_type === 'heat_pump'
+      ) || b.equipment[0];
+
       const estimatedRebates = b.bid.estimated_rebates || 0;
       const netCost = b.bid.total_bid_amount - estimatedRebates;
 
       return {
         bidId: b.bid.id,
         contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
-        bidAmount: b.bid.total_bid_amount,
+        totalAmount: b.bid.total_bid_amount,
         estimatedRebates,
         netCost,
+        equipmentBrand: mainEquipment?.brand || '-',
+        equipmentModel: mainEquipment?.model_number || mainEquipment?.model_name || '-',
+        seer2: mainEquipment?.seer2_rating || mainEquipment?.seer_rating,
+        googleRating: b.bid.contractor_google_rating,
+        reviewCount: b.bid.contractor_google_review_count,
+        laborWarranty: b.bid.labor_warranty_years,
+        equipmentWarranty: b.bid.equipment_warranty_years,
+        isSwitchPreferred: b.bid.contractor_is_switch_preferred,
       };
     });
   };
 
-  const costBreakdown = getBidCostBreakdown();
-  const lowestNetCost = Math.min(...costBreakdown.map((c) => c.netCost));
-
-  const tabs: { key: DecideTab; label: string; icon: React.ReactNode }[] = [
-    { key: 'rebates', label: 'Rebates & Incentives', icon: <DollarSign className="w-4 h-4" /> },
-    { key: 'questions', label: 'Questions to Ask', icon: <HelpCircle className="w-4 h-4" /> },
-  ];
+  const bidData = getBidData();
+  const lowestPrice = Math.min(...bidData.map((b) => b.totalAmount || Infinity));
+  const lowestNetCost = Math.min(...bidData.map((b) => b.netCost || Infinity));
+  const bestRating = Math.max(...bidData.map((b) => b.googleRating || 0));
+  const bestSeer = Math.max(...bidData.map((b) => b.seer2 || 0));
+  const bestWarranty = Math.max(...bidData.map((b) => (b.laborWarranty || 0) + (b.equipmentWarranty || 0)));
 
   const handleContinue = () => {
     completePhase(3);
+  };
+
+  const toggleSelection = (bidId: string) => {
+    setSelectedContractor(selectedContractor === bidId ? null : bidId);
   };
 
   return (
@@ -109,246 +121,280 @@ export function DecidePhase() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Make Your Decision</h1>
         <p className="text-gray-600 mt-1">
-          Review rebates, prepare questions, and choose your contractor.
+          Review each bid side by side, ask clarifying questions, and choose your contractor.
         </p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="flex border-b border-gray-200">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+      {rebatePrograms.length > 0 && (
+        <div className="bg-gradient-to-r from-switch-green-50 to-switch-green-100 border-2 border-switch-green-200 rounded-xl p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-switch-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+              <DollarSign className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-switch-green-900">Available Rebates & Incentives</h3>
+              <p className="text-sm text-switch-green-700 mt-1">
+                You may qualify for {rebatePrograms.length} rebate program{rebatePrograms.length !== 1 ? 's' : ''} totaling up to{' '}
+                <span className="font-bold">
+                  {formatCurrency(rebatePrograms.reduce((sum, p) => sum + (Number(p.max_rebate) || Number(p.rebate_amount) || 0), 0))}
+                </span>{' '}
+                in savings.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {bidData.map((bid) => {
+          const bidQuestions = getQuestionsForBid(bid.bidId);
+          const answeredCount = bidQuestions.filter((q) => q.is_answered).length;
+          const unansweredQuestions = bidQuestions.filter((q) => !q.is_answered);
+          const isSelected = selectedContractor === bid.bidId;
+
+          const isBestPrice = bid.totalAmount === lowestPrice;
+          const isBestNetCost = bid.netCost === lowestNetCost;
+          const isBestRating = bid.googleRating === bestRating && bid.googleRating > 0;
+          const isBestEfficiency = bid.seer2 === bestSeer && bid.seer2 > 0;
+          const totalWarranty = (bid.laborWarranty || 0) + (bid.equipmentWarranty || 0);
+          const isBestWarranty = totalWarranty === bestWarranty && totalWarranty > 0;
+
+          return (
+            <div
+              key={bid.bidId}
               className={`
-                flex-1 px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors
-                ${activeTab === tab.key
-                  ? 'text-switch-green-700 bg-switch-green-50 border-b-2 border-switch-green-600'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                relative bg-white rounded-xl overflow-hidden transition-all duration-200
+                ${isSelected
+                  ? 'ring-4 ring-switch-green-500 shadow-xl border-2 border-switch-green-500'
+                  : 'border-2 border-gray-200 shadow-md hover:shadow-lg hover:border-gray-300'
                 }
               `}
             >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
+              <div className={`
+                absolute top-0 left-0 w-1.5 h-full
+                ${isSelected ? 'bg-switch-green-500' : 'bg-gradient-to-b from-switch-green-400 to-switch-green-600'}
+              `} />
 
-        <div className="p-6">
-          {activeTab === 'rebates' && (
-            <div className="space-y-6">
-              {rebatePrograms.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Available Rebate Programs</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Program</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Requirements</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {rebatePrograms.map((program) => (
-                          <tr key={program.id}>
-                            <td className="px-3 py-3 font-medium text-gray-900">{program.program_name}</td>
-                            <td className="px-3 py-3">
-                              <span className={`
-                                inline-block px-2 py-0.5 rounded text-xs font-medium capitalize
-                                ${program.program_type === 'federal' ? 'bg-blue-100 text-blue-700' : ''}
-                                ${program.program_type === 'state' ? 'bg-purple-100 text-purple-700' : ''}
-                                ${program.program_type === 'utility' ? 'bg-amber-100 text-amber-700' : ''}
-                                ${program.program_type === 'manufacturer' ? 'bg-gray-100 text-gray-700' : ''}
-                              `}>
-                                {program.program_type || 'Other'}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3 font-medium text-gray-900">
-                              {program.max_rebate
-                                ? `Up to ${formatCurrency(Number(program.max_rebate))}`
-                                : program.rebate_amount
-                                  ? formatCurrency(Number(program.rebate_amount))
-                                  : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-gray-600 text-xs">
-                              {program.description || '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              <div className="p-5 pl-7">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">{bid.contractor}</h3>
+                    {bid.isSwitchPreferred && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 bg-gradient-to-r from-switch-green-500 to-switch-green-600 text-white rounded-full text-xs font-medium">
+                        <Award className="w-3 h-3" /> Switch Preferred
+                      </span>
+                    )}
                   </div>
+                  {isSelected && (
+                    <div className="w-8 h-8 bg-switch-green-500 rounded-full flex items-center justify-center">
+                      <CheckCircle className="w-5 h-5 text-white" />
+                    </div>
+                  )}
                 </div>
-              )}
 
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Cost Comparison After Rebates</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="py-3 text-left text-sm font-medium text-gray-500"></th>
-                        {costBreakdown.map((c) => (
-                          <th key={c.bidId} className="py-3 px-4 text-center text-sm font-medium text-gray-900">
-                            {c.contractor}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-gray-100">
-                        <td className="py-3 text-sm text-gray-600">Bid Amount:</td>
-                        {costBreakdown.map((c) => (
-                          <td key={c.bidId} className="py-3 px-4 text-center text-sm text-gray-900">
-                            {formatCurrency(c.bidAmount)}
-                          </td>
-                        ))}
-                      </tr>
-                      <tr className="border-b border-gray-100">
-                        <td className="py-3 text-sm text-gray-600">Est. Rebates:</td>
-                        {costBreakdown.map((c) => (
-                          <td key={c.bidId} className="py-3 px-4 text-center text-sm text-switch-green-600">
-                            {c.estimatedRebates > 0 ? `-${formatCurrency(c.estimatedRebates)}` : '-'}
-                          </td>
-                        ))}
-                      </tr>
-                      <tr className="border-t-2 border-gray-200">
-                        <td className="py-3 text-sm font-semibold text-gray-900">Net Cost:</td>
-                        {costBreakdown.map((c) => (
-                          <td
-                            key={c.bidId}
-                            className={`py-3 px-4 text-center text-lg font-bold ${c.netCost === lowestNetCost ? 'text-switch-green-700' : 'text-gray-900'
-                              }`}
-                          >
-                            {formatCurrency(c.netCost)}
-                            {c.netCost === lowestNetCost && (
-                              <span className="ml-2 inline-flex items-center">
-                                <Star className="w-4 h-4 text-switch-green-600" />
-                                <span className="text-xs font-normal text-switch-green-600 ml-1">BEST</span>
-                              </span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm text-gray-600">
-                  <strong>Note:</strong> Rebate amounts shown are estimates based on the equipment in each bid.
-                  Actual rebate eligibility and amounts may vary. Contact your contractor or rebate program
-                  administrator to confirm your specific eligibility.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'questions' && (
-            <div className="space-y-4">
-              {bids.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No bids to show questions for.</p>
-              ) : (
-                bids.map((b) => {
-                  const bidQuestions = getQuestionsForBid(b.bid.id);
-                  const answeredCount = bidQuestions.filter((q) => q.is_answered).length;
-                  const isExpanded = expandedContractor === b.bid.id;
-                  const contractorName = b.bid.contractor_name || b.bid.contractor_company || 'Unknown';
-
-                  return (
-                    <div key={b.bid.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                      <button
-                        onClick={() => setExpandedContractor(isExpanded ? null : b.bid.id)}
-                        className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="font-medium text-gray-900">{contractorName}</span>
-                          <span className="text-sm text-gray-500">
-                            {answeredCount}/{bidQuestions.length} answered
+                <div className="space-y-4">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-600">Total Price</span>
+                      {isBestPrice && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                          <Star className="w-3 h-3" /> LOWEST
+                        </span>
+                      )}
+                    </div>
+                    <div className={`text-2xl font-bold ${isBestPrice ? 'text-switch-green-700' : 'text-gray-900'}`}>
+                      {formatCurrency(bid.totalAmount)}
+                    </div>
+                    {bid.estimatedRebates > 0 && (
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-500">Est. Rebates</span>
+                          <span className="text-switch-green-600 font-medium">-{formatCurrency(bid.estimatedRebates)}</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-sm font-medium text-gray-700">Net Cost</span>
+                          <span className={`text-lg font-bold ${isBestNetCost ? 'text-switch-green-700' : 'text-gray-900'}`}>
+                            {formatCurrency(bid.netCost)}
                           </span>
                         </div>
-                        {isExpanded ? (
-                          <ChevronUp className="w-5 h-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-gray-400" />
-                        )}
-                      </button>
+                      </div>
+                    )}
+                  </div>
 
-                      {isExpanded && (
-                        <div className="p-4 space-y-3">
-                          {bidQuestions.length === 0 ? (
-                            <p className="text-gray-500 text-sm text-center py-4">
-                              No questions generated for this bid.
-                            </p>
-                          ) : (
-                            <>
-                              <div className="flex justify-end">
-                                <button
-                                  onClick={() => copyQuestionsToClipboard(b.bid.id, contractorName)}
-                                  className="btn btn-secondary text-sm flex items-center gap-2"
-                                >
-                                  {copiedContractor === b.bid.id ? (
-                                    <>
-                                      <Check className="w-4 h-4" />
-                                      Copied!
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Copy className="w-4 h-4" />
-                                      Copy All Questions
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-
-                              <div className="space-y-2">
-                                {bidQuestions.map((question) => (
-                                  <div
-                                    key={question.id}
-                                    className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${question.is_answered ? 'bg-gray-50' : 'bg-white border border-gray-200'
-                                      }`}
-                                  >
-                                    <button
-                                      onClick={() => toggleQuestionAnswered(question)}
-                                      className="flex-shrink-0 mt-0.5"
-                                    >
-                                      {question.is_answered ? (
-                                        <CheckCircle className="w-5 h-5 text-switch-green-600" />
-                                      ) : (
-                                        <div className="w-5 h-5 rounded-full border-2 border-gray-300 hover:border-gray-400" />
-                                      )}
-                                    </button>
-                                    <div className="flex-1 min-w-0">
-                                      <p className={`text-sm ${question.is_answered ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
-                                        {question.question_text}
-                                      </p>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <span className={`text-xs px-2 py-0.5 rounded-full ${getPriorityColor(question.priority)}`}>
-                                          {question.priority}
-                                        </span>
-                                        {question.question_category && (
-                                          <span className="text-xs text-gray-400 capitalize">
-                                            {question.question_category}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </>
-                          )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Zap className="w-4 h-4 text-amber-500" />
+                        <span className="text-xs font-medium text-gray-500">Equipment</span>
+                      </div>
+                      <div className="text-sm font-semibold text-gray-900 truncate" title={`${bid.equipmentBrand} ${bid.equipmentModel}`}>
+                        {bid.equipmentBrand}
+                      </div>
+                      {bid.seer2 && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className={`text-xs ${isBestEfficiency ? 'text-switch-green-700 font-bold' : 'text-gray-600'}`}>
+                            SEER2: {bid.seer2}
+                          </span>
+                          {isBestEfficiency && <Star className="w-3 h-3 text-switch-green-600" />}
                         </div>
                       )}
                     </div>
-                  );
-                })
-              )}
+
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Star className="w-4 h-4 text-yellow-500" />
+                        <span className="text-xs font-medium text-gray-500">Rating</span>
+                      </div>
+                      {bid.googleRating ? (
+                        <>
+                          <div className={`text-sm font-semibold ${isBestRating ? 'text-switch-green-700' : 'text-gray-900'}`}>
+                            {bid.googleRating.toFixed(1)} / 5
+                            {isBestRating && <Star className="w-3 h-3 inline ml-1 text-switch-green-600" />}
+                          </div>
+                          {bid.reviewCount && (
+                            <div className="text-xs text-gray-500 mt-0.5">{bid.reviewCount} reviews</div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-sm text-gray-400">Not available</div>
+                      )}
+                    </div>
+
+                    <div className="col-span-2 bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Shield className="w-4 h-4 text-switch-green-600" />
+                        <span className="text-xs font-medium text-gray-500">Warranty</span>
+                        {isBestWarranty && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded">
+                            BEST
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {bid.laborWarranty ? (
+                          <span className={`text-sm ${isBestWarranty ? 'text-switch-green-700 font-semibold' : 'text-gray-900'}`}>
+                            {bid.laborWarranty}yr labor
+                          </span>
+                        ) : null}
+                        {bid.equipmentWarranty ? (
+                          <span className={`text-sm ${isBestWarranty ? 'text-switch-green-700 font-semibold' : 'text-gray-900'}`}>
+                            {bid.equipmentWarranty}yr equipment
+                          </span>
+                        ) : null}
+                        {!bid.laborWarranty && !bid.equipmentWarranty && (
+                          <span className="text-sm text-gray-400">Not specified</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                    <div className="bg-gray-100 px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <HelpCircle className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm font-semibold text-gray-800">Questions to Ask</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">
+                          {answeredCount}/{bidQuestions.length} answered
+                        </span>
+                        {unansweredQuestions.length > 0 && (
+                          <button
+                            onClick={() => copyQuestionsToClipboard(bid.bidId, bid.contractor)}
+                            className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors"
+                            title="Copy questions"
+                          >
+                            {copiedContractor === bid.bidId ? (
+                              <Check className="w-4 h-4 text-switch-green-600" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 max-h-64 overflow-y-auto">
+                      {bidQuestions.length === 0 ? (
+                        <p className="text-sm text-gray-500 text-center py-3">
+                          No questions for this bid.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {bidQuestions.map((question) => (
+                            <div
+                              key={question.id}
+                              className={`flex items-start gap-2 p-2 rounded-lg transition-colors ${
+                                question.is_answered ? 'bg-gray-50 opacity-60' : 'bg-white border border-gray-200'
+                              }`}
+                            >
+                              <button
+                                onClick={() => toggleQuestionAnswered(question)}
+                                className="flex-shrink-0 mt-0.5"
+                              >
+                                {question.is_answered ? (
+                                  <CheckCircle className="w-4 h-4 text-switch-green-600" />
+                                ) : (
+                                  <div className="w-4 h-4 rounded-full border-2 border-gray-300 hover:border-gray-400" />
+                                )}
+                              </button>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-xs ${question.is_answered ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                                  {question.question_text}
+                                </p>
+                                {!question.is_answered && (
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${getPriorityColor(question.priority)}`}>
+                                      {question.priority}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => toggleSelection(bid.bidId)}
+                    className={`
+                      w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2
+                      ${isSelected
+                        ? 'bg-switch-green-600 text-white hover:bg-switch-green-700'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                      }
+                    `}
+                  >
+                    {isSelected ? (
+                      <>
+                        <CheckCircle className="w-5 h-5" />
+                        My Choice
+                      </>
+                    ) : (
+                      'Mark as My Choice'
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
+          );
+        })}
+      </div>
+
+      {bids.length === 0 && (
+        <div className="bg-white rounded-xl border-2 border-gray-200 p-12 text-center">
+          <HelpCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Bids to Compare</h3>
+          <p className="text-gray-600">Upload your contractor bids in the Gather phase to see them here.</p>
         </div>
+      )}
+
+      <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+        <p className="text-sm text-gray-600">
+          <strong>Note:</strong> Marking a contractor as your choice is optional and for your reference only.
+          You will work directly with your chosen contractor to finalize the installation.
+        </p>
       </div>
 
       <div className="flex justify-end">
@@ -356,7 +402,7 @@ export function DecidePhase() {
           onClick={handleContinue}
           className="btn btn-primary flex items-center gap-2 px-6"
         >
-          I have Made My Choice
+          Continue
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
