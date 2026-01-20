@@ -159,6 +159,8 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
         } else if (bidsWithEquipment.length >= 2 && requirements?.completed_at) {
           phaseStatus[1] = 'completed';
           phaseStatus[2] = 'active';
+          phaseStatus[3] = 'active';
+          phaseStatus[4] = 'active';
           currentPhase = 2;
         }
 
@@ -211,11 +213,18 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
       const newPhaseStatus = { ...prev.phaseStatus };
       newPhaseStatus[phase] = 'completed';
 
-      const nextPhase = (phase + 1) as Phase;
-      if (nextPhase <= 4 && newPhaseStatus[nextPhase] === 'locked') {
-        newPhaseStatus[nextPhase] = 'active';
+      if (phase === 1) {
+        newPhaseStatus[2] = 'active';
+        newPhaseStatus[3] = 'active';
+        newPhaseStatus[4] = 'active';
+      } else {
+        const nextPhase = (phase + 1) as Phase;
+        if (nextPhase <= 4 && newPhaseStatus[nextPhase] === 'locked') {
+          newPhaseStatus[nextPhase] = 'active';
+        }
       }
 
+      const nextPhase = (phase + 1) as Phase;
       const newCurrentPhase = nextPhase <= 4 ? nextPhase : phase;
 
       saveStoredState({

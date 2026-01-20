@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 
 type CompareTab = 'equipment' | 'contractors' | 'costs';
@@ -11,9 +11,15 @@ interface TabConfig {
   icon: React.ReactNode;
 }
 
+const LABEL_COL_WIDTH = '200px';
+const BID_COL_MIN_WIDTH = '180px';
+
 export function ComparePhase() {
   const { bids, requirements, completePhase } = usePhase();
   const [activeTab, setActiveTab] = useState<CompareTab>('equipment');
+  const [showMoreEquipment, setShowMoreEquipment] = useState(false);
+  const [showMoreContractors, setShowMoreContractors] = useState(false);
+  const [showMoreCosts, setShowMoreCosts] = useState(false);
 
   const formatCurrency = (amount: number | null | undefined) => {
     if (!amount) return '-';
@@ -23,6 +29,15 @@ export function ComparePhase() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
   };
 
   const getHighestValue = (
@@ -77,9 +92,17 @@ export function ComparePhase() {
         seer2: mainEquipment?.seer2_rating || mainEquipment?.seer_rating,
         hspf2: mainEquipment?.hspf2_rating || mainEquipment?.hspf_rating,
         capacityTons: mainEquipment?.capacity_tons,
+        capacityBtu: mainEquipment?.capacity_btu,
         variableSpeed: mainEquipment?.variable_speed,
         soundLevel: mainEquipment?.sound_level_db,
         energyStar: mainEquipment?.energy_star_certified,
+        energyStarMostEfficient: mainEquipment?.energy_star_most_efficient,
+        refrigerantType: mainEquipment?.refrigerant_type,
+        voltage: mainEquipment?.voltage,
+        stages: mainEquipment?.stages,
+        cop: mainEquipment?.cop,
+        eer: mainEquipment?.eer_rating,
+        compressorWarranty: mainEquipment?.compressor_warranty_years,
       };
     });
   };
@@ -89,11 +112,18 @@ export function ComparePhase() {
       bidId: b.bid.id,
       contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
       yearsInBusiness: b.bid.contractor_years_in_business,
+      yearEstablished: b.bid.contractor_year_established,
       googleRating: b.bid.contractor_google_rating,
       reviewCount: b.bid.contractor_google_review_count,
       certifications: b.bid.contractor_certifications || [],
       license: b.bid.contractor_license,
+      licenseState: b.bid.contractor_license_state,
+      insuranceVerified: b.bid.contractor_insurance_verified,
       isSwitchPreferred: b.bid.contractor_is_switch_preferred,
+      phone: b.bid.contractor_phone,
+      email: b.bid.contractor_email,
+      website: b.bid.contractor_website,
+      totalInstalls: b.bid.contractor_total_installs,
     }));
   };
 
@@ -104,11 +134,21 @@ export function ComparePhase() {
       totalAmount: b.bid.total_bid_amount,
       equipmentCost: b.bid.equipment_cost,
       laborCost: b.bid.labor_cost,
+      materialsCost: b.bid.materials_cost,
+      permitCost: b.bid.permit_cost,
       laborWarranty: b.bid.labor_warranty_years,
       equipmentWarranty: b.bid.equipment_warranty_years,
       financingAvailable: b.bid.financing_offered,
+      financingTerms: b.bid.financing_terms,
       inclusions: b.bid.inclusions || [],
       exclusions: b.bid.exclusions || [],
+      estimatedDays: b.bid.estimated_days,
+      startDateAvailable: b.bid.start_date_available,
+      validUntil: b.bid.valid_until,
+      bidDate: b.bid.bid_date,
+      depositRequired: b.bid.deposit_required,
+      depositPercentage: b.bid.deposit_percentage,
+      paymentSchedule: b.bid.payment_schedule,
     }));
   };
 
@@ -123,6 +163,7 @@ export function ComparePhase() {
   const lowestPrice = getHighestValue(costData.map((c) => c.totalAmount), false);
   const bestLaborWarranty = getHighestValue(costData.map((c) => c.laborWarranty));
   const bestEquipmentWarranty = getHighestValue(costData.map((c) => c.equipmentWarranty));
+  const fastestTimeline = getHighestValue(costData.map((c) => c.estimatedDays), false);
 
   const getRecommendation = () => {
     if (!requirements || bids.length === 0) return null;
@@ -199,6 +240,12 @@ export function ComparePhase() {
   const handleContinue = () => {
     completePhase(2);
   };
+
+  const bidCount = bids.length;
+  const tableMinWidth = `calc(${LABEL_COL_WIDTH} + (${bidCount} * ${BID_COL_MIN_WIDTH}))`;
+
+  const labelCellStyle = { width: LABEL_COL_WIDTH, minWidth: LABEL_COL_WIDTH, maxWidth: LABEL_COL_WIDTH };
+  const bidCellStyle = { minWidth: BID_COL_MIN_WIDTH };
 
   return (
     <div className="space-y-6">
@@ -281,384 +328,654 @@ export function ComparePhase() {
         </div>
 
         <div className="overflow-x-auto">
-          {activeTab === 'equipment' && (
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-900">
-                  <th className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
-                    Specification
-                  </th>
-                  {equipmentData.map((e, idx) => (
-                    <th key={e.bidId} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < equipmentData.length - 1 ? 'border-r border-gray-700' : ''}`}>
-                      {e.contractor}
+          <table className="w-full" style={{ minWidth: tableMinWidth, tableLayout: 'fixed' }}>
+            {activeTab === 'equipment' && (
+              <>
+                <thead>
+                  <tr className="bg-gray-900">
+                    <th style={labelCellStyle} className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
+                      Specification
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-gray-200">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Manufacturer & Model</td>
-                  {equipmentData.map((e, idx) => (
-                    <td key={e.bidId} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {e.brand} {e.model}
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200 bg-gray-50/50">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">SEER2 Rating</td>
-                  {equipmentData.map((e, idx) => (
-                    <td
-                      key={e.bidId}
-                      className={`px-5 py-4 text-sm font-semibold ${isHighlighted(e.seer2, bestSeer) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        {e.seer2 || '-'}
-                        {isHighlighted(e.seer2, bestSeer) && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
-                            <Star className="w-3 h-3" /> BEST
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">HSPF2 Rating</td>
-                  {equipmentData.map((e, idx) => (
-                    <td
-                      key={e.bidId}
-                      className={`px-5 py-4 text-sm font-semibold ${isHighlighted(e.hspf2, bestHspf) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        {e.hspf2 || '-'}
-                        {isHighlighted(e.hspf2, bestHspf) && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
-                            <Star className="w-3 h-3" /> BEST
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200 bg-gray-50/50">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Capacity (tons)</td>
-                  {equipmentData.map((e, idx) => (
-                    <td key={e.bidId} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {e.capacityTons || '-'}
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Variable Speed</td>
-                  {equipmentData.map((e, idx) => (
-                    <td key={e.bidId} className={`px-5 py-4 text-sm ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {e.variableSpeed ? (
-                        <span className="inline-flex items-center gap-1 text-switch-green-700 font-medium">
-                          <CheckCircle className="w-5 h-5" /> Yes
-                        </span>
-                      ) : e.variableSpeed === false ? (
-                        <span className="inline-flex items-center gap-1 text-gray-400">
-                          <XCircle className="w-5 h-5" /> No
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200 bg-gray-50/50">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Sound Level (dB)</td>
-                  {equipmentData.map((e, idx) => (
-                    <td key={e.bidId} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {e.soundLevel || '-'}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">ENERGY STAR</td>
-                  {equipmentData.map((e, idx) => (
-                    <td key={e.bidId} className={`px-5 py-4 text-sm ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {e.energyStar ? (
-                        <span className="inline-flex items-center gap-1 text-switch-green-700 font-medium">
-                          <CheckCircle className="w-5 h-5" /> Certified
-                        </span>
-                      ) : e.energyStar === false ? (
-                        <span className="inline-flex items-center gap-1 text-gray-400">
-                          <XCircle className="w-5 h-5" /> No
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          )}
-
-          {activeTab === 'contractors' && (
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-900">
-                  <th className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
-                    Information
-                  </th>
-                  {contractorData.map((c, idx) => (
-                    <th key={c.bidId} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < contractorData.length - 1 ? 'border-r border-gray-700' : ''}`}>
-                      {c.contractor}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-gray-200">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Years in Business</td>
-                  {contractorData.map((c, idx) => (
-                    <td
-                      key={c.bidId}
-                      className={`px-5 py-4 text-sm font-semibold ${isHighlighted(c.yearsInBusiness, bestYears) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        {c.yearsInBusiness ? `${c.yearsInBusiness} years` : '-'}
-                        {isHighlighted(c.yearsInBusiness, bestYears) && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
-                            <Star className="w-3 h-3" /> MOST
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200 bg-gray-50/50">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Google Rating</td>
-                  {contractorData.map((c, idx) => (
-                    <td
-                      key={c.bidId}
-                      className={`px-5 py-4 text-sm font-semibold ${isHighlighted(c.googleRating, bestRating) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        {c.googleRating ? (
-                          <span className="flex items-center gap-1">
-                            {c.googleRating}
-                            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                          </span>
-                        ) : '-'}
-                        {isHighlighted(c.googleRating, bestRating) && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
-                            TOP
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Review Count</td>
-                  {contractorData.map((c, idx) => (
-                    <td key={c.bidId} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {c.reviewCount ? `${c.reviewCount} reviews` : '-'}
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200 bg-gray-50/50">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Certifications</td>
-                  {contractorData.map((c, idx) => (
-                    <td key={c.bidId} className={`px-5 py-4 text-sm text-gray-900 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {c.certifications.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {c.certifications.slice(0, 3).map((cert, i) => (
-                            <span key={i} className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded">
-                              {cert}
-                            </span>
-                          ))}
-                          {c.certifications.length > 3 && (
-                            <span className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">
-                              +{c.certifications.length - 3}
+                    {equipmentData.map((e, idx) => (
+                      <th key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < equipmentData.length - 1 ? 'border-r border-gray-700' : ''}`}>
+                        {e.contractor}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-gray-200">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Manufacturer & Model</td>
+                    {equipmentData.map((e, idx) => (
+                      <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {e.brand} {e.model}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">SEER2 Rating</td>
+                    {equipmentData.map((e, idx) => (
+                      <td
+                        key={e.bidId}
+                        style={bidCellStyle}
+                        className={`px-5 py-4 text-sm font-semibold ${isHighlighted(e.seer2, bestSeer) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {e.seer2 || '-'}
+                          {isHighlighted(e.seer2, bestSeer) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                              <Star className="w-3 h-3" /> BEST
                             </span>
                           )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">License Number</td>
-                  {contractorData.map((c, idx) => (
-                    <td key={c.bidId} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {c.license || <span className="text-gray-400">Not provided</span>}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Switch Preferred</td>
-                  {contractorData.map((c, idx) => (
-                    <td key={c.bidId} className={`px-5 py-4 text-sm ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {c.isSwitchPreferred ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-switch-green-500 to-switch-green-600 text-white rounded-full text-xs font-semibold shadow-sm">
-                          <CheckCircle className="w-3.5 h-3.5" /> Preferred Partner
                         </span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          )}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">HSPF2 Rating</td>
+                    {equipmentData.map((e, idx) => (
+                      <td
+                        key={e.bidId}
+                        style={bidCellStyle}
+                        className={`px-5 py-4 text-sm font-semibold ${isHighlighted(e.hspf2, bestHspf) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {e.hspf2 || '-'}
+                          {isHighlighted(e.hspf2, bestHspf) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                              <Star className="w-3 h-3" /> BEST
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Capacity (tons)</td>
+                    {equipmentData.map((e, idx) => (
+                      <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {e.capacityTons || '-'}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Variable Speed</td>
+                    {equipmentData.map((e, idx) => (
+                      <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {e.variableSpeed ? (
+                          <span className="inline-flex items-center gap-1 text-switch-green-700 font-medium">
+                            <CheckCircle className="w-5 h-5" /> Yes
+                          </span>
+                        ) : e.variableSpeed === false ? (
+                          <span className="inline-flex items-center gap-1 text-gray-400">
+                            <XCircle className="w-5 h-5" /> No
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Sound Level (dB)</td>
+                    {equipmentData.map((e, idx) => (
+                      <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {e.soundLevel || '-'}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className={showMoreEquipment ? 'border-b border-gray-200' : ''}>
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">ENERGY STAR</td>
+                    {equipmentData.map((e, idx) => (
+                      <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {e.energyStar ? (
+                          <span className="inline-flex items-center gap-1 text-switch-green-700 font-medium">
+                            <CheckCircle className="w-5 h-5" /> Certified
+                          </span>
+                        ) : e.energyStar === false ? (
+                          <span className="inline-flex items-center gap-1 text-gray-400">
+                            <XCircle className="w-5 h-5" /> No
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
 
-          {activeTab === 'costs' && (
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-900">
-                  <th className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
-                    Cost Item
-                  </th>
-                  {costData.map((c, idx) => (
-                    <th key={c.bidId} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < costData.length - 1 ? 'border-r border-gray-700' : ''}`}>
-                      {c.contractor}
+                  {showMoreEquipment && (
+                    <>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Capacity (BTU)</td>
+                        {equipmentData.map((e, idx) => (
+                          <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {e.capacityBtu ? e.capacityBtu.toLocaleString() : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Refrigerant Type</td>
+                        {equipmentData.map((e, idx) => (
+                          <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {e.refrigerantType || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Voltage</td>
+                        {equipmentData.map((e, idx) => (
+                          <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {e.voltage ? `${e.voltage}V` : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Stages</td>
+                        {equipmentData.map((e, idx) => (
+                          <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {e.stages || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">COP Rating</td>
+                        {equipmentData.map((e, idx) => (
+                          <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {e.cop || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">EER Rating</td>
+                        {equipmentData.map((e, idx) => (
+                          <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {e.eer || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Compressor Warranty</td>
+                        {equipmentData.map((e, idx) => (
+                          <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {e.compressorWarranty ? `${e.compressorWarranty} years` : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Most Efficient</td>
+                        {equipmentData.map((e, idx) => (
+                          <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < equipmentData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {e.energyStarMostEfficient ? (
+                              <span className="inline-flex items-center gap-1 text-switch-green-700 font-medium">
+                                <CheckCircle className="w-5 h-5" /> Yes
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </>
+            )}
+
+            {activeTab === 'contractors' && (
+              <>
+                <thead>
+                  <tr className="bg-gray-900">
+                    <th style={labelCellStyle} className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
+                      Information
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                  <td className="px-5 py-5 text-sm font-bold text-gray-900 bg-gray-100 border-r border-gray-200">Total Bid Amount</td>
-                  {costData.map((c, idx) => (
-                    <td
-                      key={c.bidId}
-                      className={`px-5 py-5 ${isHighlighted(c.totalAmount, lowestPrice) ? 'bg-gradient-to-r from-switch-green-50 to-switch-green-100' : ''} ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className={`text-xl font-bold ${isHighlighted(c.totalAmount, lowestPrice) ? 'text-switch-green-700' : 'text-gray-900'}`}>
-                          {formatCurrency(c.totalAmount)}
-                        </span>
-                        {isHighlighted(c.totalAmount, lowestPrice) && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
-                            <Star className="w-3 h-3" /> LOWEST
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200 bg-gray-50/50">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Equipment Cost</td>
-                  {costData.map((c, idx) => (
-                    <td key={c.bidId} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {formatCurrency(c.equipmentCost)}
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Labor Cost</td>
-                  {costData.map((c, idx) => (
-                    <td key={c.bidId} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {formatCurrency(c.laborCost)}
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200 bg-gray-50/50">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Labor Warranty</td>
-                  {costData.map((c, idx) => (
-                    <td
-                      key={c.bidId}
-                      className={`px-5 py-4 text-sm font-semibold ${isHighlighted(c.laborWarranty, bestLaborWarranty) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        {c.laborWarranty ? `${c.laborWarranty} years` : '-'}
-                        {isHighlighted(c.laborWarranty, bestLaborWarranty) && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
-                            <Star className="w-3 h-3" /> BEST
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Equipment Warranty</td>
-                  {costData.map((c, idx) => (
-                    <td
-                      key={c.bidId}
-                      className={`px-5 py-4 text-sm font-semibold ${isHighlighted(c.equipmentWarranty, bestEquipmentWarranty) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        {c.equipmentWarranty ? `${c.equipmentWarranty} years` : '-'}
-                        {isHighlighted(c.equipmentWarranty, bestEquipmentWarranty) && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
-                            <Star className="w-3 h-3" /> BEST
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200 bg-gray-50/50">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Financing Available</td>
-                  {costData.map((c, idx) => (
-                    <td key={c.bidId} className={`px-5 py-4 text-sm ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {c.financingAvailable ? (
-                        <span className="inline-flex items-center gap-1 text-switch-green-700 font-medium">
-                          <CheckCircle className="w-5 h-5" /> Available
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-gray-400">
-                          <XCircle className="w-5 h-5" /> No
-                        </span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-gray-200">
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">What is Included</td>
-                  {costData.map((c, idx) => (
-                    <td key={c.bidId} className={`px-5 py-4 text-sm text-gray-900 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {c.inclusions.length > 0 ? (
-                        <ul className="text-xs space-y-1.5">
-                          {c.inclusions.slice(0, 4).map((item, i) => (
-                            <li key={i} className="flex items-start gap-1.5">
-                              <CheckCircle className="w-3.5 h-3.5 text-switch-green-600 flex-shrink-0 mt-0.5" />
-                              <span className="text-gray-700">{item}</span>
-                            </li>
-                          ))}
-                          {c.inclusions.length > 4 && (
-                            <li className="text-gray-500 pl-5">+{c.inclusions.length - 4} more items</li>
+                    {contractorData.map((c, idx) => (
+                      <th key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < contractorData.length - 1 ? 'border-r border-gray-700' : ''}`}>
+                        {c.contractor}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-gray-200">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Years in Business</td>
+                    {contractorData.map((c, idx) => (
+                      <td
+                        key={c.bidId}
+                        style={bidCellStyle}
+                        className={`px-5 py-4 text-sm font-semibold ${isHighlighted(c.yearsInBusiness, bestYears) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {c.yearsInBusiness ? `${c.yearsInBusiness} years` : '-'}
+                          {isHighlighted(c.yearsInBusiness, bestYears) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                              <Star className="w-3 h-3" /> MOST
+                            </span>
                           )}
-                        </ul>
-                      ) : (
-                        <span className="text-gray-400">Not specified</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">What is NOT Included</td>
-                  {costData.map((c, idx) => (
-                    <td key={c.bidId} className={`px-5 py-4 text-sm text-gray-900 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {c.exclusions.length > 0 ? (
-                        <ul className="text-xs space-y-1.5">
-                          {c.exclusions.slice(0, 4).map((item, i) => (
-                            <li key={i} className="flex items-start gap-1.5">
-                              <XCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
-                              <span className="text-gray-700">{item}</span>
-                            </li>
-                          ))}
-                          {c.exclusions.length > 4 && (
-                            <li className="text-gray-500 pl-5">+{c.exclusions.length - 4} more items</li>
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Google Rating</td>
+                    {contractorData.map((c, idx) => (
+                      <td
+                        key={c.bidId}
+                        style={bidCellStyle}
+                        className={`px-5 py-4 text-sm font-semibold ${isHighlighted(c.googleRating, bestRating) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {c.googleRating ? (
+                            <span className="flex items-center gap-1">
+                              {c.googleRating}
+                              <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                            </span>
+                          ) : '-'}
+                          {isHighlighted(c.googleRating, bestRating) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                              TOP
+                            </span>
                           )}
-                        </ul>
-                      ) : (
-                        <span className="text-gray-400">Not specified</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          )}
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Review Count</td>
+                    {contractorData.map((c, idx) => (
+                      <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {c.reviewCount ? `${c.reviewCount} reviews` : '-'}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Certifications</td>
+                    {contractorData.map((c, idx) => (
+                      <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-900 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {c.certifications.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {c.certifications.slice(0, 3).map((cert, i) => (
+                              <span key={i} className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded">
+                                {cert}
+                              </span>
+                            ))}
+                            {c.certifications.length > 3 && (
+                              <span className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">
+                                +{c.certifications.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">License Number</td>
+                    {contractorData.map((c, idx) => (
+                      <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {c.license || <span className="text-gray-400">Not provided</span>}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className={showMoreContractors ? 'border-b border-gray-200 bg-gray-50/50' : ''}>
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Switch Preferred</td>
+                    {contractorData.map((c, idx) => (
+                      <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {c.isSwitchPreferred ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-switch-green-500 to-switch-green-600 text-white rounded-full text-xs font-semibold shadow-sm">
+                            <CheckCircle className="w-3.5 h-3.5" /> Preferred Partner
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {showMoreContractors && (
+                    <>
+                      <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Phone</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.phone || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Email</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.email ? (
+                              <a href={`mailto:${c.email}`} className="text-switch-green-600 hover:underline truncate block">
+                                {c.email}
+                              </a>
+                            ) : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Website</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.website ? (
+                              <a href={c.website} target="_blank" rel="noopener noreferrer" className="text-switch-green-600 hover:underline truncate block">
+                                {c.website.replace(/^https?:\/\//, '')}
+                              </a>
+                            ) : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">License State</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.licenseState || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Insurance Verified</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.insuranceVerified ? (
+                              <span className="inline-flex items-center gap-1 text-switch-green-700">
+                                <CheckCircle className="w-4 h-4" /> Verified
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Year Established</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.yearEstablished || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Total Installs</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.totalInstalls ? c.totalInstalls.toLocaleString() : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </>
+            )}
+
+            {activeTab === 'costs' && (
+              <>
+                <thead>
+                  <tr className="bg-gray-900">
+                    <th style={labelCellStyle} className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
+                      Cost Item
+                    </th>
+                    {costData.map((c, idx) => (
+                      <th key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < costData.length - 1 ? 'border-r border-gray-700' : ''}`}>
+                        {c.contractor}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                    <td style={labelCellStyle} className="px-5 py-5 text-sm font-bold text-gray-900 bg-gray-100 border-r border-gray-200">Total Bid Amount</td>
+                    {costData.map((c, idx) => (
+                      <td
+                        key={c.bidId}
+                        style={bidCellStyle}
+                        className={`px-5 py-5 ${isHighlighted(c.totalAmount, lowestPrice) ? 'bg-gradient-to-r from-switch-green-50 to-switch-green-100' : ''} ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className={`text-xl font-bold ${isHighlighted(c.totalAmount, lowestPrice) ? 'text-switch-green-700' : 'text-gray-900'}`}>
+                            {formatCurrency(c.totalAmount)}
+                          </span>
+                          {isHighlighted(c.totalAmount, lowestPrice) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                              <Star className="w-3 h-3" /> LOWEST
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Equipment Cost</td>
+                    {costData.map((c, idx) => (
+                      <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {formatCurrency(c.equipmentCost)}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Labor Cost</td>
+                    {costData.map((c, idx) => (
+                      <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {formatCurrency(c.laborCost)}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Labor Warranty</td>
+                    {costData.map((c, idx) => (
+                      <td
+                        key={c.bidId}
+                        style={bidCellStyle}
+                        className={`px-5 py-4 text-sm font-semibold ${isHighlighted(c.laborWarranty, bestLaborWarranty) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {c.laborWarranty ? `${c.laborWarranty} years` : '-'}
+                          {isHighlighted(c.laborWarranty, bestLaborWarranty) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                              <Star className="w-3 h-3" /> BEST
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Equipment Warranty</td>
+                    {costData.map((c, idx) => (
+                      <td
+                        key={c.bidId}
+                        style={bidCellStyle}
+                        className={`px-5 py-4 text-sm font-semibold ${isHighlighted(c.equipmentWarranty, bestEquipmentWarranty) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {c.equipmentWarranty ? `${c.equipmentWarranty} years` : '-'}
+                          {isHighlighted(c.equipmentWarranty, bestEquipmentWarranty) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                              <Star className="w-3 h-3" /> BEST
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Financing Available</td>
+                    {costData.map((c, idx) => (
+                      <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {c.financingAvailable ? (
+                          <span className="inline-flex items-center gap-1 text-switch-green-700 font-medium">
+                            <CheckCircle className="w-5 h-5" /> Available
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-gray-400">
+                            <XCircle className="w-5 h-5" /> No
+                          </span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">What is Included</td>
+                    {costData.map((c, idx) => (
+                      <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-900 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {c.inclusions.length > 0 ? (
+                          <ul className="text-xs space-y-1.5">
+                            {c.inclusions.slice(0, 4).map((item, i) => (
+                              <li key={i} className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-switch-green-600 flex-shrink-0 mt-0.5" />
+                                <span className="text-gray-700">{item}</span>
+                              </li>
+                            ))}
+                            {c.inclusions.length > 4 && (
+                              <li className="text-gray-500 pl-5">+{c.inclusions.length - 4} more items</li>
+                            )}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-400">Not specified</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className={showMoreCosts ? 'border-b border-gray-200 bg-gray-50/50' : ''}>
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">What is NOT Included</td>
+                    {costData.map((c, idx) => (
+                      <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-900 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {c.exclusions.length > 0 ? (
+                          <ul className="text-xs space-y-1.5">
+                            {c.exclusions.slice(0, 4).map((item, i) => (
+                              <li key={i} className="flex items-start gap-1.5">
+                                <XCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                                <span className="text-gray-700">{item}</span>
+                              </li>
+                            ))}
+                            {c.exclusions.length > 4 && (
+                              <li className="text-gray-500 pl-5">+{c.exclusions.length - 4} more items</li>
+                            )}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-400">Not specified</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {showMoreCosts && (
+                    <>
+                      <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Estimated Duration</td>
+                        {costData.map((c, idx) => (
+                          <td
+                            key={c.bidId}
+                            style={bidCellStyle}
+                            className={`px-5 py-4 text-sm ${isHighlighted(c.estimatedDays, fastestTimeline) ? 'text-switch-green-700 font-semibold' : 'text-gray-600'} ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}
+                          >
+                            {c.estimatedDays ? `${c.estimatedDays} days` : '-'}
+                            {isHighlighted(c.estimatedDays, fastestTimeline) && c.estimatedDays && (
+                              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                                FASTEST
+                              </span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Available Start Date</td>
+                        {costData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {formatDate(c.startDateAvailable)}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Quote Valid Until</td>
+                        {costData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {formatDate(c.validUntil)}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Bid Date</td>
+                        {costData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {formatDate(c.bidDate)}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Materials Cost</td>
+                        {costData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {formatCurrency(c.materialsCost)}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Permit Cost</td>
+                        {costData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {formatCurrency(c.permitCost)}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Deposit Required</td>
+                        {costData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.depositRequired ? formatCurrency(c.depositRequired) : c.depositPercentage ? `${c.depositPercentage}%` : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Payment Schedule</td>
+                        {costData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.paymentSchedule || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Financing Terms</td>
+                        {costData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.financingTerms || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </>
+            )}
+          </table>
+        </div>
+
+        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200">
+          <button
+            onClick={() => {
+              if (activeTab === 'equipment') setShowMoreEquipment(!showMoreEquipment);
+              if (activeTab === 'contractors') setShowMoreContractors(!showMoreContractors);
+              if (activeTab === 'costs') setShowMoreCosts(!showMoreCosts);
+            }}
+            className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            {(activeTab === 'equipment' && showMoreEquipment) ||
+             (activeTab === 'contractors' && showMoreContractors) ||
+             (activeTab === 'costs' && showMoreCosts) ? (
+              <>
+                <ChevronUp className="w-4 h-4" />
+                Show Less
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-4 h-4" />
+                Show More Details
+              </>
+            )}
+          </button>
         </div>
       </div>
 

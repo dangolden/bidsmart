@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, Award } from 'lucide-react';
+import { Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, Award, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { supabase } from '../../lib/supabaseClient';
+import { IncentivesTable } from '../IncentivesTable';
 import type { BidQuestion, RebateProgram } from '../../lib/types';
 
 export function DecidePhase() {
   const { bids, questions, refreshQuestions, completePhase } = usePhase();
   const [rebatePrograms, setRebatePrograms] = useState<RebateProgram[]>([]);
+  const [selectedIncentives, setSelectedIncentives] = useState<Set<string>>(new Set());
   const [selectedContractor, setSelectedContractor] = useState<string | null>(null);
   const [copiedContractor, setCopiedContractor] = useState<string | null>(null);
+  const [expandedBids, setExpandedBids] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadRebatePrograms();
@@ -21,7 +24,27 @@ export function DecidePhase() {
       .eq('is_active', true)
       .order('program_name');
 
-    setRebatePrograms(data || []);
+    if (data) {
+      setRebatePrograms(data);
+      setSelectedIncentives(new Set(data.map(p => p.id)));
+    }
+  };
+
+  const toggleIncentive = (programId: string) => {
+    const newSelected = new Set(selectedIncentives);
+    if (newSelected.has(programId)) {
+      newSelected.delete(programId);
+    } else {
+      newSelected.add(programId);
+    }
+    setSelectedIncentives(newSelected);
+  };
+
+  const getTotalSelectedRebates = () => {
+    return Array.from(selectedIncentives).reduce((sum, id) => {
+      const program = rebatePrograms.find(p => p.id === id);
+      return sum + (program ? (Number(program.max_rebate) || Number(program.rebate_amount) || 0) : 0);
+    }, 0);
   };
 
   const formatCurrency = (amount: number | null | undefined) => {
@@ -32,6 +55,15 @@ export function DecidePhase() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return null;
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
   };
 
   const toggleQuestionAnswered = async (question: BidQuestion) => {
@@ -74,20 +106,31 @@ export function DecidePhase() {
     }
   };
 
+  const toggleBidExpanded = (bidId: string) => {
+    const newExpanded = new Set(expandedBids);
+    if (newExpanded.has(bidId)) {
+      newExpanded.delete(bidId);
+    } else {
+      newExpanded.add(bidId);
+    }
+    setExpandedBids(newExpanded);
+  };
+
+  const totalSelectedRebates = getTotalSelectedRebates();
+
   const getBidData = () => {
     return bids.map((b) => {
       const mainEquipment = b.equipment.find(
         (e) => e.equipment_type === 'outdoor_unit' || e.equipment_type === 'heat_pump'
       ) || b.equipment[0];
 
-      const estimatedRebates = b.bid.estimated_rebates || 0;
-      const netCost = b.bid.total_bid_amount - estimatedRebates;
+      const netCost = b.bid.total_bid_amount - totalSelectedRebates;
 
       return {
         bidId: b.bid.id,
         contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
         totalAmount: b.bid.total_bid_amount,
-        estimatedRebates,
+        estimatedRebates: totalSelectedRebates,
         netCost,
         equipmentBrand: mainEquipment?.brand || '-',
         equipmentModel: mainEquipment?.model_number || mainEquipment?.model_name || '-',
@@ -97,6 +140,28 @@ export function DecidePhase() {
         laborWarranty: b.bid.labor_warranty_years,
         equipmentWarranty: b.bid.equipment_warranty_years,
         isSwitchPreferred: b.bid.contractor_is_switch_preferred,
+        phone: b.bid.contractor_phone,
+        email: b.bid.contractor_email,
+        website: b.bid.contractor_website,
+        license: b.bid.contractor_license,
+        licenseState: b.bid.contractor_license_state,
+        insuranceVerified: b.bid.contractor_insurance_verified,
+        yearsInBusiness: b.bid.contractor_years_in_business,
+        totalInstalls: b.bid.contractor_total_installs,
+        certifications: b.bid.contractor_certifications || [],
+        estimatedDays: b.bid.estimated_days,
+        startDateAvailable: b.bid.start_date_available,
+        validUntil: b.bid.valid_until,
+        bidDate: b.bid.bid_date,
+        financingOffered: b.bid.financing_offered,
+        financingTerms: b.bid.financing_terms,
+        userNotes: b.bid.user_notes,
+        isFavorite: b.bid.is_favorite,
+        verifiedByUser: b.bid.verified_by_user,
+        extractionConfidence: b.bid.extraction_confidence,
+        valueScore: b.bid.value_score,
+        qualityScore: b.bid.quality_score,
+        completenessScore: b.bid.completeness_score,
       };
     });
   };
@@ -126,23 +191,11 @@ export function DecidePhase() {
       </div>
 
       {rebatePrograms.length > 0 && (
-        <div className="bg-gradient-to-r from-switch-green-50 to-switch-green-100 border-2 border-switch-green-200 rounded-xl p-5">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-switch-green-600 rounded-full flex items-center justify-center flex-shrink-0">
-              <DollarSign className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-switch-green-900">Available Rebates & Incentives</h3>
-              <p className="text-sm text-switch-green-700 mt-1">
-                You may qualify for {rebatePrograms.length} rebate program{rebatePrograms.length !== 1 ? 's' : ''} totaling up to{' '}
-                <span className="font-bold">
-                  {formatCurrency(rebatePrograms.reduce((sum, p) => sum + (Number(p.max_rebate) || Number(p.rebate_amount) || 0), 0))}
-                </span>{' '}
-                in savings.
-              </p>
-            </div>
-          </div>
-        </div>
+        <IncentivesTable
+          rebatePrograms={rebatePrograms}
+          selectedIncentives={selectedIncentives}
+          onToggleIncentive={toggleIncentive}
+        />
       )}
 
       <div className="space-y-6">
@@ -151,6 +204,7 @@ export function DecidePhase() {
           const answeredCount = bidQuestions.filter((q) => q.is_answered).length;
           const unansweredQuestions = bidQuestions.filter((q) => !q.is_answered);
           const isSelected = selectedContractor === bid.bidId;
+          const isExpanded = expandedBids.has(bid.bidId);
 
           const isBestPrice = bid.totalAmount === lowestPrice;
           const isBestNetCost = bid.netCost === lowestNetCost;
@@ -227,11 +281,11 @@ export function DecidePhase() {
                       <div className={`text-3xl font-bold ${isBestPrice ? 'text-switch-green-700' : 'text-gray-900'}`}>
                         {formatCurrency(bid.totalAmount)}
                       </div>
-                      {bid.estimatedRebates > 0 && (
+                      {totalSelectedRebates > 0 && (
                         <div className="mt-3 pt-3 border-t border-gray-200">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-500">Est. Rebates</span>
-                            <span className="text-switch-green-600 font-semibold">-{formatCurrency(bid.estimatedRebates)}</span>
+                            <span className="text-gray-500">Selected Rebates</span>
+                            <span className="text-switch-green-600 font-semibold">-{formatCurrency(totalSelectedRebates)}</span>
                           </div>
                           <div className="flex items-center justify-between mt-2">
                             <span className="text-sm font-semibold text-gray-700">Net Cost</span>
@@ -387,6 +441,142 @@ export function DecidePhase() {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="mt-5 pt-5 border-t border-gray-200">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Contact Info</h4>
+                        {bid.phone && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Phone className="w-4 h-4 text-gray-400" />
+                            {bid.phone}
+                          </div>
+                        )}
+                        {bid.email && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Mail className="w-4 h-4 text-gray-400" />
+                            <a href={`mailto:${bid.email}`} className="text-switch-green-600 hover:underline">
+                              {bid.email}
+                            </a>
+                          </div>
+                        )}
+                        {bid.website && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Globe className="w-4 h-4 text-gray-400" />
+                            <a href={bid.website} target="_blank" rel="noopener noreferrer" className="text-switch-green-600 hover:underline truncate">
+                              {bid.website.replace(/^https?:\/\//, '')}
+                            </a>
+                          </div>
+                        )}
+                        {bid.license && (
+                          <div className="text-sm text-gray-600">
+                            <span className="text-gray-500">License:</span> {bid.license}
+                            {bid.licenseState && ` (${bid.licenseState})`}
+                          </div>
+                        )}
+                        {bid.insuranceVerified && (
+                          <div className="flex items-center gap-1.5 text-sm text-switch-green-700">
+                            <CheckCircle className="w-4 h-4" /> Insurance Verified
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Timeline & Details</h4>
+                        {bid.estimatedDays && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Clock className="w-4 h-4 text-gray-400" />
+                            Est. {bid.estimatedDays} days to complete
+                          </div>
+                        )}
+                        {bid.startDateAvailable && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Calendar className="w-4 h-4 text-gray-400" />
+                            Available: {formatDate(bid.startDateAvailable)}
+                          </div>
+                        )}
+                        {bid.validUntil && (
+                          <div className="text-sm text-gray-600">
+                            <span className="text-gray-500">Quote valid until:</span> {formatDate(bid.validUntil)}
+                          </div>
+                        )}
+                        {bid.bidDate && (
+                          <div className="text-sm text-gray-600">
+                            <span className="text-gray-500">Bid date:</span> {formatDate(bid.bidDate)}
+                          </div>
+                        )}
+                        {bid.financingOffered && (
+                          <div className="text-sm text-gray-600">
+                            <span className="text-switch-green-700 font-medium">Financing Available</span>
+                            {bid.financingTerms && <span className="text-gray-500 ml-1">- {bid.financingTerms}</span>}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Experience</h4>
+                        {bid.yearsInBusiness && (
+                          <div className="text-sm text-gray-600">
+                            {bid.yearsInBusiness} years in business
+                          </div>
+                        )}
+                        {bid.totalInstalls && (
+                          <div className="text-sm text-gray-600">
+                            {bid.totalInstalls.toLocaleString()} total installs
+                          </div>
+                        )}
+                        {bid.certifications.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {bid.certifications.map((cert, i) => (
+                              <span key={i} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
+                                {cert}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {bid.extractionConfidence && (
+                          <div className="text-xs text-gray-500">
+                            Extraction confidence: <span className="capitalize font-medium">{bid.extractionConfidence}</span>
+                          </div>
+                        )}
+                        {(bid.valueScore || bid.qualityScore || bid.completenessScore) && (
+                          <div className="flex items-center gap-2">
+                            {bid.valueScore && (
+                              <span className="text-xs px-2 py-0.5 bg-switch-green-100 text-switch-green-700 rounded">
+                                Value: {bid.valueScore}
+                              </span>
+                            )}
+                            {bid.qualityScore && (
+                              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                Quality: {bid.qualityScore}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={() => toggleBidExpanded(bid.bidId)}
+                    className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {isExpanded ? (
+                      <>
+                        <ChevronUp className="w-4 h-4" />
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4" />
+                        Show More Details
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
