@@ -1,4 +1,4 @@
-import { Upload, BarChart3, CheckCircle, ClipboardCheck } from 'lucide-react';
+import { Upload, BarChart3, CheckCircle, ClipboardCheck, Play } from 'lucide-react';
 
 const PHASES = [
   {
@@ -37,9 +37,10 @@ const PHASES = [
 
 interface DashboardPhasePreviewProps {
   onStartProject?: () => void;
+  onStartDemo?: () => void;
 }
 
-export function DashboardPhasePreview({ onStartProject }: DashboardPhasePreviewProps) {
+export function DashboardPhasePreview({ onStartProject, onStartDemo }: DashboardPhasePreviewProps) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
       <div className="text-center mb-6">
@@ -94,15 +95,28 @@ export function DashboardPhasePreview({ onStartProject }: DashboardPhasePreviewP
         })}
       </div>
 
-      {onStartProject && (
+      {(onStartProject || onStartDemo) && (
         <div className="text-center pt-4 border-t border-gray-100">
-          <button
-            onClick={onStartProject}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-switch-green-600 text-white rounded-lg font-medium hover:bg-switch-green-700 transition-colors"
-          >
-            <Upload className="w-4 h-4" />
-            Get Started with Your Bids
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            {onStartProject && (
+              <button
+                onClick={onStartProject}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-switch-green-600 text-white rounded-lg font-medium hover:bg-switch-green-700 transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                Get Started with Your Bids
+              </button>
+            )}
+            {onStartDemo && (
+              <button
+                onClick={onStartDemo}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+              >
+                <Play className="w-4 h-4" />
+                Try Demo Mode
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

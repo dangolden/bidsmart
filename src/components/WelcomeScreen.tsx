@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, FolderOpen, Play, Calendar, FileText, ChevronRight } from 'lucide-react';
+import { FolderOpen, Calendar, FileText, ChevronRight } from 'lucide-react';
 import { getProjectsByUser, getDemoProject, createProject, createBid, bulkCreateEquipment } from '../lib/database/bidsmartService';
 import { SAMPLE_BIDS, SAMPLE_REBATE_PROGRAMS } from '../lib/services/sampleDataService';
 import { supabase } from '../lib/supabaseClient';
@@ -15,8 +15,6 @@ interface WelcomeScreenProps {
 export function WelcomeScreen({ user, onSelectProject, onCreateProject }: WelcomeScreenProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creatingDemo, setCreatingDemo] = useState(false);
-  const [creatingNew, setCreatingNew] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -34,7 +32,6 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
   }
 
   async function handleNewProject() {
-    setCreatingNew(true);
     try {
       const project = await createProject(user.id, {
         project_name: 'My Heat Pump Project',
@@ -43,19 +40,15 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
       onCreateProject(project.id);
     } catch (err) {
       console.error('Failed to create project:', err);
-    } finally {
-      setCreatingNew(false);
     }
   }
 
   async function handleLoadDemoData() {
-    setCreatingDemo(true);
     try {
       const existingDemo = await getDemoProject(user.id);
 
       if (existingDemo) {
         onCreateProject(existingDemo.id);
-        setCreatingDemo(false);
         return;
       }
 
@@ -112,8 +105,6 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
       onCreateProject(project.id);
     } catch (err) {
       console.error('Failed to create demo project:', err);
-    } finally {
-      setCreatingDemo(false);
     }
   }
 
@@ -169,45 +160,10 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
           )}
         </div>
 
-        <DashboardPhasePreview onStartProject={handleNewProject} />
-
-        <div className="max-w-2xl mx-auto">
-          <div className="space-y-4 mb-8">
-          <button
-            onClick={handleNewProject}
-            disabled={creatingNew}
-            className="w-full bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4 hover:border-switch-green-400 hover:bg-switch-green-50 transition-colors text-left group"
-          >
-            <div className="w-12 h-12 bg-switch-green-100 rounded-full flex items-center justify-center group-hover:bg-switch-green-200 transition-colors">
-              <Plus className="w-6 h-6 text-switch-green-700" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900">Start New Project</h3>
-              <p className="text-sm text-gray-500">Upload your bids and get started</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-switch-green-600" />
-          </button>
-
-          <button
-            onClick={handleLoadDemoData}
-            disabled={creatingDemo}
-            className="w-full bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4 hover:border-blue-400 hover:bg-blue-50 transition-colors text-left group"
-          >
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-              <Play className="w-6 h-6 text-blue-700" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900">
-                {creatingDemo ? 'Loading Demo...' : 'Try Demo Mode'}
-              </h3>
-              <p className="text-sm text-gray-500">Explore with sample bid data</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600" />
-          </button>
-        </div>
+        <DashboardPhasePreview onStartProject={handleNewProject} onStartDemo={handleLoadDemoData} />
 
         {projects.length > 0 && (
-          <div>
+          <div className="max-w-2xl mx-auto">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FolderOpen className="w-5 h-5 text-gray-400" />
               Your Projects
@@ -242,7 +198,6 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
             </div>
           </div>
         )}
-        </div>
 
         <div className="mt-12 text-center">
           <p className="text-xs text-gray-400">
