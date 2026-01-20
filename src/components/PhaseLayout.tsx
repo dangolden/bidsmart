@@ -27,12 +27,12 @@ export function PhaseLayout({ children, onNavigateHome, projectName }: PhaseLayo
               <button
                 onClick={onNavigateHome}
                 className="flex items-center gap-2 text-gray-600 hover:text-switch-green-600 transition-colors group"
-                aria-label="Return to home screen"
+                aria-label="Return to Bid Compare Dashboard"
               >
                 <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-switch-green-100 flex items-center justify-center transition-colors">
                   <Home className="w-4 h-4" />
                 </div>
-                <span className="text-sm font-medium hidden sm:inline">Home</span>
+                <span className="text-sm font-medium hidden sm:inline">Dashboard</span>
               </button>
               <ChevronRight className="w-4 h-4 text-gray-300" />
               <span className="text-sm font-medium text-gray-900 truncate max-w-[200px] sm:max-w-none">
