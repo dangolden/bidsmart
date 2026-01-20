@@ -8,6 +8,7 @@ import type { UserExt } from '../lib/types';
 
 interface BidSmartFlowProps {
   user: UserExt;
+  projectId?: string;
 }
 
 function PhaseContent() {
@@ -52,9 +53,9 @@ function PhaseContent() {
   }
 }
 
-export function BidSmartFlow({ user }: BidSmartFlowProps) {
+export function BidSmartFlow({ user, projectId }: BidSmartFlowProps) {
   return (
-    <PhaseProvider userId={user.id}>
+    <PhaseProvider userId={user.id} initialProjectId={projectId}>
       <PhaseLayout>
         <PhaseContent />
       </PhaseLayout>

@@ -77,9 +77,10 @@ function saveStoredState(state: StoredPhaseState): void {
 interface PhaseProviderProps {
   children: ReactNode;
   userId: string;
+  initialProjectId?: string;
 }
 
-export function PhaseProvider({ children, userId }: PhaseProviderProps) {
+export function PhaseProvider({ children, userId, initialProjectId }: PhaseProviderProps) {
   const [state, setState] = useState<PhaseState>({
     currentPhase: 1,
     phaseStatus: {
@@ -106,7 +107,15 @@ export function PhaseProvider({ children, userId }: PhaseProviderProps) {
         let projectId: string;
         let project: Project;
 
-        if (storedState?.projectId && existingProjects.find(p => p.id === storedState.projectId)) {
+        if (initialProjectId) {
+          const foundProject = existingProjects.find(p => p.id === initialProjectId);
+          if (foundProject) {
+            projectId = initialProjectId;
+            project = foundProject;
+          } else {
+            throw new Error('Project not found');
+          }
+        } else if (storedState?.projectId && existingProjects.find(p => p.id === storedState.projectId)) {
           projectId = storedState.projectId;
           project = existingProjects.find(p => p.id === storedState.projectId)!;
         } else if (existingProjects.length > 0) {
@@ -177,7 +186,7 @@ export function PhaseProvider({ children, userId }: PhaseProviderProps) {
     }
 
     initializeProject();
-  }, [userId]);
+  }, [userId, initialProjectId]);
 
   const canAccessPhase = useCallback((phase: Phase): boolean => {
     return state.phaseStatus[phase] !== 'locked';

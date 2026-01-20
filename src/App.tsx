@@ -1,8 +1,53 @@
+import { useState, useEffect } from 'react';
 import { useUser } from './hooks/useUser';
+import { WelcomeScreen } from './components/WelcomeScreen';
 import { BidSmartFlow } from './components/BidSmartFlow';
+
+const ACTIVE_PROJECT_KEY = 'bidsmart_active_project';
+
+function getStoredProjectId(): string | null {
+  try {
+    return localStorage.getItem(ACTIVE_PROJECT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredProjectId(projectId: string | null): void {
+  try {
+    if (projectId) {
+      localStorage.setItem(ACTIVE_PROJECT_KEY, projectId);
+    } else {
+      localStorage.removeItem(ACTIVE_PROJECT_KEY);
+    }
+  } catch {
+  }
+}
 
 function App() {
   const { user, loading, error } = useUser();
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [showWelcome, setShowWelcome] = useState(true);
+
+  useEffect(() => {
+    const storedProjectId = getStoredProjectId();
+    if (storedProjectId) {
+      setActiveProjectId(storedProjectId);
+      setShowWelcome(false);
+    }
+  }, []);
+
+  const handleSelectProject = (projectId: string) => {
+    setActiveProjectId(projectId);
+    setStoredProjectId(projectId);
+    setShowWelcome(false);
+  };
+
+  const handleCreateProject = (projectId: string) => {
+    setActiveProjectId(projectId);
+    setStoredProjectId(projectId);
+    setShowWelcome(false);
+  };
 
   if (loading) {
     return (
@@ -37,7 +82,17 @@ function App() {
     );
   }
 
-  return <BidSmartFlow user={user} />;
+  if (showWelcome || !activeProjectId) {
+    return (
+      <WelcomeScreen
+        user={user}
+        onSelectProject={handleSelectProject}
+        onCreateProject={handleCreateProject}
+      />
+    );
+  }
+
+  return <BidSmartFlow user={user} projectId={activeProjectId} />;
 }
 
 export default App;
