@@ -1,12 +1,8 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
 import { useUser } from './hooks/useUser';
-
-import { ProjectPage } from './pages/ProjectPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { EmbeddedLayout } from './components/EmbeddedLayout';
+import { BidSmartFlow } from './components/BidSmartFlow';
 
 function App() {
-  const { user, loading, isReturningUser, error } = useUser();
+  const { user, loading, error } = useUser();
 
   if (loading) {
     return (
@@ -41,17 +37,7 @@ function App() {
     );
   }
 
-  return (
-    <Routes>
-      <Route element={<EmbeddedLayout user={user} isReturningUser={isReturningUser} />}>
-        <Route path="/" element={<DashboardPage user={user} isReturningUser={isReturningUser} />} />
-        <Route path="/dashboard" element={<DashboardPage user={user} isReturningUser={isReturningUser} />} />
-        <Route path="/project/:projectId" element={<ProjectPage user={user} />} />
-      </Route>
-
-      <Route path="*" element={<Navigate to="/" />} />
-    </Routes>
-  );
+  return <BidSmartFlow user={user} />;
 }
 
 export default App;

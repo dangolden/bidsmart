@@ -1,0 +1,287 @@
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import type { Project, ContractorBid, BidEquipment, ProjectRequirements, BidQuestion } from '../lib/types';
+import {
+  createProject,
+  getProjectsByUser,
+  getBidsByProject,
+  getEquipmentByBid,
+  getProjectRequirements,
+} from '../lib/database/bidsmartService';
+import { supabase } from '../lib/supabaseClient';
+
+export type Phase = 1 | 2 | 3 | 4;
+export type PhaseStatus = 'locked' | 'active' | 'completed';
+
+const PHASE_LABELS: Record<Phase, string> = {
+  1: 'GATHER',
+  2: 'COMPARE',
+  3: 'DECIDE',
+  4: 'VERIFY',
+};
+
+interface BidWithEquipment {
+  bid: ContractorBid;
+  equipment: BidEquipment[];
+}
+
+interface PhaseState {
+  currentPhase: Phase;
+  phaseStatus: Record<Phase, PhaseStatus>;
+  projectId: string | null;
+  project: Project | null;
+  bids: BidWithEquipment[];
+  requirements: ProjectRequirements | null;
+  questions: BidQuestion[];
+  loading: boolean;
+  error: string | null;
+}
+
+interface PhaseContextValue extends PhaseState {
+  goToPhase: (phase: Phase) => void;
+  completePhase: (phase: Phase) => void;
+  canAccessPhase: (phase: Phase) => boolean;
+  refreshBids: () => Promise<void>;
+  refreshRequirements: () => Promise<void>;
+  refreshQuestions: () => Promise<void>;
+  getPhaseLabel: (phase: Phase) => string;
+}
+
+const PhaseContext = createContext<PhaseContextValue | null>(null);
+
+const STORAGE_KEY = 'bidsmart_phase_state';
+
+interface StoredPhaseState {
+  currentPhase: Phase;
+  projectId: string | null;
+  phaseStatus: Record<Phase, PhaseStatus>;
+}
+
+function loadStoredState(): StoredPhaseState | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch {
+  }
+  return null;
+}
+
+function saveStoredState(state: StoredPhaseState): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+  }
+}
+
+interface PhaseProviderProps {
+  children: ReactNode;
+  userId: string;
+}
+
+export function PhaseProvider({ children, userId }: PhaseProviderProps) {
+  const [state, setState] = useState<PhaseState>({
+    currentPhase: 1,
+    phaseStatus: {
+      1: 'active',
+      2: 'locked',
+      3: 'locked',
+      4: 'locked',
+    },
+    projectId: null,
+    project: null,
+    bids: [],
+    requirements: null,
+    questions: [],
+    loading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    async function initializeProject() {
+      try {
+        const storedState = loadStoredState();
+        const existingProjects = await getProjectsByUser(userId);
+
+        let projectId: string;
+        let project: Project;
+
+        if (storedState?.projectId && existingProjects.find(p => p.id === storedState.projectId)) {
+          projectId = storedState.projectId;
+          project = existingProjects.find(p => p.id === storedState.projectId)!;
+        } else if (existingProjects.length > 0) {
+          project = existingProjects[0];
+          projectId = project.id;
+        } else {
+          project = await createProject(userId, {
+            project_name: 'My Heat Pump Project',
+            status: 'collecting_bids',
+          });
+          projectId = project.id;
+        }
+
+        const bids = await getBidsByProject(projectId);
+        const bidsWithEquipment = await Promise.all(
+          bids.map(async (bid) => ({
+            bid,
+            equipment: await getEquipmentByBid(bid.id),
+          }))
+        );
+
+        const requirements = await getProjectRequirements(projectId);
+
+        const { data: questions } = await supabase
+          .from('bid_questions')
+          .select('*')
+          .in('bid_id', bids.map(b => b.id))
+          .order('display_order', { ascending: true });
+
+        let currentPhase: Phase = 1;
+        let phaseStatus: Record<Phase, PhaseStatus> = {
+          1: 'active',
+          2: 'locked',
+          3: 'locked',
+          4: 'locked',
+        };
+
+        if (storedState && storedState.projectId === projectId) {
+          currentPhase = storedState.currentPhase;
+          phaseStatus = storedState.phaseStatus;
+        } else if (bidsWithEquipment.length >= 2 && requirements?.completed_at) {
+          phaseStatus[1] = 'completed';
+          phaseStatus[2] = 'active';
+          currentPhase = 2;
+        }
+
+        setState({
+          currentPhase,
+          phaseStatus,
+          projectId,
+          project,
+          bids: bidsWithEquipment,
+          requirements,
+          questions: questions || [],
+          loading: false,
+          error: null,
+        });
+
+        saveStoredState({ currentPhase, projectId, phaseStatus });
+      } catch (err) {
+        console.error('Failed to initialize project:', err);
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Failed to load project data',
+        }));
+      }
+    }
+
+    initializeProject();
+  }, [userId]);
+
+  const canAccessPhase = useCallback((phase: Phase): boolean => {
+    return state.phaseStatus[phase] !== 'locked';
+  }, [state.phaseStatus]);
+
+  const goToPhase = useCallback((phase: Phase) => {
+    if (!canAccessPhase(phase)) return;
+
+    setState(prev => {
+      const newState = { ...prev, currentPhase: phase };
+      saveStoredState({
+        currentPhase: phase,
+        projectId: prev.projectId,
+        phaseStatus: prev.phaseStatus,
+      });
+      return newState;
+    });
+  }, [canAccessPhase]);
+
+  const completePhase = useCallback((phase: Phase) => {
+    setState(prev => {
+      const newPhaseStatus = { ...prev.phaseStatus };
+      newPhaseStatus[phase] = 'completed';
+
+      const nextPhase = (phase + 1) as Phase;
+      if (nextPhase <= 4 && newPhaseStatus[nextPhase] === 'locked') {
+        newPhaseStatus[nextPhase] = 'active';
+      }
+
+      const newCurrentPhase = nextPhase <= 4 ? nextPhase : phase;
+
+      saveStoredState({
+        currentPhase: newCurrentPhase,
+        projectId: prev.projectId,
+        phaseStatus: newPhaseStatus,
+      });
+
+      return {
+        ...prev,
+        currentPhase: newCurrentPhase,
+        phaseStatus: newPhaseStatus,
+      };
+    });
+  }, []);
+
+  const refreshBids = useCallback(async () => {
+    if (!state.projectId) return;
+
+    const bids = await getBidsByProject(state.projectId);
+    const bidsWithEquipment = await Promise.all(
+      bids.map(async (bid) => ({
+        bid,
+        equipment: await getEquipmentByBid(bid.id),
+      }))
+    );
+
+    setState(prev => ({ ...prev, bids: bidsWithEquipment }));
+  }, [state.projectId]);
+
+  const refreshRequirements = useCallback(async () => {
+    if (!state.projectId) return;
+
+    const requirements = await getProjectRequirements(state.projectId);
+    setState(prev => ({ ...prev, requirements }));
+  }, [state.projectId]);
+
+  const refreshQuestions = useCallback(async () => {
+    if (!state.projectId || state.bids.length === 0) return;
+
+    const { data: questions } = await supabase
+      .from('bid_questions')
+      .select('*')
+      .in('bid_id', state.bids.map(b => b.bid.id))
+      .order('display_order', { ascending: true });
+
+    setState(prev => ({ ...prev, questions: questions || [] }));
+  }, [state.projectId, state.bids]);
+
+  const getPhaseLabel = useCallback((phase: Phase): string => {
+    return PHASE_LABELS[phase];
+  }, []);
+
+  const value: PhaseContextValue = {
+    ...state,
+    goToPhase,
+    completePhase,
+    canAccessPhase,
+    refreshBids,
+    refreshRequirements,
+    refreshQuestions,
+    getPhaseLabel,
+  };
+
+  return (
+    <PhaseContext.Provider value={value}>
+      {children}
+    </PhaseContext.Provider>
+  );
+}
+
+export function usePhase(): PhaseContextValue {
+  const context = useContext(PhaseContext);
+  if (!context) {
+    throw new Error('usePhase must be used within a PhaseProvider');
+  }
+  return context;
+}
