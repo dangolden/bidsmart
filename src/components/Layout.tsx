@@ -66,8 +66,10 @@ export function Layout({ user }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Zap className="w-4 h-4 text-switch-green-600" />
-              <span>Powered by <a href="https://theswitchison.org" target="_blank" rel="noopener noreferrer" className="text-switch-green-600 hover:underline">TheSwitchIsOn.org</a></span>
+              <span>Powered by</span>
+              <a href="https://theswitchison.org" target="_blank" rel="noopener noreferrer">
+                <img src="/sio_logo.png" alt="The Switch Is On" className="h-5 hover:opacity-80 transition-opacity" />
+              </a>
             </div>
             <div className="text-sm text-gray-400">
               © {new Date().getFullYear()} BidSmart

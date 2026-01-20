@@ -92,13 +92,14 @@ export function LandingPage({ user }: LandingPageProps) {
               </div>
               <span className="font-semibold text-xl text-gray-900">BidSmart</span>
             </div>
-            <a 
-              href="https://theswitchison.org" 
-              target="_blank" 
+            <a
+              href="https://theswitchison.org"
+              target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-gray-500 hover:text-switch-green-600"
+              className="flex items-center gap-2"
             >
-              by TheSwitchIsOn.org
+              <span className="text-sm text-gray-500">by</span>
+              <img src="/sio_logo.png" alt="The Switch Is On" className="h-5" />
             </a>
           </div>
         </div>
@@ -245,8 +246,10 @@ export function LandingPage({ user }: LandingPageProps) {
       <footer className="bg-white border-t border-gray-200 py-8 px-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <Zap className="w-4 h-4 text-switch-green-600" />
-            <span>Powered by <a href="https://theswitchison.org" target="_blank" rel="noopener noreferrer" className="text-switch-green-600 hover:underline">TheSwitchIsOn.org</a></span>
+            <span>Powered by</span>
+            <a href="https://theswitchison.org" target="_blank" rel="noopener noreferrer">
+              <img src="/sio_logo.png" alt="The Switch Is On" className="h-5 hover:opacity-80 transition-opacity" />
+            </a>
           </div>
           <div className="text-sm text-gray-400">
             © {new Date().getFullYear()} BidSmart
