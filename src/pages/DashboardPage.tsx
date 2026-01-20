@@ -6,9 +6,10 @@ import type { UserExt, Project } from '../lib/types';
 
 interface DashboardPageProps {
   user: UserExt;
+  isReturningUser?: boolean;
 }
 
-export function DashboardPage({ user }: DashboardPageProps) {
+export function DashboardPage({ user, isReturningUser = false }: DashboardPageProps) {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +95,11 @@ export function DashboardPage({ user }: DashboardPageProps) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My Projects</h1>
-          <p className="text-gray-600 mt-1">Compare heat pump bids and make informed decisions</p>
+          <p className="text-gray-600 mt-1">
+            {isReturningUser && projects.length > 0
+              ? 'Here are your saved bid comparisons'
+              : 'Compare heat pump bids and make informed decisions'}
+          </p>
         </div>
         <button
           onClick={handleCreateProject}
