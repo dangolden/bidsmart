@@ -395,6 +395,32 @@ export interface MindPalExtraction {
   processed_at?: string | null;
 }
 
+export type TimelineUrgency = 'flexible' | 'within_month' | 'within_2_weeks' | 'asap';
+
+export interface ProjectRequirements {
+  id: string;
+  project_id: string;
+
+  priority_price: number;
+  priority_warranty: number;
+  priority_efficiency: number;
+  priority_timeline: number;
+  priority_reputation: number;
+
+  timeline_urgency: TimelineUrgency;
+  budget_range?: string | null;
+
+  specific_concerns: string[];
+  must_have_features: string[];
+  nice_to_have_features: string[];
+
+  additional_notes?: string | null;
+  completed_at?: string | null;
+
+  created_at: string;
+  updated_at: string;
+}
+
 export interface RebateProgram {
   id: string;
   

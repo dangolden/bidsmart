@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react';
-import { 
+import {
   ArrowUpDown, Check, X, AlertTriangle, Award, Star,
-  Zap, Shield, Clock, DollarSign, ThermometerSun
+  Zap, Shield, Clock, DollarSign, ThermometerSun, Target
 } from 'lucide-react';
 import * as db from '../lib/database/bidsmartService';
-import type { ContractorBid, BidEquipment } from '../lib/types';
+import type { ContractorBid, BidEquipment, ProjectRequirements } from '../lib/types';
 
 interface BidComparisonTableProps {
   projectId: string;
   bids: ContractorBid[];
+  requirements?: ProjectRequirements | null;
 }
 
 type CompareView = 'specs' | 'contractor' | 'pricing';
 
-export function BidComparisonTable({ projectId: _projectId, bids }: BidComparisonTableProps) {
+export function BidComparisonTable({ projectId: _projectId, bids, requirements }: BidComparisonTableProps) {
   const [equipment, setEquipment] = useState<Record<string, BidEquipment[]>>({});
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<CompareView>('specs');
@@ -140,8 +141,53 @@ export function BidComparisonTable({ projectId: _projectId, bids }: BidCompariso
     );
   }
 
+  function getTopPriorities(): { label: string; icon: typeof DollarSign }[] {
+    if (!requirements) return [];
+    const priorities: { key: string; value: number; label: string; icon: typeof DollarSign }[] = [
+      { key: 'price', value: requirements.priority_price, label: 'Price', icon: DollarSign },
+      { key: 'warranty', value: requirements.priority_warranty, label: 'Warranty', icon: Shield },
+      { key: 'efficiency', value: requirements.priority_efficiency, label: 'Efficiency', icon: Zap },
+      { key: 'timeline', value: requirements.priority_timeline, label: 'Timeline', icon: Clock },
+      { key: 'reputation', value: requirements.priority_reputation, label: 'Reputation', icon: Star },
+    ];
+    return priorities
+      .filter(p => p.value >= 4)
+      .sort((a, b) => b.value - a.value)
+      .map(p => ({ label: p.label, icon: p.icon }));
+  }
+
+  const topPriorities = getTopPriorities();
+
   return (
     <div className="space-y-6">
+      {requirements?.completed_at && topPriorities.length > 0 && (
+        <div className="bg-switch-green-50 border border-switch-green-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Target className="w-5 h-5 text-switch-green-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-switch-green-900 mb-1">Based on Your Priorities</h3>
+              <div className="flex flex-wrap gap-2">
+                {topPriorities.map(({ label, icon: Icon }) => (
+                  <span
+                    key={label}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-switch-green-200 rounded-full text-sm text-switch-green-700"
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {label}
+                  </span>
+                ))}
+              </div>
+              {requirements.must_have_features && requirements.must_have_features.length > 0 && (
+                <p className="text-sm text-switch-green-700 mt-2">
+                  Must-haves: {requirements.must_have_features.slice(0, 3).join(', ')}
+                  {requirements.must_have_features.length > 3 && ` +${requirements.must_have_features.length - 3} more`}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* View Toggle */}
       <div className="flex items-center gap-2">
         <span className="text-sm text-gray-500">Compare:</span>

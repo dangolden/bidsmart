@@ -15,6 +15,7 @@ import type {
   MindPalExtraction,
   RebateProgram,
   ProjectRebate,
+  ProjectRequirements,
   UserExt,
   ProjectStatus,
   PdfStatus,
@@ -772,4 +773,86 @@ export async function deletePdfFromStorage(filePath: string): Promise<void> {
     .remove([filePath]);
 
   if (error) throw error;
+}
+
+// ============================================
+// PROJECT REQUIREMENTS
+// ============================================
+
+export async function getProjectRequirements(
+  projectId: string
+): Promise<ProjectRequirements | null> {
+  const { data, error } = await supabase
+    .from('project_requirements')
+    .select('*')
+    .eq('project_id', projectId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createProjectRequirements(
+  projectId: string,
+  requirements: Partial<ProjectRequirements> = {}
+): Promise<ProjectRequirements> {
+  const { data, error } = await supabase
+    .from('project_requirements')
+    .insert({
+      project_id: projectId,
+      priority_price: requirements.priority_price ?? 3,
+      priority_warranty: requirements.priority_warranty ?? 3,
+      priority_efficiency: requirements.priority_efficiency ?? 3,
+      priority_timeline: requirements.priority_timeline ?? 3,
+      priority_reputation: requirements.priority_reputation ?? 3,
+      timeline_urgency: requirements.timeline_urgency ?? 'flexible',
+      specific_concerns: requirements.specific_concerns ?? [],
+      must_have_features: requirements.must_have_features ?? [],
+      nice_to_have_features: requirements.nice_to_have_features ?? [],
+      ...requirements,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateProjectRequirements(
+  projectId: string,
+  updates: Partial<ProjectRequirements>
+): Promise<ProjectRequirements | null> {
+  const { data, error } = await supabase
+    .from('project_requirements')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('project_id', projectId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function saveProjectRequirements(
+  projectId: string,
+  requirements: Partial<ProjectRequirements>
+): Promise<ProjectRequirements> {
+  const existing = await getProjectRequirements(projectId);
+
+  if (existing) {
+    const updated = await updateProjectRequirements(projectId, {
+      ...requirements,
+      completed_at: new Date().toISOString(),
+    });
+    if (!updated) throw new Error('Failed to update requirements');
+    return updated;
+  }
+
+  return createProjectRequirements(projectId, {
+    ...requirements,
+    completed_at: new Date().toISOString(),
+  });
 }
