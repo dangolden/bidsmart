@@ -145,7 +145,7 @@ export function DecidePhase() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="space-y-6">
         {bidData.map((bid) => {
           const bidQuestions = getQuestionsForBid(bid.bidId);
           const answeredCount = bidQuestions.filter((q) => q.is_answered).length;
@@ -175,206 +175,218 @@ export function DecidePhase() {
                 ${isSelected ? 'bg-switch-green-500' : 'bg-gradient-to-b from-switch-green-400 to-switch-green-600'}
               `} />
 
-              <div className="p-5 pl-7">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">{bid.contractor}</h3>
+              <div className="p-6 pl-8">
+                <div className="flex items-start justify-between mb-5">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-xl font-bold text-gray-900">{bid.contractor}</h3>
                     {bid.isSwitchPreferred && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 bg-gradient-to-r from-switch-green-500 to-switch-green-600 text-white rounded-full text-xs font-medium">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-switch-green-500 to-switch-green-600 text-white rounded-full text-xs font-medium">
                         <Award className="w-3 h-3" /> Switch Preferred
                       </span>
                     )}
                   </div>
-                  {isSelected && (
-                    <div className="w-8 h-8 bg-switch-green-500 rounded-full flex items-center justify-center">
-                      <CheckCircle className="w-5 h-5 text-white" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-600">Total Price</span>
-                      {isBestPrice && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
-                          <Star className="w-3 h-3" /> LOWEST
-                        </span>
-                      )}
-                    </div>
-                    <div className={`text-2xl font-bold ${isBestPrice ? 'text-switch-green-700' : 'text-gray-900'}`}>
-                      {formatCurrency(bid.totalAmount)}
-                    </div>
-                    {bid.estimatedRebates > 0 && (
-                      <div className="mt-2 pt-2 border-t border-gray-200">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-500">Est. Rebates</span>
-                          <span className="text-switch-green-600 font-medium">-{formatCurrency(bid.estimatedRebates)}</span>
-                        </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-sm font-medium text-gray-700">Net Cost</span>
-                          <span className={`text-lg font-bold ${isBestNetCost ? 'text-switch-green-700' : 'text-gray-900'}`}>
-                            {formatCurrency(bid.netCost)}
-                          </span>
-                        </div>
+                  <div className="flex items-center gap-3">
+                    {isSelected && (
+                      <div className="w-8 h-8 bg-switch-green-500 rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-white" />
                       </div>
                     )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Zap className="w-4 h-4 text-amber-500" />
-                        <span className="text-xs font-medium text-gray-500">Equipment</span>
-                      </div>
-                      <div className="text-sm font-semibold text-gray-900 truncate" title={`${bid.equipmentBrand} ${bid.equipmentModel}`}>
-                        {bid.equipmentBrand}
-                      </div>
-                      {bid.seer2 && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className={`text-xs ${isBestEfficiency ? 'text-switch-green-700 font-bold' : 'text-gray-600'}`}>
-                            SEER2: {bid.seer2}
-                          </span>
-                          {isBestEfficiency && <Star className="w-3 h-3 text-switch-green-600" />}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Star className="w-4 h-4 text-yellow-500" />
-                        <span className="text-xs font-medium text-gray-500">Rating</span>
-                      </div>
-                      {bid.googleRating ? (
+                    <button
+                      onClick={() => toggleSelection(bid.bidId)}
+                      className={`
+                        py-2 px-4 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-sm
+                        ${isSelected
+                          ? 'bg-switch-green-600 text-white hover:bg-switch-green-700'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                        }
+                      `}
+                    >
+                      {isSelected ? (
                         <>
-                          <div className={`text-sm font-semibold ${isBestRating ? 'text-switch-green-700' : 'text-gray-900'}`}>
-                            {bid.googleRating.toFixed(1)} / 5
-                            {isBestRating && <Star className="w-3 h-3 inline ml-1 text-switch-green-600" />}
-                          </div>
-                          {bid.reviewCount && (
-                            <div className="text-xs text-gray-500 mt-0.5">{bid.reviewCount} reviews</div>
-                          )}
+                          <CheckCircle className="w-4 h-4" />
+                          My Choice
                         </>
                       ) : (
-                        <div className="text-sm text-gray-400">Not available</div>
+                        'Mark as My Choice'
                       )}
-                    </div>
-
-                    <div className="col-span-2 bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Shield className="w-4 h-4 text-switch-green-600" />
-                        <span className="text-xs font-medium text-gray-500">Warranty</span>
-                        {isBestWarranty && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded">
-                            BEST
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4">
-                        {bid.laborWarranty ? (
-                          <span className={`text-sm ${isBestWarranty ? 'text-switch-green-700 font-semibold' : 'text-gray-900'}`}>
-                            {bid.laborWarranty}yr labor
-                          </span>
-                        ) : null}
-                        {bid.equipmentWarranty ? (
-                          <span className={`text-sm ${isBestWarranty ? 'text-switch-green-700 font-semibold' : 'text-gray-900'}`}>
-                            {bid.equipmentWarranty}yr equipment
-                          </span>
-                        ) : null}
-                        {!bid.laborWarranty && !bid.equipmentWarranty && (
-                          <span className="text-sm text-gray-400">Not specified</span>
-                        )}
-                      </div>
-                    </div>
+                    </button>
                   </div>
+                </div>
 
-                  <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
-                    <div className="bg-gray-100 px-4 py-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <HelpCircle className="w-4 h-4 text-gray-600" />
-                        <span className="text-sm font-semibold text-gray-800">Questions to Ask</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">
-                          {answeredCount}/{bidQuestions.length} answered
-                        </span>
-                        {unansweredQuestions.length > 0 && (
-                          <button
-                            onClick={() => copyQuestionsToClipboard(bid.bidId, bid.contractor)}
-                            className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors"
-                            title="Copy questions"
-                          >
-                            {copiedContractor === bid.bidId ? (
-                              <Check className="w-4 h-4 text-switch-green-600" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
-                            )}
-                          </button>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  <div className="lg:col-span-5 space-y-4">
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5 border border-gray-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Total Price</span>
+                        {isBestPrice && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-switch-green-600 text-white text-xs font-semibold rounded-full">
+                            <Star className="w-3 h-3" /> LOWEST
+                          </span>
                         )}
                       </div>
-                    </div>
-                    <div className="p-3 max-h-64 overflow-y-auto">
-                      {bidQuestions.length === 0 ? (
-                        <p className="text-sm text-gray-500 text-center py-3">
-                          No questions for this bid.
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {bidQuestions.map((question) => (
-                            <div
-                              key={question.id}
-                              className={`flex items-start gap-2 p-2 rounded-lg transition-colors ${
-                                question.is_answered ? 'bg-gray-50 opacity-60' : 'bg-white border border-gray-200'
-                              }`}
-                            >
-                              <button
-                                onClick={() => toggleQuestionAnswered(question)}
-                                className="flex-shrink-0 mt-0.5"
-                              >
-                                {question.is_answered ? (
-                                  <CheckCircle className="w-4 h-4 text-switch-green-600" />
-                                ) : (
-                                  <div className="w-4 h-4 rounded-full border-2 border-gray-300 hover:border-gray-400" />
-                                )}
-                              </button>
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-xs ${question.is_answered ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
-                                  {question.question_text}
-                                </p>
-                                {!question.is_answered && (
-                                  <div className="flex items-center gap-1 mt-1">
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${getPriorityColor(question.priority)}`}>
-                                      {question.priority}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                      <div className={`text-3xl font-bold ${isBestPrice ? 'text-switch-green-700' : 'text-gray-900'}`}>
+                        {formatCurrency(bid.totalAmount)}
+                      </div>
+                      {bid.estimatedRebates > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-500">Est. Rebates</span>
+                            <span className="text-switch-green-600 font-semibold">-{formatCurrency(bid.estimatedRebates)}</span>
+                          </div>
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-sm font-semibold text-gray-700">Net Cost</span>
+                            <span className={`text-xl font-bold ${isBestNetCost ? 'text-switch-green-700' : 'text-gray-900'}`}>
+                              {formatCurrency(bid.netCost)}
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Zap className="w-4 h-4 text-amber-500" />
+                          <span className="text-xs font-semibold text-gray-500 uppercase">Equipment</span>
+                        </div>
+                        <div className="text-sm font-bold text-gray-900" title={`${bid.equipmentBrand} ${bid.equipmentModel}`}>
+                          {bid.equipmentBrand}
+                        </div>
+                        {bid.seer2 && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className={`text-xs ${isBestEfficiency ? 'text-switch-green-700 font-bold' : 'text-gray-600'}`}>
+                              SEER2: {bid.seer2}
+                            </span>
+                            {isBestEfficiency && <Star className="w-3 h-3 text-switch-green-600" />}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Star className="w-4 h-4 text-yellow-500" />
+                          <span className="text-xs font-semibold text-gray-500 uppercase">Rating</span>
+                        </div>
+                        {bid.googleRating ? (
+                          <>
+                            <div className={`text-sm font-bold ${isBestRating ? 'text-switch-green-700' : 'text-gray-900'}`}>
+                              {bid.googleRating.toFixed(1)} / 5
+                              {isBestRating && <Star className="w-3 h-3 inline ml-1 text-switch-green-600" />}
+                            </div>
+                            {bid.reviewCount && (
+                              <div className="text-xs text-gray-500 mt-0.5">{bid.reviewCount} reviews</div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-sm text-gray-400">N/A</div>
+                        )}
+                      </div>
+
+                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Shield className="w-4 h-4 text-switch-green-600" />
+                          <span className="text-xs font-semibold text-gray-500 uppercase">Warranty</span>
+                        </div>
+                        {(bid.laborWarranty || bid.equipmentWarranty) ? (
+                          <div className="space-y-0.5">
+                            {bid.laborWarranty && (
+                              <div className={`text-xs ${isBestWarranty ? 'text-switch-green-700 font-bold' : 'text-gray-900'}`}>
+                                {bid.laborWarranty}yr labor
+                              </div>
+                            )}
+                            {bid.equipmentWarranty && (
+                              <div className={`text-xs ${isBestWarranty ? 'text-switch-green-700 font-bold' : 'text-gray-900'}`}>
+                                {bid.equipmentWarranty}yr equip
+                              </div>
+                            )}
+                            {isBestWarranty && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-switch-green-600 text-white text-[10px] font-medium rounded mt-1">
+                                BEST
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400">N/A</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <button
-                    onClick={() => toggleSelection(bid.bidId)}
-                    className={`
-                      w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2
-                      ${isSelected
-                        ? 'bg-switch-green-600 text-white hover:bg-switch-green-700'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                      }
-                    `}
-                  >
-                    {isSelected ? (
-                      <>
-                        <CheckCircle className="w-5 h-5" />
-                        My Choice
-                      </>
-                    ) : (
-                      'Mark as My Choice'
-                    )}
-                  </button>
+                  <div className="lg:col-span-7">
+                    <div className="border-2 border-gray-200 rounded-xl overflow-hidden h-full flex flex-col">
+                      <div className="bg-gray-100 px-5 py-3 flex items-center justify-between border-b border-gray-200">
+                        <div className="flex items-center gap-2">
+                          <HelpCircle className="w-5 h-5 text-gray-600" />
+                          <span className="text-sm font-bold text-gray-800">Questions to Ask This Contractor</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border">
+                            {answeredCount}/{bidQuestions.length} answered
+                          </span>
+                          {unansweredQuestions.length > 0 && (
+                            <button
+                              onClick={() => copyQuestionsToClipboard(bid.bidId, bid.contractor)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors"
+                              title="Copy questions"
+                            >
+                              {copiedContractor === bid.bidId ? (
+                                <>
+                                  <Check className="w-4 h-4 text-switch-green-600" />
+                                  <span className="text-switch-green-600 font-medium">Copied!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-4 h-4" />
+                                  <span>Copy All</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="p-4 flex-1 overflow-y-auto max-h-72">
+                        {bidQuestions.length === 0 ? (
+                          <p className="text-sm text-gray-500 text-center py-6">
+                            No questions for this bid.
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {bidQuestions.map((question) => (
+                              <div
+                                key={question.id}
+                                className={`flex items-start gap-2 p-3 rounded-lg transition-colors ${
+                                  question.is_answered ? 'bg-gray-50 opacity-60' : 'bg-white border border-gray-200 hover:border-gray-300'
+                                }`}
+                              >
+                                <button
+                                  onClick={() => toggleQuestionAnswered(question)}
+                                  className="flex-shrink-0 mt-0.5"
+                                >
+                                  {question.is_answered ? (
+                                    <CheckCircle className="w-5 h-5 text-switch-green-600" />
+                                  ) : (
+                                    <div className="w-5 h-5 rounded-full border-2 border-gray-300 hover:border-switch-green-500 transition-colors" />
+                                  )}
+                                </button>
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-sm ${question.is_answered ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                                    {question.question_text}
+                                  </p>
+                                  {!question.is_answered && (
+                                    <div className="flex items-center gap-1 mt-1.5">
+                                      <span className={`text-[10px] px-2 py-0.5 rounded border font-medium ${getPriorityColor(question.priority)}`}>
+                                        {question.priority}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
