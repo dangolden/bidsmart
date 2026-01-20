@@ -141,7 +141,11 @@ export interface Project {
   selected_bid_id?: string | null;
   decision_date?: string | null;
   decision_notes?: string | null;
-  
+
+  // Data sharing consent
+  data_sharing_consent: boolean;
+  data_sharing_consented_at?: string | null;
+
   created_at: string;
   updated_at: string;
 }

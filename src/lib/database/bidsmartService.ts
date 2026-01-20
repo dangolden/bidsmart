@@ -120,6 +120,19 @@ export async function updateProjectStatus(
   return updateProject(projectId, { status });
 }
 
+export async function updateProjectDataSharingConsent(
+  projectId: string,
+  consent: boolean
+): Promise<Project | null> {
+  const updates: Partial<Project> = {
+    data_sharing_consent: consent,
+  };
+  if (consent) {
+    updates.data_sharing_consented_at = new Date().toISOString();
+  }
+  return updateProject(projectId, updates);
+}
+
 export async function deleteProject(projectId: string): Promise<void> {
   const { error } = await supabase
     .from('projects')

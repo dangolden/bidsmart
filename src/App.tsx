@@ -49,6 +49,10 @@ function App() {
     setShowWelcome(false);
   };
 
+  const handleNavigateHome = () => {
+    setShowWelcome(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -92,7 +96,7 @@ function App() {
     );
   }
 
-  return <BidSmartFlow user={user} projectId={activeProjectId} />;
+  return <BidSmartFlow user={user} projectId={activeProjectId} onNavigateHome={handleNavigateHome} />;
 }
 
 export default App;

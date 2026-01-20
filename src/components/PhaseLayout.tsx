@@ -1,9 +1,11 @@
 import { ReactNode } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Home, ChevronRight } from 'lucide-react';
 import { usePhase, Phase } from '../context/PhaseContext';
 
 interface PhaseLayoutProps {
   children: ReactNode;
+  onNavigateHome?: () => void;
+  projectName?: string;
 }
 
 const PHASES: { phase: Phase; label: string }[] = [
@@ -13,13 +15,31 @@ const PHASES: { phase: Phase; label: string }[] = [
   { phase: 4, label: 'VERIFY' },
 ];
 
-export function PhaseLayout({ children }: PhaseLayoutProps) {
+export function PhaseLayout({ children, onNavigateHome, projectName }: PhaseLayoutProps) {
   const { currentPhase, phaseStatus, goToPhase, canAccessPhase } = usePhase();
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
+          {onNavigateHome && (
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+              <button
+                onClick={onNavigateHome}
+                className="flex items-center gap-2 text-gray-600 hover:text-switch-green-600 transition-colors group"
+                aria-label="Return to home screen"
+              >
+                <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-switch-green-100 flex items-center justify-center transition-colors">
+                  <Home className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-medium hidden sm:inline">Home</span>
+              </button>
+              <ChevronRight className="w-4 h-4 text-gray-300" />
+              <span className="text-sm font-medium text-gray-900 truncate max-w-[200px] sm:max-w-none">
+                {projectName || 'Current Project'}
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             {PHASES.map((item, index) => {
               const status = phaseStatus[item.phase];

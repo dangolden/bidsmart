@@ -9,10 +9,24 @@ import type { UserExt } from '../lib/types';
 interface BidSmartFlowProps {
   user: UserExt;
   projectId?: string;
+  onNavigateHome?: () => void;
 }
 
-function PhaseContent() {
-  const { currentPhase, loading, error } = usePhase();
+function PhaseContentWrapper({ onNavigateHome }: { onNavigateHome?: () => void }) {
+  const { currentPhase, loading, error, project } = usePhase();
+
+  const content = (
+    <PhaseContent loading={loading} error={error} currentPhase={currentPhase} />
+  );
+
+  return (
+    <PhaseLayout onNavigateHome={onNavigateHome} projectName={project?.project_name}>
+      {content}
+    </PhaseLayout>
+  );
+}
+
+function PhaseContent({ loading, error, currentPhase }: { loading: boolean; error: string | null; currentPhase: number }) {
 
   if (loading) {
     return (
@@ -53,12 +67,10 @@ function PhaseContent() {
   }
 }
 
-export function BidSmartFlow({ user, projectId }: BidSmartFlowProps) {
+export function BidSmartFlow({ user, projectId, onNavigateHome }: BidSmartFlowProps) {
   return (
     <PhaseProvider userId={user.id} initialProjectId={projectId}>
-      <PhaseLayout>
-        <PhaseContent />
-      </PhaseLayout>
+      <PhaseContentWrapper onNavigateHome={onNavigateHome} />
     </PhaseProvider>
   );
 }

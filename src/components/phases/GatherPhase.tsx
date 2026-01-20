@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, Users, Shield } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
-import { saveProjectRequirements } from '../../lib/database/bidsmartService';
+import { saveProjectRequirements, updateProjectDataSharingConsent } from '../../lib/database/bidsmartService';
 
 interface PrioritySliderProps {
   label: string;
@@ -31,7 +31,7 @@ function PrioritySlider({ label, value, onChange, description }: PrioritySliderP
 }
 
 export function GatherPhase() {
-  const { projectId, bids, requirements, completePhase, refreshRequirements } = usePhase();
+  const { projectId, project, bids, requirements, completePhase, refreshRequirements } = usePhase();
 
   const [priorities, setPriorities] = useState({
     price: requirements?.priority_price ?? 3,
@@ -43,6 +43,8 @@ export function GatherPhase() {
 
   const [saving, setSaving] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [dataSharingConsent, setDataSharingConsent] = useState(project?.data_sharing_consent ?? false);
+  const [showPrivacyDetails, setShowPrivacyDetails] = useState(false);
 
   useEffect(() => {
     if (requirements) {
@@ -55,6 +57,12 @@ export function GatherPhase() {
       });
     }
   }, [requirements]);
+
+  useEffect(() => {
+    if (project) {
+      setDataSharingConsent(project.data_sharing_consent ?? false);
+    }
+  }, [project]);
 
   const readyBids = bids.filter(b =>
     b.bid.total_bid_amount > 0 && b.bid.contractor_name
@@ -90,6 +98,7 @@ export function GatherPhase() {
         priority_reputation: priorities.reputation,
         priority_timeline: priorities.timeline,
       });
+      await updateProjectDataSharingConsent(projectId, dataSharingConsent);
       await refreshRequirements();
       completePhase(1);
     } catch (err) {
@@ -247,6 +256,64 @@ export function GatherPhase() {
             description="How quickly can they complete the work?"
           />
         </div>
+      </div>
+
+      <div className="bg-gray-50 rounded-xl border border-gray-200 p-5">
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <div className="pt-0.5">
+            <input
+              type="checkbox"
+              checked={dataSharingConsent}
+              onChange={(e) => setDataSharingConsent(e.target.checked)}
+              className="w-5 h-5 rounded border-gray-300 text-switch-green-600 focus:ring-switch-green-500 focus:ring-offset-0 cursor-pointer"
+            />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <Users className="w-4 h-4 text-switch-green-600" />
+              <span className="font-medium text-gray-900">
+                Help other homeowners by sharing anonymized bid data
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Your pricing data helps others understand fair market rates in your area.
+              All personal and contractor details are removed before sharing.
+            </p>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowPrivacyDetails(!showPrivacyDetails);
+              }}
+              className="text-sm text-switch-green-600 hover:text-switch-green-700 mt-2 flex items-center gap-1"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              {showPrivacyDetails ? 'Hide privacy details' : 'What data is shared?'}
+            </button>
+
+            {showPrivacyDetails && (
+              <div className="mt-3 p-4 bg-white rounded-lg border border-gray-200 text-sm text-gray-600">
+                <p className="font-medium text-gray-900 mb-2">Data that IS shared (anonymized):</p>
+                <ul className="list-disc list-inside space-y-1 mb-4">
+                  <li>Bid amounts and pricing breakdowns</li>
+                  <li>Equipment types, efficiency ratings, and specifications</li>
+                  <li>General location (ZIP code area only)</li>
+                  <li>Project scope (system size, features included)</li>
+                </ul>
+                <p className="font-medium text-gray-900 mb-2">Data that is NEVER shared:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Your name, email, or contact information</li>
+                  <li>Your exact address</li>
+                  <li>Contractor names or contact details</li>
+                  <li>Original PDF documents</li>
+                </ul>
+                <p className="mt-4 text-gray-500 text-xs">
+                  You can change this preference at any time in your project settings.
+                </p>
+              </div>
+            )}
+          </div>
+        </label>
       </div>
 
       <div className="flex justify-end">
