@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   Zap, Upload, BarChart3, MessageSquareText, ClipboardCheck,
   ChevronRight, Shield, Clock, DollarSign, CheckCircle2
 } from 'lucide-react';
@@ -17,9 +17,13 @@ export function LandingPage({ user }: LandingPageProps) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // If user is logged in, redirect to dashboard
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
   if (user) {
-    navigate('/dashboard');
     return null;
   }
 
