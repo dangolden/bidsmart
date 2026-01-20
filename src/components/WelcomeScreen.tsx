@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Plus, FolderOpen, Play, Calendar, FileText, ChevronRight } from 'lucide-react';
-import { getProjectsByUser, createProject, createBid, bulkCreateEquipment } from '../lib/database/bidsmartService';
+import { getProjectsByUser, getDemoProject, createProject, createBid, bulkCreateEquipment } from '../lib/database/bidsmartService';
 import { SAMPLE_BIDS, SAMPLE_REBATE_PROGRAMS } from '../lib/services/sampleDataService';
 import { supabase } from '../lib/supabaseClient';
 import type { UserExt, Project } from '../lib/types';
+import { DashboardPhasePreview } from './DashboardPhasePreview';
 
 interface WelcomeScreenProps {
   user: UserExt;
@@ -50,6 +51,14 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
   async function handleLoadDemoData() {
     setCreatingDemo(true);
     try {
+      const existingDemo = await getDemoProject(user.id);
+
+      if (existingDemo) {
+        onCreateProject(existingDemo.id);
+        setCreatingDemo(false);
+        return;
+      }
+
       const project = await createProject(user.id, {
         project_name: 'Demo: Heat Pump Comparison',
         status: 'collecting_bids',
@@ -147,8 +156,8 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="text-center mb-10">
+      <div className="max-w-4xl mx-auto px-4 py-12">
+        <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to BidSmart</h1>
           <p className="text-gray-600">
             Compare heat pump bids with confidence.
@@ -160,7 +169,10 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
           )}
         </div>
 
-        <div className="space-y-4 mb-8">
+        <DashboardPhasePreview onStartProject={handleNewProject} />
+
+        <div className="max-w-2xl mx-auto">
+          <div className="space-y-4 mb-8">
           <button
             onClick={handleNewProject}
             disabled={creatingNew}
@@ -230,6 +242,7 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
             </div>
           </div>
         )}
+        </div>
 
         <div className="mt-12 text-center">
           <p className="text-xs text-gray-400">

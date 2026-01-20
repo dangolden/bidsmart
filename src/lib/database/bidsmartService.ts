@@ -98,6 +98,20 @@ export async function getProjectsByUser(userId: string): Promise<Project[]> {
   return data || [];
 }
 
+export async function getDemoProject(userId: string): Promise<Project | null> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('project_name', 'Demo: Heat Pump Comparison')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function updateProject(
   projectId: string,
   updates: Partial<Project>
