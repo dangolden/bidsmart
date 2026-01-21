@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Check, Home, ChevronRight } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
 import { usePhase, Phase } from '../context/PhaseContext';
 
 interface PhaseLayoutProps {
@@ -26,12 +26,10 @@ export function PhaseLayout({ children, onNavigateHome, projectName }: PhaseLayo
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
               <button
                 onClick={onNavigateHome}
-                className="flex items-center gap-2 text-gray-600 hover:text-switch-green-600 transition-colors group"
+                className="flex items-center gap-2 text-gray-600 hover:text-switch-green-600 transition-colors group min-h-[44px] -my-2 py-2"
                 aria-label="Return to Bid Compare Dashboard"
               >
-                <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-switch-green-100 flex items-center justify-center transition-colors">
-                  <Home className="w-4 h-4" />
-                </div>
+                <img src="/sio_logo.png" alt="Switch Is On" className="w-8 h-8 rounded-lg" />
                 <span className="text-sm font-medium hidden sm:inline">Dashboard</span>
               </button>
               <ChevronRight className="w-4 h-4 text-gray-300" />

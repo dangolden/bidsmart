@@ -256,20 +256,20 @@ export function ComparePhase() {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         {tabs.map((tab, index) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`
-              relative p-4 rounded-xl text-left transition-all duration-200 border-2
+              relative p-3 sm:p-4 rounded-xl text-left transition-all duration-200 border-2
               ${activeTab === tab.key
                 ? 'bg-gradient-to-br from-switch-green-50 to-switch-green-100 border-switch-green-500 shadow-md'
                 : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm'
               }
             `}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2 sm:gap-3">
               <div className={`
                 w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
                 ${activeTab === tab.key
@@ -280,9 +280,9 @@ export function ComparePhase() {
                 {tab.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className={`
-                    text-xs font-medium px-2 py-0.5 rounded-full
+                    text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap
                     ${activeTab === tab.key
                       ? 'bg-switch-green-600 text-white'
                       : 'bg-gray-200 text-gray-600'
@@ -292,13 +292,13 @@ export function ComparePhase() {
                   </span>
                 </div>
                 <h3 className={`
-                  font-semibold mt-1
+                  font-semibold mt-1 text-sm sm:text-base
                   ${activeTab === tab.key ? 'text-switch-green-800' : 'text-gray-900'}
                 `}>
                   {tab.label}
                 </h3>
                 <p className={`
-                  text-sm mt-0.5
+                  text-xs sm:text-sm mt-0.5 line-clamp-2
                   ${activeTab === tab.key ? 'text-switch-green-700' : 'text-gray-500'}
                 `}>
                   {tab.description}
@@ -306,7 +306,7 @@ export function ComparePhase() {
               </div>
             </div>
             {activeTab === tab.key && (
-              <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
+              <div className="hidden sm:block absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
                 <div className="w-3 h-3 bg-switch-green-500 rotate-45"></div>
               </div>
             )}
