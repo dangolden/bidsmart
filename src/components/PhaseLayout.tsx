@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Check, ChevronRight } from 'lucide-react';
 import { usePhase, Phase } from '../context/PhaseContext';
+import SwitchLogo from '../assets/switchlogo.svg';
 
 interface PhaseLayoutProps {
   children: ReactNode;
@@ -29,7 +30,7 @@ export function PhaseLayout({ children, onNavigateHome, projectName }: PhaseLayo
                 className="flex items-center gap-2 text-gray-600 hover:text-switch-green-600 transition-colors group min-h-[44px] -my-2 py-2"
                 aria-label="Return to Bid Compare Dashboard"
               >
-                <img src="/sio_logo.png" alt="Switch Is On" className="w-8 h-8 rounded-lg" />
+                <img src={SwitchLogo} alt="Switch Is On" className="w-8 h-8" />
                 <span className="text-sm font-medium hidden sm:inline">Dashboard</span>
               </button>
               <ChevronRight className="w-4 h-4 text-gray-300" />
