@@ -52,14 +52,15 @@ export function PhaseLayout({ children, onNavigateHome, projectName }: PhaseLayo
                     onClick={() => isClickable && goToPhase(item.phase)}
                     disabled={!isClickable}
                     className={`
-                      flex items-center gap-2 transition-all
+                      flex items-center gap-2 transition-all min-w-0
                       ${isClickable ? 'cursor-pointer' : 'cursor-not-allowed'}
                       ${isActive ? 'opacity-100' : isClickable ? 'opacity-70 hover:opacity-100' : 'opacity-40'}
                     `}
+                    aria-label={`${item.label} (Phase ${item.phase})`}
                   >
                     <div
                       className={`
-                        w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors
+                        w-10 h-10 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors flex-shrink-0
                         ${status === 'completed' ? 'bg-switch-green-600 text-white' : ''}
                         ${status === 'active' && isActive ? 'bg-switch-green-600 text-white' : ''}
                         ${status === 'active' && !isActive ? 'bg-switch-green-100 text-switch-green-700 border-2 border-switch-green-600' : ''}
@@ -74,7 +75,7 @@ export function PhaseLayout({ children, onNavigateHome, projectName }: PhaseLayo
                     </div>
                     <span
                       className={`
-                        text-sm font-medium hidden sm:block
+                        text-xs sm:text-sm font-medium hidden md:block truncate
                         ${isActive ? 'text-gray-900' : 'text-gray-500'}
                       `}
                     >
@@ -83,7 +84,7 @@ export function PhaseLayout({ children, onNavigateHome, projectName }: PhaseLayo
                   </button>
 
                   {index < PHASES.length - 1 && (
-                    <div className="flex-1 mx-3">
+                    <div className="flex-1 mx-2 sm:mx-3 min-w-[12px]">
                       <div
                         className={`
                           h-0.5 transition-colors

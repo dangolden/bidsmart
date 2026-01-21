@@ -166,10 +166,10 @@ export function HomeownerQuestionnaire({
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="bg-gradient-to-r from-switch-green-600 to-switch-green-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-white">
+      <div className="bg-gradient-to-r from-switch-green-600 to-switch-green-700 px-4 sm:px-6 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg sm:text-xl font-semibold text-white">
               Help Us Compare Your {bidCount} Bid{bidCount !== 1 ? 's' : ''}
             </h2>
             <p className="text-switch-green-100 text-sm mt-1">
@@ -178,7 +178,8 @@ export function HomeownerQuestionnaire({
           </div>
           <button
             onClick={onSkip}
-            className="text-switch-green-100 hover:text-white text-sm flex items-center gap-1 transition-colors"
+            className="text-switch-green-100 hover:text-white text-sm flex items-center gap-1 transition-colors self-start sm:self-center min-h-[44px] sm:min-h-0"
+            aria-label="Skip questionnaire"
           >
             Skip for now
             <X className="w-4 h-4" />
@@ -186,29 +187,30 @@ export function HomeownerQuestionnaire({
         </div>
       </div>
 
-      <div className="px-6 py-3 border-b border-gray-100 bg-gray-50">
-        <div className="flex items-center gap-2">
+      <div className="px-4 sm:px-6 py-3 border-b border-gray-100 bg-gray-50 overflow-x-auto">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-max">
           {steps.map((s, i) => (
             <div key={s} className="flex items-center">
               <button
                 onClick={() => i < currentStepIndex && setStep(s)}
                 disabled={i > currentStepIndex}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors ${
+                className={`flex items-center gap-2 px-2 sm:px-3 py-2 sm:py-1.5 rounded-full text-sm transition-colors ${
                   s === step
                     ? 'bg-switch-green-100 text-switch-green-700 font-medium'
                     : i < currentStepIndex
                     ? 'text-switch-green-600 hover:bg-switch-green-50 cursor-pointer'
                     : 'text-gray-400'
                 }`}
+                aria-label={`Step ${i + 1}: ${s}`}
               >
                 {i < currentStepIndex ? (
                   <Check className="w-4 h-4" />
                 ) : (
-                  <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center text-xs">
+                  <span className="w-6 h-6 sm:w-5 sm:h-5 rounded-full border border-current flex items-center justify-center text-xs font-medium">
                     {i + 1}
                   </span>
                 )}
-                <span className="hidden sm:inline">
+                <span className="hidden sm:inline whitespace-nowrap">
                   {s === 'priorities' && 'Priorities'}
                   {s === 'timeline' && 'Timeline'}
                   {s === 'concerns' && 'Details'}
@@ -216,14 +218,14 @@ export function HomeownerQuestionnaire({
                 </span>
               </button>
               {i < steps.length - 1 && (
-                <ChevronRight className="w-4 h-4 text-gray-300 mx-1" />
+                <ChevronRight className="w-4 h-4 text-gray-300 mx-0.5 sm:mx-1 flex-shrink-0" />
               )}
             </div>
           ))}
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {step === 'priorities' && (
           <div className="space-y-6">
             <div>
@@ -247,24 +249,25 @@ export function HomeownerQuestionnaire({
                       <p className="text-sm text-gray-500">{option.description}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400 w-16">Not important</span>
-                    <div className="flex-1 flex items-center justify-center gap-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className="text-xs text-gray-400 sm:w-16 hidden sm:block">Not important</span>
+                    <div className="flex-1 flex items-center justify-center gap-1 sm:gap-2">
                       {[1, 2, 3, 4, 5].map((value) => (
                         <button
                           key={value}
                           onClick={() => handlePriorityChange(option.id, value)}
-                          className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                          className={`flex-1 sm:flex-none sm:w-11 h-11 sm:h-10 rounded-lg font-medium transition-all min-w-[44px] ${
                             priorities[option.id] === value
                               ? 'bg-switch-green-600 text-white shadow-md scale-105'
-                              : 'bg-white border border-gray-200 text-gray-600 hover:border-switch-green-300'
+                              : 'bg-white border border-gray-200 text-gray-600 hover:border-switch-green-300 active:bg-gray-50'
                           }`}
+                          aria-label={`Rate ${value} out of 5`}
                         >
                           {value}
                         </button>
                       ))}
                     </div>
-                    <span className="text-xs text-gray-400 w-16 text-right">Very important</span>
+                    <span className="text-xs text-gray-400 sm:w-16 text-center sm:text-right">Very important</span>
                   </div>
                 </div>
               ))}

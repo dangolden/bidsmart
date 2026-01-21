@@ -189,25 +189,26 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
       )}
 
       {/* View Toggle */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-500">Compare:</span>
-        <div className="flex bg-gray-100 rounded-lg p-1">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <span className="text-sm text-gray-500 hidden sm:inline">Compare:</span>
+        <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto">
           {[
-            { id: 'specs', label: 'Equipment Specs', icon: ThermometerSun },
-            { id: 'contractor', label: 'Contractor Info', icon: Shield },
-            { id: 'pricing', label: 'Pricing Breakdown', icon: DollarSign },
+            { id: 'specs', label: 'Equipment', fullLabel: 'Equipment Specs', icon: ThermometerSun },
+            { id: 'contractor', label: 'Contractor', fullLabel: 'Contractor Info', icon: Shield },
+            { id: 'pricing', label: 'Pricing', fullLabel: 'Pricing Breakdown', icon: DollarSign },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setView(tab.id as CompareView)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${
+              className={`px-3 sm:px-4 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 whitespace-nowrap min-h-[44px] sm:min-h-0 ${
                 view === tab.id
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <tab.icon className="w-4 h-4" />
-              {tab.label}
+              <span className="sm:hidden">{tab.label}</span>
+              <span className="hidden sm:inline">{tab.fullLabel}</span>
             </button>
           ))}
         </div>
@@ -215,7 +216,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
 
       {/* Comparison Table */}
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -webkit-overflow-scrolling-touch overscroll-x-contain">
           <table className="comparison-table">
             <thead>
               <tr>

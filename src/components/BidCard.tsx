@@ -49,42 +49,43 @@ export function BidCard({ bid, pdfUpload: _pdfUpload, onUpdate }: BidCardProps) 
   return (
     <div className={`card ${bid.is_favorite ? 'border-switch-green-300 bg-switch-green-50/30' : ''}`}>
       {/* Header */}
-      <div className="p-4 flex items-start justify-between">
-        <div className="flex items-start gap-4">
+      <div className="p-4 flex flex-col sm:flex-row items-start justify-between gap-4">
+        <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
           <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
             <FileText className="w-6 h-6 text-gray-500" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-gray-900">{bid.contractor_name}</h3>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-gray-900 truncate">{bid.contractor_name}</h3>
               {bid.contractor_is_switch_preferred && (
-                <span className="status-badge bg-switch-green-100 text-switch-green-800">
+                <span className="status-badge bg-switch-green-100 text-switch-green-800 flex-shrink-0">
                   <Award className="w-3 h-3 mr-1" />
                   Preferred
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-gray-500">
               {bid.contractor_phone && (
-                <a href={`tel:${bid.contractor_phone}`} className="flex items-center gap-1 hover:text-switch-green-600">
+                <a href={`tel:${bid.contractor_phone}`} className="flex items-center gap-1 hover:text-switch-green-600 min-h-[44px] sm:min-h-0 py-2 sm:py-0">
                   <Phone className="w-3 h-3" />
-                  {bid.contractor_phone}
+                  <span className="hidden sm:inline">{bid.contractor_phone}</span>
+                  <span className="sm:hidden">Call</span>
                 </a>
               )}
               {bid.contractor_email && (
-                <a href={`mailto:${bid.contractor_email}`} className="flex items-center gap-1 hover:text-switch-green-600">
+                <a href={`mailto:${bid.contractor_email}`} className="flex items-center gap-1 hover:text-switch-green-600 min-h-[44px] sm:min-h-0 py-2 sm:py-0">
                   <Mail className="w-3 h-3" />
                   Email
                 </a>
               )}
               {bid.contractor_website && (
-                <a href={bid.contractor_website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-switch-green-600">
+                <a href={bid.contractor_website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-switch-green-600 min-h-[44px] sm:min-h-0 py-2 sm:py-0">
                   <Globe className="w-3 h-3" />
                   Website
                 </a>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
               {getConfidenceBadge()}
               {bid.extraction_confidence === 'low' && (
                 <span className="text-xs text-amber-600 flex items-center gap-1">
@@ -96,25 +97,26 @@ export function BidCard({ bid, pdfUpload: _pdfUpload, onUpdate }: BidCardProps) 
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-2xl font-bold text-gray-900">
+        <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-2 w-full sm:w-auto justify-between sm:justify-start">
+          <div className="text-left sm:text-right">
+            <p className="text-xl sm:text-2xl font-bold text-gray-900">
               {formatCurrency(bid.total_bid_amount)}
             </p>
             {bid.total_after_rebates && bid.total_after_rebates !== bid.total_bid_amount && (
-              <p className="text-sm text-switch-green-600">
+              <p className="text-sm text-switch-green-600 whitespace-nowrap">
                 {formatCurrency(bid.total_after_rebates)} after rebates
               </p>
             )}
           </div>
           <button
             onClick={toggleFavorite}
-            className={`p-2 rounded-lg transition-colors ${
-              bid.is_favorite 
-                ? 'bg-yellow-100 text-yellow-600' 
+            className={`p-3 sm:p-2 rounded-lg transition-colors flex-shrink-0 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center ${
+              bid.is_favorite
+                ? 'bg-yellow-100 text-yellow-600'
                 : 'hover:bg-gray-100 text-gray-400'
             }`}
             title={bid.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+            aria-label={bid.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
           >
             {bid.is_favorite ? <Star className="w-5 h-5 fill-current" /> : <StarOff className="w-5 h-5" />}
           </button>

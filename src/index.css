@@ -6,10 +6,24 @@
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    -webkit-tap-highlight-color: rgba(22, 163, 74, 0.1);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  
+
   body {
     @apply bg-gray-50 text-gray-900 antialiased;
+    touch-action: manipulation;
+  }
+
+  /* Smooth scrolling for mobile */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Better button and link tap targets on mobile */
+  button, a {
+    touch-action: manipulation;
   }
 }
 
@@ -85,17 +99,19 @@
   .comparison-table {
     @apply w-full border-collapse;
   }
-  
+
   .comparison-table th {
     @apply px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200;
   }
-  
+
   .comparison-table td {
     @apply px-4 py-4 text-sm text-gray-900 border-b border-gray-100;
   }
-  
-  .comparison-table tr:hover td {
-    @apply bg-gray-50;
+
+  @media (hover: hover) {
+    .comparison-table tr:hover td {
+      @apply bg-gray-50;
+    }
   }
   
   /* Best value highlight */
@@ -236,10 +252,70 @@ input[type="range"]::-moz-range-thumb:hover {
   transform: scale(1.1);
 }
 
+/* Mobile-specific optimizations */
+@media (max-width: 640px) {
+  /* Ensure minimum touch target size */
+  button,
+  a[role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+  }
+
+  /* Improve table scrolling on mobile */
+  .comparison-table th,
+  .comparison-table td {
+    @apply px-3 py-3;
+  }
+
+  /* Better spacing for mobile cards */
+  .card {
+    @apply rounded-lg;
+  }
+}
+
+/* Disable hover effects on touch devices */
+@media (hover: none) {
+  button:hover,
+  a:hover {
+    background-color: inherit;
+  }
+
+  /* Add active states for touch feedback */
+  button:active,
+  a:active {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
+}
+
 /* Print styles */
 @media print {
   .btn,
   button {
     display: none !important;
+  }
+}
+
+/* Utility classes for mobile */
+@layer utilities {
+  .tap-highlight-green {
+    -webkit-tap-highlight-color: rgba(22, 163, 74, 0.2);
+  }
+
+  .tap-highlight-none {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  .overscroll-contain {
+    overscroll-behavior: contain;
+  }
+
+  .-webkit-overflow-scrolling-touch {
+    -webkit-overflow-scrolling: touch;
   }
 }
