@@ -57,6 +57,7 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
         status: 'collecting_bids',
         heat_pump_type: 'air_source',
         system_size_tons: 3,
+        is_demo: true,
       });
 
       await supabase.from('project_requirements').insert({
@@ -103,7 +104,14 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
       }
 
       onCreateProject(project.id);
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.code === '23505') {
+        const existingDemo = await getDemoProject(user.id);
+        if (existingDemo) {
+          onCreateProject(existingDemo.id);
+          return;
+        }
+      }
       console.error('Failed to create demo project:', err);
     }
   }

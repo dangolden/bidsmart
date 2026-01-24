@@ -103,9 +103,7 @@ export async function getDemoProject(userId: string): Promise<Project | null> {
     .from('projects')
     .select('*')
     .eq('user_id', userId)
-    .eq('project_name', 'Demo: Heat Pump Comparison')
-    .order('created_at', { ascending: false })
-    .limit(1)
+    .eq('is_demo', true)
     .maybeSingle();
 
   if (error) throw error;
