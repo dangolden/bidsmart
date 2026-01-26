@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compare Heat Pump Bids | TheSwitchIsOn.org</title>
+  <meta name="description" content="Compare contractor bids for your heat pump installation.">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f9fafb;
+    }
+
+    .bidsmart-wrapper {
+      max-width: 1400px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+
+    .bidsmart-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .bidsmart-container iframe {
+      width: 100%;
+      min-height: 800px;
+      border: none;
+      display: block;
+    }
+
+    @media (max-width: 768px) {
+      .bidsmart-wrapper {
+        padding: 0 10px;
+      }
+
+      .bidsmart-container iframe {
+        min-height: 600px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bidsmart-wrapper">
+    <div class="bidsmart-container">
+      <iframe
+        src="https://YOUR-BIDSMART-URL.com"
+        title="BidSmart Heat Pump Bid Comparison"
+        loading="lazy">
+      </iframe>
+    </div>
+  </div>
+</body>
+</html>
