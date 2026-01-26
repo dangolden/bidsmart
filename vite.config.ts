@@ -4,7 +4,22 @@ import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'configure-response-headers',
+      configureServer: (server) => {
+        server.middlewares.use((_req, res, next) => {
+          // Allow embedding only on switchison.org domains
+          res.setHeader(
+            'Content-Security-Policy',
+            "frame-ancestors 'self' https://switchison.org https://*.switchison.org"
+          );
+          next();
+        });
+      },
+    },
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
