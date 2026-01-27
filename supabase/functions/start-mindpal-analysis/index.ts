@@ -156,17 +156,39 @@ Deno.serve(async (req: Request) => {
     const requestId = generateUUID();
     const callbackUrl = `${SUPABASE_URL}/functions/v1/mindpal-callback`;
 
+    console.log("Callback URL:", callbackUrl);
+
     const payload = constructMindPalPayload(pdfUrls, userPriorities, requestId, callbackUrl);
 
     const mindpalResult = await callMindPalAPI(payload);
 
     const workflowRunId = mindpalResult.workflow_run_id;
 
+    await supabaseAdmin
+      .from("pdf_uploads")
+      .update({
+        status: "processing",
+        mindpal_status: "processing",
+        mindpal_run_id: workflowRunId,
+        processing_started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .in("id", pdfUploadIds);
+
+    await supabaseAdmin
+      .from("projects")
+      .update({
+        status: "analyzing",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", projectId);
+
     return jsonResponse({
       success: true,
       projectId,
       requestId,
       workflowRunId,
+      callbackUrl,
       pdfCount: pdfUploadIds.length,
       message: "Analysis started successfully",
     });

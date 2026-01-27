@@ -12,6 +12,31 @@ interface TriggerExtractionResult {
   error?: string;
 }
 
+export interface UserPriorities {
+  price: number;
+  efficiency: number;
+  warranty: number;
+  reputation: number;
+  timeline: number;
+}
+
+export interface BatchAnalysisResult {
+  success: boolean;
+  projectId: string;
+  requestId?: string;
+  workflowRunId?: string;
+  pdfCount?: number;
+  error?: string;
+}
+
+export interface UploadedFile {
+  id: string;
+  file: File;
+  status: 'uploading' | 'uploaded' | 'error';
+  progress: number;
+  error?: string;
+}
+
 interface ExtractionStatusResult {
   pdfUploadId: string;
   status: string;
@@ -419,4 +444,184 @@ async function recalculateProjectScores(projectId: string): Promise<void> {
   for (const bid of bids) {
     await supabase.rpc('calculate_bid_scores', { p_bid_id: bid.id });
   }
+}
+
+export async function uploadPdfFile(
+  projectId: string,
+  file: File
+): Promise<{ pdfUploadId: string; error?: string }> {
+  try {
+    const { path } = await db.uploadPdfToStorage(projectId, file);
+
+    const pdfUpload = await db.createPdfUpload(projectId, {
+      file_name: file.name,
+      file_path: path,
+      file_size_bytes: file.size,
+      status: 'uploaded',
+    });
+
+    return { pdfUploadId: pdfUpload.id };
+  } catch (error) {
+    console.error('Error uploading PDF:', error);
+    return {
+      pdfUploadId: '',
+      error: error instanceof Error ? error.message : 'Upload failed',
+    };
+  }
+}
+
+export async function startBatchAnalysis(
+  projectId: string,
+  pdfUploadIds: string[],
+  userPriorities: UserPriorities,
+  projectDetails?: string
+): Promise<BatchAnalysisResult> {
+  try {
+    const headers = await getAuthHeaders();
+
+    const prioritiesPayload = {
+      upfront_cost: userPriorities.price,
+      energy_efficiency: userPriorities.efficiency,
+      warranty_length: userPriorities.warranty,
+      contractor_reputation: userPriorities.reputation,
+      installation_timeline: userPriorities.timeline,
+      project_details: projectDetails || '',
+    };
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/start-mindpal-analysis`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        projectId,
+        pdfUploadIds,
+        userPriorities: prioritiesPayload,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        projectId,
+        error: data.error || `Request failed: ${response.status}`,
+      };
+    }
+
+    return {
+      success: true,
+      projectId,
+      requestId: data.requestId,
+      workflowRunId: data.workflowRunId,
+      pdfCount: data.pdfCount,
+    };
+  } catch (error) {
+    console.error('Error starting batch analysis:', error);
+    return {
+      success: false,
+      projectId,
+      error: error instanceof Error ? error.message : 'Failed to start analysis',
+    };
+  }
+}
+
+export interface BatchExtractionStatus {
+  projectId: string;
+  totalPdfs: number;
+  completedPdfs: number;
+  failedPdfs: number;
+  processingPdfs: number;
+  isComplete: boolean;
+  allSuccessful: boolean;
+  pdfStatuses: Array<{
+    id: string;
+    fileName: string;
+    status: string;
+    bidId?: string;
+    error?: string;
+  }>;
+}
+
+export async function getBatchExtractionStatus(
+  projectId: string
+): Promise<BatchExtractionStatus> {
+  const pdfUploads = await db.getPdfUploadsByProject(projectId);
+
+  const pdfStatuses = pdfUploads.map(pdf => ({
+    id: pdf.id,
+    fileName: pdf.file_name,
+    status: pdf.status,
+    bidId: pdf.extracted_bid_id || undefined,
+    error: pdf.error_message || undefined,
+  }));
+
+  const completedPdfs = pdfUploads.filter(
+    p => p.status === 'extracted' || p.status === 'verified' || p.status === 'review_needed'
+  ).length;
+  const failedPdfs = pdfUploads.filter(p => p.status === 'failed').length;
+  const processingPdfs = pdfUploads.filter(
+    p => p.status === 'processing' || p.status === 'uploaded'
+  ).length;
+
+  const isComplete = processingPdfs === 0;
+  const allSuccessful = isComplete && failedPdfs === 0 && completedPdfs > 0;
+
+  return {
+    projectId,
+    totalPdfs: pdfUploads.length,
+    completedPdfs,
+    failedPdfs,
+    processingPdfs,
+    isComplete,
+    allSuccessful,
+    pdfStatuses,
+  };
+}
+
+export async function pollBatchExtractionStatus(
+  projectId: string,
+  options: {
+    intervalMs?: number;
+    maxAttempts?: number;
+    onProgress?: (status: BatchExtractionStatus) => void;
+  } = {}
+): Promise<BatchExtractionStatus> {
+  const { intervalMs = 5000, maxAttempts = 120, onProgress } = options;
+
+  let attempts = 0;
+
+  return new Promise((resolve, reject) => {
+    const poll = async () => {
+      attempts++;
+
+      try {
+        const status = await getBatchExtractionStatus(projectId);
+        onProgress?.(status);
+
+        if (status.isComplete) {
+          resolve(status);
+          return;
+        }
+
+        if (attempts >= maxAttempts) {
+          resolve({
+            ...status,
+            isComplete: true,
+            allSuccessful: false,
+          });
+          return;
+        }
+
+        setTimeout(poll, intervalMs);
+      } catch (error) {
+        if (attempts >= maxAttempts) {
+          reject(error);
+          return;
+        }
+        setTimeout(poll, intervalMs);
+      }
+    };
+
+    poll();
+  });
 }

@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, Users, Shield } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, Users, Shield, X, Loader2, Info } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
-import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject } from '../../lib/database/bidsmartService';
-import { formatCurrency } from '../../lib/utils/formatters';
+import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject, validatePdfFile } from '../../lib/database/bidsmartService';
+import { uploadPdfFile, startBatchAnalysis, pollBatchExtractionStatus, type BatchExtractionStatus } from '../../lib/services/mindpalService';
 
 interface PrioritySliderProps {
   label: string;
@@ -31,8 +31,19 @@ function PrioritySlider({ label, value, onChange, description }: PrioritySliderP
   );
 }
 
+interface UploadedPdf {
+  id: string;
+  file: File;
+  pdfUploadId?: string;
+  status: 'pending' | 'uploading' | 'uploaded' | 'error';
+  progress: number;
+  error?: string;
+}
+
+type AnalysisState = 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error';
+
 export function GatherPhase() {
-  const { projectId, project, bids, requirements, completePhase, refreshRequirements, ensureProjectExists } = usePhase();
+  const { projectId, project, bids, requirements, completePhase, refreshRequirements, refreshBids, ensureProjectExists } = usePhase();
 
   const [priorities, setPriorities] = useState({
     price: requirements?.priority_price ?? 3,
@@ -42,11 +53,15 @@ export function GatherPhase() {
     timeline: requirements?.priority_timeline ?? 3,
   });
 
-  const [saving, setSaving] = useState(false);
+  const [uploadedPdfs, setUploadedPdfs] = useState<UploadedPdf[]>([]);
+  const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
+  const [analysisProgress, setAnalysisProgress] = useState<BatchExtractionStatus | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [dataSharingConsent, setDataSharingConsent] = useState(project?.data_sharing_consent ?? false);
   const [showPrivacyDetails, setShowPrivacyDetails] = useState(false);
   const [projectDetails, setProjectDetails] = useState(project?.project_details ?? '');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (requirements) {
@@ -67,11 +82,37 @@ export function GatherPhase() {
     }
   }, [project]);
 
-  const readyBids = bids.filter(b =>
-    b.bid.total_bid_amount > 0 && b.bid.contractor_name
-  );
+  const existingBidsCount = bids.filter(b => b.bid.total_bid_amount > 0 && b.bid.contractor_name).length;
+  const validPendingCount = uploadedPdfs.filter(p => p.status === 'pending' || p.status === 'uploaded').length;
+  const totalReadyBids = existingBidsCount + validPendingCount;
+  const canContinue = validPendingCount >= 2 || existingBidsCount >= 2;
 
-  const canContinue = readyBids.length >= 2;
+  const handleFiles = useCallback(async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const validFiles: UploadedPdf[] = [];
+
+    for (const file of fileArray) {
+      const validationError = validatePdfFile(file);
+      if (validationError) {
+        validFiles.push({
+          id: crypto.randomUUID(),
+          file,
+          status: 'error',
+          progress: 0,
+          error: validationError.message,
+        });
+      } else {
+        validFiles.push({
+          id: crypto.randomUUID(),
+          file,
+          status: 'pending',
+          progress: 0,
+        });
+      }
+    }
+
+    setUploadedPdfs(prev => [...prev, ...validFiles]);
+  }, []);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -87,12 +128,60 @@ export function GatherPhase() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFiles(e.target.files);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (id: string) => {
+    setUploadedPdfs(prev => prev.filter(p => p.id !== id));
+  };
+
+  const uploadAllFiles = async (activeProjectId: string): Promise<string[]> => {
+    const pdfUploadIds: string[] = [];
+    const pendingPdfs = uploadedPdfs.filter(p => p.status === 'pending');
+
+    for (const pdf of pendingPdfs) {
+      setUploadedPdfs(prev =>
+        prev.map(p => p.id === pdf.id ? { ...p, status: 'uploading', progress: 50 } : p)
+      );
+
+      const result = await uploadPdfFile(activeProjectId, pdf.file);
+
+      if (result.error || !result.pdfUploadId) {
+        setUploadedPdfs(prev =>
+          prev.map(p => p.id === pdf.id ? { ...p, status: 'error', error: result.error } : p)
+        );
+      } else {
+        setUploadedPdfs(prev =>
+          prev.map(p => p.id === pdf.id ? { ...p, status: 'uploaded', progress: 100, pdfUploadId: result.pdfUploadId } : p)
+        );
+        pdfUploadIds.push(result.pdfUploadId);
+      }
+    }
+
+    const alreadyUploaded = uploadedPdfs
+      .filter(p => p.status === 'uploaded' && p.pdfUploadId)
+      .map(p => p.pdfUploadId!);
+
+    return [...alreadyUploaded, ...pdfUploadIds];
   };
 
   const handleContinue = async () => {
     if (!canContinue) return;
 
-    setSaving(true);
+    setAnalysisError(null);
+
     try {
       const activeProjectId = projectId || await ensureProjectExists();
 
@@ -107,28 +196,129 @@ export function GatherPhase() {
       if (projectDetails.trim()) {
         await updateProject(activeProjectId, { project_details: projectDetails });
       }
+
+      if (uploadedPdfs.length > 0) {
+        setAnalysisState('uploading');
+
+        const pdfUploadIds = await uploadAllFiles(activeProjectId);
+
+        if (pdfUploadIds.length < 2) {
+          setAnalysisState('error');
+          setAnalysisError('Failed to upload enough PDFs. Please try again.');
+          return;
+        }
+
+        setAnalysisState('analyzing');
+
+        const analysisResult = await startBatchAnalysis(
+          activeProjectId,
+          pdfUploadIds,
+          priorities,
+          projectDetails
+        );
+
+        if (!analysisResult.success) {
+          setAnalysisState('error');
+          setAnalysisError(analysisResult.error || 'Failed to start analysis');
+          return;
+        }
+
+        await pollBatchExtractionStatus(activeProjectId, {
+          intervalMs: 3000,
+          maxAttempts: 200,
+          onProgress: (status) => {
+            setAnalysisProgress(status);
+          },
+        });
+
+        await refreshBids();
+        setAnalysisState('complete');
+      }
+
       await refreshRequirements();
       completePhase(1);
     } catch (err) {
-      console.error('Failed to save requirements:', err);
-    } finally {
-      setSaving(false);
+      console.error('Failed to process:', err);
+      setAnalysisState('error');
+      setAnalysisError(err instanceof Error ? err.message : 'An unexpected error occurred');
     }
   };
 
-  const getBidStatusIcon = (bid: typeof bids[0]) => {
-    if (bid.bid.total_bid_amount > 0) {
-      return <CheckCircle2 className="w-5 h-5 text-switch-green-600" />;
+  const getStatusIcon = (status: UploadedPdf['status']) => {
+    switch (status) {
+      case 'uploaded':
+        return <CheckCircle2 className="w-5 h-5 text-switch-green-600" />;
+      case 'uploading':
+        return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
+      case 'error':
+        return <AlertCircle className="w-5 h-5 text-red-500" />;
+      default:
+        return <Clock className="w-5 h-5 text-gray-400" />;
     }
-    return <Clock className="w-5 h-5 text-amber-500" />;
   };
 
-  const getBidStatusText = (bid: typeof bids[0]) => {
-    if (bid.bid.total_bid_amount > 0) {
-      return 'Ready';
-    }
-    return 'Processing';
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
+
+  if (analysisState === 'uploading' || analysisState === 'analyzing') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
+        <div className="w-16 h-16 bg-switch-green-100 rounded-full flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-switch-green-600 animate-spin" />
+        </div>
+
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {analysisState === 'uploading' ? 'Uploading Your Bids...' : 'Analyzing Your Bids...'}
+          </h2>
+          <p className="text-gray-600 max-w-md">
+            {analysisState === 'uploading'
+              ? 'We are securely uploading your bid documents.'
+              : 'Our AI is extracting and comparing data from your bid documents. This usually takes 1-3 minutes.'}
+          </p>
+        </div>
+
+        {analysisProgress && (
+          <div className="w-full max-w-md space-y-4">
+            <div className="bg-gray-100 rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-switch-green-600 h-full transition-all duration-500"
+                style={{
+                  width: `${analysisProgress.totalPdfs > 0
+                    ? ((analysisProgress.completedPdfs + analysisProgress.failedPdfs) / analysisProgress.totalPdfs) * 100
+                    : 0}%`
+                }}
+              />
+            </div>
+            <p className="text-sm text-center text-gray-600">
+              {analysisProgress.completedPdfs} of {analysisProgress.totalPdfs} bids processed
+            </p>
+
+            <div className="space-y-2">
+              {analysisProgress.pdfStatuses.map(pdf => (
+                <div key={pdf.id} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded">
+                  <span className="truncate flex-1 mr-2">{pdf.fileName}</span>
+                  <span className={`
+                    px-2 py-0.5 rounded text-xs font-medium
+                    ${pdf.status === 'extracted' || pdf.status === 'verified' ? 'bg-green-100 text-green-700' : ''}
+                    ${pdf.status === 'processing' || pdf.status === 'uploaded' ? 'bg-blue-100 text-blue-700' : ''}
+                    ${pdf.status === 'failed' ? 'bg-red-100 text-red-700' : ''}
+                  `}>
+                    {pdf.status === 'extracted' || pdf.status === 'verified' ? 'Done' : ''}
+                    {pdf.status === 'processing' || pdf.status === 'uploaded' ? 'Processing...' : ''}
+                    {pdf.status === 'failed' ? 'Failed' : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -139,19 +329,54 @@ export function GatherPhase() {
         </p>
       </div>
 
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <div className="flex gap-3">
+          <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-800">One-Time Analysis</p>
+            <p className="text-sm text-amber-700 mt-1">
+              Upload all the bids you want to compare before clicking Continue. All bids will be analyzed together.
+              If you need to add more bids later, you can re-run the analysis with all documents.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {analysisError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-red-800">Analysis Error</p>
+              <p className="text-sm text-red-700 mt-1">{analysisError}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Upload className="w-5 h-5 text-switch-green-600" />
           Upload Your Bids
         </h2>
 
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,application/pdf"
+          multiple
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+
         <div
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
           className={`
-            border-2 border-dashed rounded-xl p-8 text-center transition-colors
+            border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer
             ${dragActive ? 'border-switch-green-500 bg-switch-green-50' : 'border-gray-300 hover:border-gray-400'}
           `}
         >
@@ -160,54 +385,98 @@ export function GatherPhase() {
           </div>
           <p className="text-gray-600 mb-2">Drag and drop PDF bid documents here</p>
           <p className="text-sm text-gray-400 mb-4">or</p>
-          <button className="btn btn-secondary">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={(e) => {
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}
+          >
             Browse Files
           </button>
           <p className="text-xs text-gray-400 mt-4">
-            Supported formats: PDF (max 10MB each)
+            Supported formats: PDF (max 25MB each)
           </p>
         </div>
 
-        {bids.length > 0 && (
+        {uploadedPdfs.length > 0 && (
           <div className="mt-6 space-y-3">
-            <h3 className="text-sm font-medium text-gray-700">Uploaded Bids ({bids.length})</h3>
-            {bids.map((item) => (
+            <h3 className="text-sm font-medium text-gray-700">Files to Upload ({uploadedPdfs.length})</h3>
+            {uploadedPdfs.map((pdf) => (
               <div
-                key={item.bid.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                key={pdf.id}
+                className={`flex items-center justify-between p-4 rounded-lg ${
+                  pdf.status === 'error' ? 'bg-red-50' : 'bg-gray-50'
+                }`}
               >
-                <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {item.bid.contractor_name || item.bid.contractor_company || 'Unknown Contractor'}
-                    </p>
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900 truncate">{pdf.file.name}</p>
                     <p className="text-sm text-gray-500">
-                      {item.bid.total_bid_amount > 0 ? formatCurrency(item.bid.total_bid_amount) : 'Processing...'}
+                      {formatFileSize(pdf.file.size)}
+                      {pdf.error && <span className="text-red-600 ml-2">{pdf.error}</span>}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm ${item.bid.total_bid_amount > 0 ? 'text-switch-green-600' : 'text-amber-500'}`}>
-                    {getBidStatusText(item)}
-                  </span>
-                  {getBidStatusIcon(item)}
+                <div className="flex items-center gap-3">
+                  {getStatusIcon(pdf.status)}
+                  <button
+                    onClick={() => removeFile(pdf.id)}
+                    className="p-1 hover:bg-gray-200 rounded"
+                  >
+                    <X className="w-4 h-4 text-gray-500" />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        <button className="btn btn-secondary w-full mt-4 flex items-center justify-center gap-2">
+        {existingBidsCount > 0 && (
+          <div className="mt-6 space-y-3">
+            <h3 className="text-sm font-medium text-gray-700">Previously Analyzed Bids ({existingBidsCount})</h3>
+            {bids.filter(b => b.bid.total_bid_amount > 0).map((item) => (
+              <div
+                key={item.bid.id}
+                className="flex items-center justify-between p-4 bg-green-50 rounded-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-switch-green-600" />
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {item.bid.contractor_name || item.bid.contractor_company || 'Unknown Contractor'}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      ${item.bid.total_bid_amount.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <CheckCircle2 className="w-5 h-5 text-switch-green-600" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="btn btn-secondary w-full mt-4 flex items-center justify-center gap-2"
+        >
           <Plus className="w-4 h-4" />
           Add Another Bid
         </button>
 
-        {bids.length < 2 && (
+        {totalReadyBids < 2 && (
           <div className="mt-4 flex items-start gap-2 text-amber-600 bg-amber-50 rounded-lg p-3">
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <p className="text-sm">
-              You need at least 2 bids to compare. {bids.length === 0 ? 'Upload your first bid to get started.' : 'Upload 1 more bid to continue.'}
+              {(() => {
+                const needed = Math.max(0, 2 - totalReadyBids);
+                if (totalReadyBids === 0) return 'Upload your first bid to get started.';
+                return `Upload ${needed} more bid${needed > 1 ? 's' : ''} to continue.`;
+              })()}
             </p>
           </div>
         )}
@@ -335,10 +604,10 @@ export function GatherPhase() {
       <div className="flex justify-end">
         <button
           onClick={handleContinue}
-          disabled={!canContinue || saving}
+          disabled={!canContinue}
           className="btn btn-primary flex items-center gap-2 px-6"
         >
-          {saving ? 'Saving...' : 'Continue to Compare'}
+          Continue to Compare
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
