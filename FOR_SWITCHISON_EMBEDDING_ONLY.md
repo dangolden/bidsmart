@@ -1,12 +1,8 @@
-# BidSmart - Embedding Instructions for SwitchIsOn.org
+# BidSmart Embedding Guide for SwitchIsOn.org
 
-## Quick Start (5 minutes)
+## The Code
 
-BidSmart is ready to embed on your website. HomeDoc handles all hosting, maintenance, and technical operations. You just need to add an iframe.
-
----
-
-## Step 1: Copy This Code
+Copy and paste this into any page on your website:
 
 ```html
 <div style="max-width: 1400px; margin: 0 auto; padding: 20px;">
@@ -21,81 +17,31 @@ BidSmart is ready to embed on your website. HomeDoc handles all hosting, mainten
 </div>
 ```
 
-**Note:** HomeDoc will provide the actual production URL to replace `YOUR-BIDSMART-URL.com`
+**Replace `YOUR-BIDSMART-URL.com` with the production URL we provide.**
 
 ---
 
-## Step 2: Add to Your Website
+## That's It
 
-**Option A: WordPress**
-1. Create a new page: "Compare Heat Pump Bids"
-2. Add a "Custom HTML" block
-3. Paste the code above
-4. Publish
-
-**Option B: Custom CMS**
-1. Create a new page at: `/tools/bidsmart` or `/resources/compare-bids`
-2. Paste the iframe code
-3. Publish
-
-**Option C: Direct HTML**
-- See `docs/production-embed-example.html` for a complete standalone page example
+The tool is fully responsive and works on desktop and mobile. Your domain (switchison.org and all subdomains) is already authorized.
 
 ---
 
-## Step 3: Test
+## Optional: Adjust Height
 
-1. Visit the page where you added the iframe
-2. Verify BidSmart loads inside the iframe
-3. Test on mobile devices
-4. Done!
-
----
-
-## What You're Getting
-
-- **Hosting**: HomeDoc manages all hosting and infrastructure
-- **Maintenance**: HomeDoc handles updates, bug fixes, and monitoring
-- **Support**: HomeDoc provides technical support for the application
-- **Your Role**: Embed the iframe and report any issues you notice
+If you need more or less height, change the `height="800"` value:
+- Smaller screens: `height="600"`
+- Larger displays: `height="900"` or `height="1000"`
 
 ---
 
-## Security
+## Questions
 
-The iframe is configured to work securely on authorized domains including:
-- **switchison.org** and all subdomains (*.switchison.org)
-- HomeDoc development and support environments (for testing and assistance)
+**The iframe is blank or blocked**
+Make sure you're viewing the page on switchison.org (not a preview mode or different domain).
 
-The application is protected with enterprise-grade security headers while remaining flexible for your implementation needs. You can embed it on any page within your switchison.org domain structure.
+**Can I style the wrapper?**
+Yes. The outer `<div>` is yours to customize. The content inside the iframe is managed separately.
 
----
-
-## Mobile Optimization
-
-The iframe is fully responsive and works on all devices. For the best mobile experience, the iframe automatically adjusts its layout.
-
----
-
-## Need Help?
-
-**Contact HomeDoc Team:**
-- Email: [To be provided]
-- For urgent issues: [To be provided]
-
-**Common Questions:**
-
-**Q: The iframe isn't showing up**
-A: Check that you're testing on a switchison.org domain (not localhost or another domain). Contact HomeDoc if issues persist.
-
-**Q: Can I customize the appearance?**
-A: The iframe wrapper (the code above) can be styled. The content inside the iframe is managed by HomeDoc.
-
-**Q: How do I update the tool?**
-A: You don't! HomeDoc handles all updates automatically.
-
----
-
-## That's It!
-
-You're done. HomeDoc handles everything else.
+**Updates?**
+Automatic. You don't need to change anything.
