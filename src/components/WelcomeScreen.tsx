@@ -3,6 +3,7 @@ import { FolderOpen, Calendar, FileText, ChevronRight, Play } from 'lucide-react
 import { getProjectsWithPublicDemos } from '../lib/database/bidsmartService';
 import type { UserExt, Project } from '../lib/types';
 import { DashboardPhasePreview } from './DashboardPhasePreview';
+import SwitchLogo from '../assets/switchlogo.svg';
 
 interface WelcomeScreenProps {
   user: UserExt;
@@ -75,21 +76,16 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">SwitchIsOn - Heat Pump Bid Compare Tool</h1>
+          <div className="flex items-center justify-center mb-3">
+            <img src={SwitchLogo} alt="SwitchIsOn" className="h-16 w-auto" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">Heat Pump Bid Compare Tool</h1>
           <p className="text-gray-600 max-w-2xl mx-auto mb-4">
             This is a beta tool we are piloting. Please upload your bids and provide feedback on the information presented, or view demo analyses of real bids that have been uploaded.
           </p>
-          {user.email && (
+          {user.email && user.email !== 'demo@theswitchison.org' && (
             <p className="text-sm text-gray-500">
-              {user.email === 'demo@theswitchison.org' ? (
-                <>
-                  <span className="font-medium">Demo Mode</span> - Explore the tool without signing up. Demo projects are available for everyone to view.
-                </>
-              ) : (
-                <>
-                  Signed in as <span className="font-medium">{user.email}</span>
-                </>
-              )}
+              Signed in as <span className="font-medium">{user.email}</span>
             </p>
           )}
         </div>
@@ -145,6 +141,11 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
         )}
 
         <div className="mt-12 text-center">
+          <div className="mb-6 pb-6 border-b border-gray-200">
+            <p className="text-sm text-gray-600">
+              Don't have bids ready? View a demo comparison of real bids.
+            </p>
+          </div>
           <p className="text-xs text-gray-400">
             Powered by TheSwitchIsOn.org
           </p>
