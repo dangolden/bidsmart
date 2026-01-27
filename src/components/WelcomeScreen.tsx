@@ -33,16 +33,6 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
     onCreateProject('new');
   }
 
-  async function handleLoadDemoData() {
-    try {
-      const publicDemos = projects.filter(p => p.is_public_demo);
-      if (publicDemos.length > 0) {
-        onSelectProject(publicDemos[0].id);
-      }
-    } catch (err) {
-      console.error('Failed to load demo project:', err);
-    }
-  }
 
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -104,7 +94,7 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
           )}
         </div>
 
-        <DashboardPhasePreview onStartProject={handleNewProject} onStartDemo={handleLoadDemoData} />
+        <DashboardPhasePreview onStartProject={handleNewProject} />
 
         {projects.length > 0 && (
           <div className="max-w-2xl mx-auto">

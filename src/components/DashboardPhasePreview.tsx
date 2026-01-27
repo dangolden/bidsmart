@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, BarChart3, CheckCircle, ClipboardCheck, Play } from 'lucide-react';
+import { Upload, BarChart3, CheckCircle, ClipboardCheck } from 'lucide-react';
 
 const PHASES = [
   {
@@ -38,10 +38,9 @@ const PHASES = [
 
 interface DashboardPhasePreviewProps {
   onStartProject?: () => void;
-  onStartDemo?: () => void;
 }
 
-export function DashboardPhasePreview({ onStartProject, onStartDemo }: DashboardPhasePreviewProps) {
+export function DashboardPhasePreview({ onStartProject }: DashboardPhasePreviewProps) {
   const [email, setEmail] = useState('');
 
   return (
@@ -98,40 +97,25 @@ export function DashboardPhasePreview({ onStartProject, onStartDemo }: Dashboard
         })}
       </div>
 
-      {(onStartProject || onStartDemo) && (
+      {onStartProject && (
         <div className="pt-4 border-t border-gray-100">
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
-            {onStartDemo && (
-              <button
-                onClick={onStartDemo}
-                className="flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
-              >
-                <Play className="w-4 h-4" />
-                <span>Try Demo Mode</span>
-                <span className="ml-1 text-red-200 text-sm">→ Demo...</span>
-              </button>
-            )}
-
-            {onStartProject && (
-              <div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div className="flex-1">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email to get started"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent text-sm"
-                  />
-                </div>
-                <button
-                  onClick={onStartProject}
-                  className="flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-switch-green-600 text-white rounded-lg font-medium hover:bg-switch-green-700 transition-colors"
-                >
-                  <Upload className="w-4 h-4" />
-                  Get Started with Your Bids
-                </button>
-              </div>
-            )}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex-1">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email to get started"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent text-sm"
+              />
+            </div>
+            <button
+              onClick={onStartProject}
+              className="flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-switch-green-600 text-white rounded-lg font-medium hover:bg-switch-green-700 transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              Get Started with Your Bids
+            </button>
           </div>
         </div>
       )}

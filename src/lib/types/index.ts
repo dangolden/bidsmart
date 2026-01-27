@@ -146,6 +146,9 @@ export interface Project {
   data_sharing_consent: boolean;
   data_sharing_consented_at?: string | null;
 
+  // Project details
+  project_details?: string | null;
+
   // Demo project flags
   is_demo: boolean;
   is_public_demo?: boolean;
