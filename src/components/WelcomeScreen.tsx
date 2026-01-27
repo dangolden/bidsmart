@@ -79,9 +79,9 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
           <div className="flex items-center justify-center mb-3">
             <img src={SwitchLogo} alt="SwitchIsOn" className="h-16 w-auto" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">Heat Pump Bid Compare Tool</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">Heat Pump Bid Compare Tool <span className="text-base font-normal text-gray-500">(Beta)</span></h1>
           <p className="text-gray-600 max-w-2xl mx-auto mb-4">
-            This is a beta tool we are piloting. Please upload your bids and provide feedback on the information presented, or view demo analyses of real bids that have been uploaded.
+            Please upload your bids and provide feedback on the information presented, or view demo analyses of real bids that have been uploaded.
           </p>
           {user.email && user.email !== 'demo@theswitchison.org' && (
             <p className="text-sm text-gray-500">
