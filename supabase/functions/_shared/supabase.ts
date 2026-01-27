@@ -24,5 +24,3 @@ export function createUserClient(authHeader: string) {
     },
   });
 }
-
-export { supabaseUrl, supabaseAnonKey };

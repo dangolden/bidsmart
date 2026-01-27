@@ -23,12 +23,6 @@ export interface MindPalTriggerRequest {
   };
 }
 
-export interface MindPalTriggerResponse {
-  success: boolean;
-  workflow_run_id: string;
-  message?: string;
-}
-
 export interface MindPalCallbackPayload {
   request_id: string;
   signature: string;

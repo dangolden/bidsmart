@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, Users, Shield } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject } from '../../lib/database/bidsmartService';
+import { formatCurrency } from '../../lib/utils/formatters';
 
 interface PrioritySliderProps {
   label: string;
@@ -113,15 +114,6 @@ export function GatherPhase() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
   };
 
   const getBidStatusIcon = (bid: typeof bids[0]) => {

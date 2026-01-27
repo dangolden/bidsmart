@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
+import { formatCurrency, formatDate } from '../../lib/utils/formatters';
 
 type CompareTab = 'equipment' | 'contractors' | 'costs';
 
@@ -21,23 +22,8 @@ export function ComparePhase() {
   const [showMoreContractors, setShowMoreContractors] = useState(false);
   const [showMoreCosts, setShowMoreCosts] = useState(false);
 
-  const formatCurrency = (amount: number | null | undefined) => {
-    if (!amount) return '-';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+  const formatDateDisplay = (dateString: string | null | undefined) => {
+    return formatDate(dateString) || '-';
   };
 
   const getHighestValue = (
@@ -885,7 +871,7 @@ export function ComparePhase() {
                         <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Available Start Date</td>
                         {costData.map((c, idx) => (
                           <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                            {formatDate(c.startDateAvailable)}
+                            {formatDateDisplay(c.startDateAvailable)}
                           </td>
                         ))}
                       </tr>
@@ -893,7 +879,7 @@ export function ComparePhase() {
                         <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Quote Valid Until</td>
                         {costData.map((c, idx) => (
                           <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                            {formatDate(c.validUntil)}
+                            {formatDateDisplay(c.validUntil)}
                           </td>
                         ))}
                       </tr>
@@ -901,7 +887,7 @@ export function ComparePhase() {
                         <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Bid Date</td>
                         {costData.map((c, idx) => (
                           <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                            {formatDate(c.bidDate)}
+                            {formatDateDisplay(c.bidDate)}
                           </td>
                         ))}
                       </tr>

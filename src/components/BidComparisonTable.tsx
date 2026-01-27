@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import * as db from '../lib/database/bidsmartService';
 import type { ContractorBid, BidEquipment, ProjectRequirements } from '../lib/types';
+import { formatCurrency } from '../lib/utils/formatters';
 
 interface BidComparisonTableProps {
   projectId: string;
@@ -32,15 +33,6 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
     }
     setEquipment(equipMap);
     setLoading(false);
-  }
-
-  function formatCurrency(amount: number | null | undefined) {
-    if (amount == null) return '—';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(amount);
   }
 
   function getBestValue(values: (number | null | undefined)[], higherIsBetter = true): number | null {

@@ -3,6 +3,7 @@ import { FolderOpen, Calendar, FileText, ChevronRight, Play } from 'lucide-react
 import { getProjectsWithPublicDemos } from '../lib/database/bidsmartService';
 import type { UserExt, Project } from '../lib/types';
 import { DashboardPhasePreview } from './DashboardPhasePreview';
+import { formatDate } from '../lib/utils/formatters';
 import SwitchLogo from '../assets/switchlogo.svg';
 
 interface WelcomeScreenProps {
@@ -32,15 +33,6 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
 
   async function handleNewProject() {
     onCreateProject('new');
-  }
-
-
-  function formatDate(dateString: string) {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
   }
 
   function getStatusBadge(status: string) {

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { 
+import {
   FileText, Star, StarOff, CheckCircle2, AlertTriangle, XCircle,
   ChevronDown, ChevronUp, Phone, Mail, Globe, Award
 } from 'lucide-react';
 import * as db from '../lib/database/bidsmartService';
 import type { ContractorBid, PdfUpload } from '../lib/types';
+import { formatCurrency } from '../lib/utils/formatters';
 
 interface BidCardProps {
   bid: ContractorBid;
@@ -34,16 +35,6 @@ export function BidCard({ bid, pdfUpload: _pdfUpload, onUpdate }: BidCardProps) 
     
     const config = confidenceConfig[bid.extraction_confidence];
     return <span className={`status-badge ${config.className}`}>{config.label}</span>;
-  }
-
-  function formatCurrency(amount: number | null | undefined) {
-    if (amount == null) return '—';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
   }
 
   return (

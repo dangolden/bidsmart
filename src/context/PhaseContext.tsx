@@ -129,7 +129,7 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
 
         let bidsWithEquipment: BidWithEquipment[] = [];
         let requirements: ProjectRequirements | null = null;
-        let questions: any[] = [];
+        let questions: BidQuestion[] = [];
 
         if (projectId) {
           const bids = await getBidsByProject(projectId);

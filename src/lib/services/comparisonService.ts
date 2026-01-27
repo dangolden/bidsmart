@@ -94,17 +94,18 @@ export async function calculateProjectScores(
  * Calculate price scores (lower is better)
  */
 function calculatePriceScores(bids: BidWithDetails[]): number[] {
+  if (bids.length === 0) return [];
+
   const prices = bids.map((b) => b.bid.total_bid_amount);
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
   const range = maxPrice - minPrice;
 
   if (range === 0) {
-    return bids.map(() => 100); // All same price
+    return bids.map(() => 100);
   }
 
   return prices.map((price) => {
-    // Invert: lowest price gets highest score
     const normalized = 1 - (price - minPrice) / range;
     return Math.round(normalized * 100);
   });
@@ -114,16 +115,18 @@ function calculatePriceScores(bids: BidWithDetails[]): number[] {
  * Calculate efficiency scores based on SEER/HSPF
  */
 function calculateEfficiencyScores(bids: BidWithDetails[]): number[] {
-  // Get best SEER from each bid's equipment
+  if (bids.length === 0) return [];
+
   const seerRatings = bids.map((b) => {
-    const outdoorUnit = b.equipment.find((e) => 
+    const outdoorUnit = b.equipment.find((e) =>
       e.equipment_type === 'outdoor_unit' || e.equipment_type.includes('outdoor')
     );
     return outdoorUnit?.seer_rating || outdoorUnit?.seer2_rating || 0;
   });
 
-  const maxSeer = Math.max(...seerRatings, 14); // Minimum baseline of 14
-  const minSeer = Math.min(...seerRatings.filter((s) => s > 0), 14);
+  const validRatings = seerRatings.filter((s) => s > 0);
+  const maxSeer = validRatings.length > 0 ? Math.max(...validRatings, 14) : 14;
+  const minSeer = validRatings.length > 0 ? Math.min(...validRatings, 14) : 14;
   const range = maxSeer - minSeer;
 
   if (range === 0) {
@@ -364,6 +367,8 @@ export function generateWarrantyComparison(bids: BidWithDetails[]): WarrantyComp
  */
 export function identifyRedFlags(bids: BidWithDetails[]): RedFlag[] {
   const flags: RedFlag[] = [];
+  if (bids.length === 0) return flags;
+
   const avgPrice = bids.reduce((sum, b) => sum + b.bid.total_bid_amount, 0) / bids.length;
 
   for (const b of bids) {
