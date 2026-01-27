@@ -867,6 +867,19 @@ export interface BidQuestion {
   created_at: string;
 }
 
+export interface BidFaq {
+  id: string;
+  bid_id: string;
+  faq_key: string;
+  question_text: string;
+  answer_text?: string | null;
+  answer_confidence?: ConfidenceLevel | null;
+  is_answered: boolean;
+  display_order?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ============================================
 // CONTRACTOR COMPARISON TYPES
 // ============================================
