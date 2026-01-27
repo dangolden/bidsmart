@@ -8,8 +8,8 @@
   # Publish directory (output from Vite)
   publish = "dist"
 
-  # Node version
-  environment = { NODE_VERSION = "18" }
+  # Node version and npm flags
+  environment = { NODE_VERSION = "18", NPM_FLAGS = "--include=dev" }
 
 # Production context (main branch)
 [context.production]
