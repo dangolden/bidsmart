@@ -44,6 +44,7 @@ interface PhaseContextValue extends PhaseState {
   refreshRequirements: () => Promise<void>;
   refreshQuestions: () => Promise<void>;
   getPhaseLabel: (phase: Phase) => string;
+  ensureProjectExists: () => Promise<string>;
 }
 
 const PhaseContext = createContext<PhaseContextValue | null>(null);
@@ -104,10 +105,10 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
         const storedState = loadStoredState();
         const existingProjects = await getProjectsByUser(userId);
 
-        let projectId: string;
-        let project: Project;
+        let projectId: string | null = null;
+        let project: Project | null = null;
 
-        if (initialProjectId) {
+        if (initialProjectId && initialProjectId !== 'new') {
           const foundProject = existingProjects.find(p => p.id === initialProjectId);
           if (foundProject) {
             projectId = initialProjectId;
@@ -115,35 +116,40 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
           } else {
             throw new Error('Project not found');
           }
+        } else if (initialProjectId === 'new') {
+          projectId = null;
+          project = null;
         } else if (storedState?.projectId && existingProjects.find(p => p.id === storedState.projectId)) {
           projectId = storedState.projectId;
           project = existingProjects.find(p => p.id === storedState.projectId)!;
         } else if (existingProjects.length > 0) {
           project = existingProjects[0];
           projectId = project.id;
-        } else {
-          project = await createProject(userId, {
-            project_name: 'My Heat Pump Project',
-            status: 'collecting_bids',
-          });
-          projectId = project.id;
         }
 
-        const bids = await getBidsByProject(projectId);
-        const bidsWithEquipment = await Promise.all(
-          bids.map(async (bid) => ({
-            bid,
-            equipment: await getEquipmentByBid(bid.id),
-          }))
-        );
+        let bidsWithEquipment: BidWithEquipment[] = [];
+        let requirements: ProjectRequirements | null = null;
+        let questions: any[] = [];
 
-        const requirements = await getProjectRequirements(projectId);
+        if (projectId) {
+          const bids = await getBidsByProject(projectId);
+          bidsWithEquipment = await Promise.all(
+            bids.map(async (bid) => ({
+              bid,
+              equipment: await getEquipmentByBid(bid.id),
+            }))
+          );
 
-        const { data: questions } = await supabase
-          .from('bid_questions')
-          .select('*')
-          .in('bid_id', bids.map(b => b.id))
-          .order('display_order', { ascending: true });
+          requirements = await getProjectRequirements(projectId);
+
+          const { data: questionsData } = await supabase
+            .from('bid_questions')
+            .select('*')
+            .in('bid_id', bids.map(b => b.id))
+            .order('display_order', { ascending: true });
+
+          questions = questionsData || [];
+        }
 
         let currentPhase: Phase = 1;
         let phaseStatus: Record<Phase, PhaseStatus> = {
@@ -161,7 +167,9 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
           phaseStatus[2] = 'active';
           phaseStatus[3] = 'active';
           phaseStatus[4] = 'active';
-          currentPhase = 2;
+          if (!project?.is_public_demo) {
+            currentPhase = 2;
+          }
         }
 
         setState({
@@ -176,7 +184,9 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
           error: null,
         });
 
-        saveStoredState({ currentPhase, projectId, phaseStatus });
+        if (projectId) {
+          saveStoredState({ currentPhase, projectId, phaseStatus });
+        }
       } catch (err) {
         console.error('Failed to initialize project:', err);
         setState(prev => ({
@@ -278,6 +288,31 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
     return PHASE_LABELS[phase];
   }, []);
 
+  const ensureProjectExists = useCallback(async (): Promise<string> => {
+    if (state.projectId) {
+      return state.projectId;
+    }
+
+    const project = await createProject(userId, {
+      project_name: 'My Heat Pump Project',
+      status: 'collecting_bids',
+    });
+
+    setState(prev => ({
+      ...prev,
+      projectId: project.id,
+      project,
+    }));
+
+    saveStoredState({
+      currentPhase: state.currentPhase,
+      projectId: project.id,
+      phaseStatus: state.phaseStatus,
+    });
+
+    return project.id;
+  }, [state.projectId, state.currentPhase, state.phaseStatus, userId]);
+
   const value: PhaseContextValue = {
     ...state,
     goToPhase,
@@ -287,6 +322,7 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
     refreshRequirements,
     refreshQuestions,
     getPhaseLabel,
+    ensureProjectExists,
   };
 
   return (

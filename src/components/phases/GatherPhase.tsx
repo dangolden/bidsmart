@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, Users, Shield } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
-import { saveProjectRequirements, updateProjectDataSharingConsent } from '../../lib/database/bidsmartService';
+import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject } from '../../lib/database/bidsmartService';
 
 interface PrioritySliderProps {
   label: string;
@@ -31,7 +31,7 @@ function PrioritySlider({ label, value, onChange, description }: PrioritySliderP
 }
 
 export function GatherPhase() {
-  const { projectId, project, bids, requirements, completePhase, refreshRequirements } = usePhase();
+  const { projectId, project, bids, requirements, completePhase, refreshRequirements, ensureProjectExists } = usePhase();
 
   const [priorities, setPriorities] = useState({
     price: requirements?.priority_price ?? 3,
@@ -45,6 +45,7 @@ export function GatherPhase() {
   const [dragActive, setDragActive] = useState(false);
   const [dataSharingConsent, setDataSharingConsent] = useState(project?.data_sharing_consent ?? false);
   const [showPrivacyDetails, setShowPrivacyDetails] = useState(false);
+  const [projectDetails, setProjectDetails] = useState(project?.project_details ?? '');
 
   useEffect(() => {
     if (requirements) {
@@ -61,6 +62,7 @@ export function GatherPhase() {
   useEffect(() => {
     if (project) {
       setDataSharingConsent(project.data_sharing_consent ?? false);
+      setProjectDetails(project.project_details ?? '');
     }
   }, [project]);
 
@@ -87,18 +89,23 @@ export function GatherPhase() {
   };
 
   const handleContinue = async () => {
-    if (!projectId || !canContinue) return;
+    if (!canContinue) return;
 
     setSaving(true);
     try {
-      await saveProjectRequirements(projectId, {
+      const activeProjectId = projectId || await ensureProjectExists();
+
+      await saveProjectRequirements(activeProjectId, {
         priority_price: priorities.price,
         priority_efficiency: priorities.efficiency,
         priority_warranty: priorities.warranty,
         priority_reputation: priorities.reputation,
         priority_timeline: priorities.timeline,
       });
-      await updateProjectDataSharingConsent(projectId, dataSharingConsent);
+      await updateProjectDataSharingConsent(activeProjectId, dataSharingConsent);
+      if (projectDetails.trim()) {
+        await updateProject(activeProjectId, { project_details: projectDetails });
+      }
       await refreshRequirements();
       completePhase(1);
     } catch (err) {
@@ -256,6 +263,23 @@ export function GatherPhase() {
             description="How quickly can they complete the work?"
           />
         </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Tell Us About Your Project</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Share any details about your home, priorities, or what you care about in a contractor. This is optional but helps us provide better guidance.
+        </p>
+        <textarea
+          value={projectDetails}
+          onChange={(e) => setProjectDetails(e.target.value)}
+          placeholder="For example: My home is a 1950s ranch with poor insulation. I'm looking for a contractor who is patient with explaining technical details and has experience with older homes. Budget is somewhat flexible but I want to prioritize long-term savings over upfront cost..."
+          rows={6}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent text-sm resize-none"
+        />
+        <p className="text-xs text-gray-500 mt-2">
+          This information helps us understand your unique needs and provide more personalized recommendations.
+        </p>
       </div>
 
       <div className="bg-gray-50 rounded-xl border border-gray-200 p-5">

@@ -21,6 +21,7 @@ import type {
   PdfStatus,
   ProjectSummary,
   BidComparisonTableRow,
+  BidFaq,
 } from '../types';
 
 // ============================================
@@ -108,6 +109,29 @@ export async function getDemoProject(userId: string): Promise<Project | null> {
 
   if (error) throw error;
   return data;
+}
+
+export async function getPublicDemoProjects(): Promise<Project[]> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('is_public_demo', true)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getProjectsWithPublicDemos(userId: string): Promise<Project[]> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .or(`user_id.eq.${userId},is_public_demo.eq.true`)
+    .order('is_public_demo', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
 }
 
 export async function updateProject(
@@ -880,4 +904,81 @@ export async function saveProjectRequirements(
     ...requirements,
     completed_at: new Date().toISOString(),
   });
+}
+
+// ============================================
+// BID FAQs
+// ============================================
+
+export async function getFaqsByBid(bidId: string): Promise<BidFaq[]> {
+  const { data, error } = await supabase
+    .from('bid_faqs')
+    .select('*')
+    .eq('bid_id', bidId)
+    .order('display_order', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createBidFaq(
+  bidId: string,
+  faqData: Partial<BidFaq>
+): Promise<BidFaq> {
+  const { data, error } = await supabase
+    .from('bid_faqs')
+    .insert({
+      bid_id: bidId,
+      ...faqData,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function bulkCreateBidFaqs(
+  bidId: string,
+  faqs: Partial<BidFaq>[]
+): Promise<BidFaq[]> {
+  const faqsToInsert = faqs.map(faq => ({
+    bid_id: bidId,
+    ...faq,
+  }));
+
+  const { data, error } = await supabase
+    .from('bid_faqs')
+    .insert(faqsToInsert)
+    .select();
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateBidFaq(
+  faqId: string,
+  updates: Partial<BidFaq>
+): Promise<BidFaq | null> {
+  const { data, error } = await supabase
+    .from('bid_faqs')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', faqId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteBidFaq(faqId: string): Promise<void> {
+  const { error } = await supabase
+    .from('bid_faqs')
+    .delete()
+    .eq('id', faqId);
+
+  if (error) throw error;
 }

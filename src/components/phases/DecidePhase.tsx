@@ -1,20 +1,34 @@
 import { useState, useEffect } from 'react';
-import { Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, Award, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock } from 'lucide-react';
+import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, BookOpen, Award, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { supabase } from '../../lib/supabaseClient';
 import { IncentivesTable } from '../IncentivesTable';
-import type { BidQuestion, RebateProgram } from '../../lib/types';
+import { BidFaqSection } from '../BidFaqSection';
+import type { BidQuestion, RebateProgram, BidFaq } from '../../lib/types';
+import { getFaqsByBid } from '../../lib/database/bidsmartService';
+
+type DecideTab = 'incentives' | 'questions' | 'faqs';
+
+interface TabConfig {
+  key: DecideTab;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+}
 
 export function DecidePhase() {
   const { bids, questions, refreshQuestions, completePhase } = usePhase();
+  const [activeTab, setActiveTab] = useState<DecideTab>('incentives');
   const [rebatePrograms, setRebatePrograms] = useState<RebateProgram[]>([]);
   const [selectedIncentives, setSelectedIncentives] = useState<Set<string>>(new Set());
   const [selectedContractor, setSelectedContractor] = useState<string | null>(null);
   const [copiedContractor, setCopiedContractor] = useState<string | null>(null);
   const [expandedBids, setExpandedBids] = useState<Set<string>>(new Set());
+  const [bidFaqs, setBidFaqs] = useState<Map<string, BidFaq[]>>(new Map());
 
   useEffect(() => {
     loadRebatePrograms();
+    loadAllFaqs();
   }, []);
 
   const loadRebatePrograms = async () => {
@@ -27,6 +41,21 @@ export function DecidePhase() {
     if (data) {
       setRebatePrograms(data);
       setSelectedIncentives(new Set(data.map(p => p.id)));
+    }
+  };
+
+  const loadAllFaqs = async () => {
+    try {
+      const faqsMap = new Map<string, BidFaq[]>();
+
+      for (const bidData of bids) {
+        const faqs = await getFaqsByBid(bidData.bid.id);
+        faqsMap.set(bidData.bid.id, faqs);
+      }
+
+      setBidFaqs(faqsMap);
+    } catch (error) {
+      console.error('Error loading FAQs:', error);
     }
   };
 
@@ -181,24 +210,114 @@ export function DecidePhase() {
     setSelectedContractor(selectedContractor === bidId ? null : bidId);
   };
 
+  const tabs: TabConfig[] = [
+    {
+      key: 'incentives',
+      label: 'Available Incentives',
+      description: 'Select rebates you plan to apply for',
+      icon: <DollarSign className="w-5 h-5" />
+    },
+    {
+      key: 'questions',
+      label: 'Contractor Questions',
+      description: 'Ask contractors for clarification',
+      icon: <HelpCircle className="w-5 h-5" />
+    },
+    {
+      key: 'faqs',
+      label: 'FAQs',
+      description: 'Common questions about your bids',
+      icon: <BookOpen className="w-5 h-5" />
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Make Your Decision</h1>
         <p className="text-gray-600 mt-1">
-          Review each bid side by side, ask clarifying questions, and choose your contractor.
+          Review incentives, ask questions, and understand your bids to choose the best contractor.
         </p>
       </div>
 
-      {rebatePrograms.length > 0 && (
-        <IncentivesTable
-          rebatePrograms={rebatePrograms}
-          selectedIncentives={selectedIncentives}
-          onToggleIncentive={toggleIncentive}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+        {tabs.map((tab, index) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`
+              relative p-3 sm:p-4 rounded-xl text-left transition-all duration-200 border-2
+              ${activeTab === tab.key
+                ? 'bg-gradient-to-br from-switch-green-50 to-switch-green-100 border-switch-green-500 shadow-md'
+                : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm'
+              }
+            `}
+          >
+            <div className="flex items-start gap-2 sm:gap-3">
+              <div className={`
+                w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
+                ${activeTab === tab.key
+                  ? 'bg-switch-green-600 text-white'
+                  : 'bg-gray-100 text-gray-500'
+                }
+              `}>
+                {tab.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`
+                    text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap
+                    ${activeTab === tab.key
+                      ? 'bg-switch-green-600 text-white'
+                      : 'bg-gray-200 text-gray-600'
+                    }
+                  `}>
+                    {index + 1} of 3
+                  </span>
+                </div>
+                <h3 className={`
+                  font-semibold mt-1 text-sm sm:text-base
+                  ${activeTab === tab.key ? 'text-switch-green-800' : 'text-gray-900'}
+                `}>
+                  {tab.label}
+                </h3>
+                <p className={`
+                  text-xs sm:text-sm mt-0.5 line-clamp-2
+                  ${activeTab === tab.key ? 'text-switch-green-700' : 'text-gray-500'}
+                `}>
+                  {tab.description}
+                </p>
+              </div>
+            </div>
+            {activeTab === tab.key && (
+              <div className="hidden sm:block absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
+                <div className="w-3 h-3 bg-switch-green-500 rotate-45"></div>
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'incentives' && (
+        <div className="space-y-6">
+          {rebatePrograms.length > 0 ? (
+            <IncentivesTable
+              rebatePrograms={rebatePrograms}
+              selectedIncentives={selectedIncentives}
+              onToggleIncentive={toggleIncentive}
+            />
+          ) : (
+            <div className="bg-white rounded-xl border-2 border-gray-200 p-12 text-center">
+              <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Incentives Available</h3>
+              <p className="text-gray-600">There are currently no active rebate programs in the system.</p>
+            </div>
+          )}
+        </div>
       )}
 
-      <div className="space-y-6">
+      {activeTab === 'questions' && (
+        <div className="space-y-6">
         {bidData.map((bid) => {
           const bidQuestions = getQuestionsForBid(bid.bidId);
           const answeredCount = bidQuestions.filter((q) => q.is_answered).length;
@@ -582,13 +701,45 @@ export function DecidePhase() {
             </div>
           );
         })}
-      </div>
 
-      {bids.length === 0 && (
-        <div className="bg-white rounded-xl border-2 border-gray-200 p-12 text-center">
-          <HelpCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Bids to Compare</h3>
-          <p className="text-gray-600">Upload your contractor bids in the Gather phase to see them here.</p>
+          {bids.length === 0 && (
+            <div className="bg-white rounded-xl border-2 border-gray-200 p-12 text-center">
+              <HelpCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Bids to Review</h3>
+              <p className="text-gray-600">Upload your contractor bids in the Gather phase to see them here.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'faqs' && (
+        <div className="space-y-6">
+          {bids.length === 0 ? (
+            <div className="bg-white rounded-xl border-2 border-gray-200 p-12 text-center">
+              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Bids Available</h3>
+              <p className="text-gray-600">Upload your contractor bids to see FAQ analysis.</p>
+            </div>
+          ) : (
+            bids.map((bidInfo) => {
+              const faqs = bidFaqs.get(bidInfo.bid.id) || [];
+              const contractorName = bidInfo.bid.contractor_name || bidInfo.bid.contractor_company || 'Unknown Contractor';
+
+              return (
+                <div key={bidInfo.bid.id} className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-bold text-gray-900">{contractorName}</h3>
+                    {bidInfo.bid.contractor_is_switch_preferred && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-switch-green-500 to-switch-green-600 text-white rounded-full text-xs font-medium">
+                        <Award className="w-3 h-3" /> Switch Preferred
+                      </span>
+                    )}
+                  </div>
+                  <BidFaqSection faqs={faqs} contractorName={contractorName} />
+                </div>
+              );
+            })
+          )}
         </div>
       )}
 

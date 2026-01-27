@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FolderOpen, Calendar, FileText, ChevronRight } from 'lucide-react';
-import { getProjectsByUser, getDemoProject, createProject, createBid, bulkCreateEquipment } from '../lib/database/bidsmartService';
-import { SAMPLE_BIDS, SAMPLE_REBATE_PROGRAMS } from '../lib/services/sampleDataService';
-import { supabase } from '../lib/supabaseClient';
+import { FolderOpen, Calendar, FileText, ChevronRight, Play } from 'lucide-react';
+import { getProjectsWithPublicDemos } from '../lib/database/bidsmartService';
 import type { UserExt, Project } from '../lib/types';
 import { DashboardPhasePreview } from './DashboardPhasePreview';
 
@@ -22,8 +20,8 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
 
   async function loadProjects() {
     try {
-      const userProjects = await getProjectsByUser(user.id);
-      setProjects(userProjects);
+      const allProjects = await getProjectsWithPublicDemos(user.id);
+      setProjects(allProjects);
     } catch (err) {
       console.error('Failed to load projects:', err);
     } finally {
@@ -32,89 +30,9 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
   }
 
   async function handleNewProject() {
-    try {
-      const project = await createProject(user.id, {
-        project_name: 'My Heat Pump Project',
-        status: 'collecting_bids',
-      });
-      onCreateProject(project.id);
-    } catch (err) {
-      console.error('Failed to create project:', err);
-    }
+    onCreateProject('new');
   }
 
-  async function handleLoadDemoData() {
-    try {
-      const existingDemo = await getDemoProject(user.id);
-
-      if (existingDemo) {
-        onCreateProject(existingDemo.id);
-        return;
-      }
-
-      const project = await createProject(user.id, {
-        project_name: 'Demo: Heat Pump Comparison',
-        status: 'collecting_bids',
-        heat_pump_type: 'air_source',
-        system_size_tons: 3,
-        is_demo: true,
-      });
-
-      await supabase.from('project_requirements').insert({
-        project_id: project.id,
-        priority_price: 4,
-        priority_warranty: 3,
-        priority_efficiency: 4,
-        priority_timeline: 2,
-        priority_reputation: 5,
-        timeline_urgency: 'within_month',
-        specific_concerns: ['Energy efficiency', 'Long-term reliability'],
-        must_have_features: ['Variable speed compressor', 'Smart thermostat compatible'],
-        nice_to_have_features: ['Low noise operation'],
-        completed_at: new Date().toISOString(),
-      });
-
-      for (const sample of SAMPLE_BIDS) {
-        const bid = await createBid(project.id, sample.bid);
-
-        if (sample.equipment.length > 0) {
-          await bulkCreateEquipment(bid.id, sample.equipment);
-        }
-
-        if (sample.questions.length > 0) {
-          const questions = sample.questions.map((q, i) => ({
-            bid_id: bid.id,
-            ...q,
-            display_order: i,
-          }));
-          await supabase.from('bid_questions').insert(questions);
-        }
-      }
-
-      for (const rebate of SAMPLE_REBATE_PROGRAMS) {
-        const { data: existingRebate } = await supabase
-          .from('rebate_programs')
-          .select('id')
-          .eq('program_code', rebate.program_code)
-          .maybeSingle();
-
-        if (!existingRebate) {
-          await supabase.from('rebate_programs').insert(rebate);
-        }
-      }
-
-      onCreateProject(project.id);
-    } catch (err: any) {
-      if (err?.code === '23505') {
-        const existingDemo = await getDemoProject(user.id);
-        if (existingDemo) {
-          onCreateProject(existingDemo.id);
-          return;
-        }
-      }
-      console.error('Failed to create demo project:', err);
-    }
-  }
 
   function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -157,18 +75,26 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to BidSmart</h1>
-          <p className="text-gray-600">
-            Compare heat pump bids with confidence.
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">SwitchIsOn - Heat Pump Bid Compare Tool</h1>
+          <p className="text-gray-600 max-w-2xl mx-auto mb-4">
+            This is a beta tool we are piloting. Please upload your bids and provide feedback on the information presented, or view demo analyses of real bids that have been uploaded.
           </p>
           {user.email && (
-            <p className="text-sm text-gray-500 mt-2">
-              Signed in as <span className="font-medium">{user.email}</span>
+            <p className="text-sm text-gray-500">
+              {user.email === 'demo@theswitchison.org' ? (
+                <>
+                  <span className="font-medium">Demo Mode</span> - Explore the tool without signing up. Demo projects are available for everyone to view.
+                </>
+              ) : (
+                <>
+                  Signed in as <span className="font-medium">{user.email}</span>
+                </>
+              )}
             </p>
           )}
         </div>
 
-        <DashboardPhasePreview onStartProject={handleNewProject} onStartDemo={handleLoadDemoData} />
+        <DashboardPhasePreview onStartProject={handleNewProject} />
 
         {projects.length > 0 && (
           <div className="max-w-2xl mx-auto">
@@ -183,14 +109,25 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
                   onClick={() => onSelectProject(project.id)}
                   className="w-full bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 hover:border-gray-300 hover:shadow-sm transition-all text-left group"
                 >
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-gray-500" />
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    project.is_public_demo ? 'bg-red-100' : 'bg-gray-100'
+                  }`}>
+                    {project.is_public_demo ? (
+                      <Play className="w-5 h-5 text-red-600" />
+                    ) : (
+                      <FileText className="w-5 h-5 text-gray-500" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-medium text-gray-900 truncate">
                         {project.project_name}
                       </h3>
+                      {project.is_public_demo && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-700">
+                          Demo
+                        </span>
+                      )}
                       {getStatusBadge(project.status)}
                     </div>
                     <div className="flex items-center gap-3 text-sm text-gray-500">

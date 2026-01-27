@@ -146,8 +146,12 @@ export interface Project {
   data_sharing_consent: boolean;
   data_sharing_consented_at?: string | null;
 
-  // Demo project flag
+  // Project details
+  project_details?: string | null;
+
+  // Demo project flags
   is_demo: boolean;
+  is_public_demo?: boolean;
 
   created_at: string;
   updated_at: string;
@@ -861,6 +865,19 @@ export interface BidQuestion {
   missing_field?: string | null;
   display_order?: number | null;
   created_at: string;
+}
+
+export interface BidFaq {
+  id: string;
+  bid_id: string;
+  faq_key: string;
+  question_text: string;
+  answer_text?: string | null;
+  answer_confidence?: ConfidenceLevel | null;
+  is_answered: boolean;
+  display_order?: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ============================================
