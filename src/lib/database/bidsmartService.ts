@@ -169,6 +169,52 @@ export async function updateProjectDataSharingConsent(
   return updateProject(projectId, updates);
 }
 
+export async function updateProjectNotificationSettings(
+  projectId: string,
+  email: string,
+  notifyOnCompletion: boolean
+): Promise<Project | null> {
+  return updateProject(projectId, {
+    notification_email: email,
+    notify_on_completion: notifyOnCompletion,
+  });
+}
+
+export async function setProjectAnalysisQueued(
+  projectId: string
+): Promise<Project | null> {
+  return updateProject(projectId, {
+    analysis_queued_at: new Date().toISOString(),
+    status: 'analyzing',
+  });
+}
+
+export async function incrementProjectRerunCount(
+  projectId: string
+): Promise<Project | null> {
+  const project = await getProject(projectId);
+  if (!project) return null;
+
+  return updateProject(projectId, {
+    rerun_count: (project.rerun_count || 0) + 1,
+  });
+}
+
+export async function getProjectsByNotificationEmail(
+  email: string
+): Promise<Project[]> {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .ilike('notification_email', normalizedEmail)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
 export async function deleteProject(projectId: string): Promise<void> {
   const { error } = await supabase
     .from('projects')
@@ -225,6 +271,16 @@ export async function getBidsByProject(projectId: string): Promise<ContractorBid
 
   if (error) throw error;
   return data || [];
+}
+
+export async function getBidCountByProject(projectId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('contractor_bids')
+    .select('*', { count: 'exact', head: true })
+    .eq('project_id', projectId);
+
+  if (error) throw error;
+  return count || 0;
 }
 
 export async function updateBid(

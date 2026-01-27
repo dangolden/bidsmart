@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, Users, Shield, X, Loader2, Info, RefreshCw, Mail, FlaskConical } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, Users, Shield, X, Loader2, Info, Mail, FlaskConical, Save } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
-import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject, validatePdfFile } from '../../lib/database/bidsmartService';
+import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject, validatePdfFile, updateProjectNotificationSettings } from '../../lib/database/bidsmartService';
 import { uploadPdfFile, startBatchAnalysis, pollBatchExtractionStatus, type BatchExtractionStatus } from '../../lib/services/mindpalService';
 
 interface PrioritySliderProps {
@@ -64,6 +64,10 @@ export function GatherPhase() {
   const [showPrivacyDetails, setShowPrivacyDetails] = useState(false);
   const [projectDetails, setProjectDetails] = useState(project?.project_details ?? '');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [notificationEmail, setNotificationEmail] = useState(project?.notification_email ?? '');
+  const [notifyOnCompletion, setNotifyOnCompletion] = useState(project?.notify_on_completion ?? true);
+  const [savingNotification, setSavingNotification] = useState(false);
+  const [notificationSaved, setNotificationSaved] = useState(false);
 
   useEffect(() => {
     if (requirements) {
@@ -81,6 +85,10 @@ export function GatherPhase() {
     if (project) {
       setDataSharingConsent(project.data_sharing_consent ?? false);
       setProjectDetails(project.project_details ?? '');
+      if (project.notification_email) {
+        setNotificationEmail(project.notification_email);
+      }
+      setNotifyOnCompletion(project.notify_on_completion ?? true);
     }
   }, [project]);
 
@@ -296,43 +304,109 @@ export function GatherPhase() {
     return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
   };
 
-  const handleRetryAnalysis = () => {
-    setAnalysisState('idle');
-    setAnalysisProgress(null);
-    setAnalysisError(null);
-    setAnalysisElapsedSeconds(0);
+  const handleSaveNotification = async () => {
+    if (!projectId || !notificationEmail.trim()) return;
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(notificationEmail.trim())) {
+      return;
+    }
+
+    setSavingNotification(true);
+    try {
+      await updateProjectNotificationSettings(projectId, notificationEmail.trim().toLowerCase(), notifyOnCompletion);
+      setNotificationSaved(true);
+      setTimeout(() => setNotificationSaved(false), 3000);
+    } catch (err) {
+      console.error('Failed to save notification settings:', err);
+    } finally {
+      setSavingNotification(false);
+    }
   };
 
   if (analysisState === 'timeout') {
+    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notificationEmail.trim());
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
-        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
-          <Clock className="w-8 h-8 text-amber-600" />
+        <div className="w-16 h-16 bg-switch-green-100 rounded-full flex items-center justify-center">
+          <CheckCircle2 className="w-8 h-8 text-switch-green-600" />
         </div>
 
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-semibold text-gray-900">Analysis Taking Longer Than Expected</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Your Submission is Saved and Queued</h2>
           <p className="text-gray-600 max-w-md">
-            Some of your bids are still being processed. This can happen with complex or lengthy documents.
+            Your bids have been uploaded and are being processed. You can leave this page and come back later to view your results.
           </p>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 max-w-md w-full">
-          <div className="flex items-start gap-3">
-            <FlaskConical className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-amber-800">Alpha Testing Note</p>
-              <p className="text-sm text-amber-700 mt-1">
-                We are actively improving our processing speed. Your patience helps us make BidSmart better!
-              </p>
+        <div className="bg-white border border-gray-200 rounded-xl p-6 max-w-md w-full space-y-4">
+          <div>
+            <label htmlFor="notification-email" className="block text-sm font-medium text-gray-700 mb-1">
+              Email Address
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Enter your email to look up your analysis later
+            </p>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                id="notification-email"
+                type="email"
+                value={notificationEmail}
+                onChange={(e) => {
+                  setNotificationEmail(e.target.value);
+                  setNotificationSaved(false);
+                }}
+                placeholder="you@example.com"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
+              />
             </div>
           </div>
+
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={notifyOnCompletion}
+              onChange={(e) => {
+                setNotifyOnCompletion(e.target.checked);
+                setNotificationSaved(false);
+              }}
+              className="w-5 h-5 mt-0.5 rounded border-gray-300 text-switch-green-600 focus:ring-switch-green-500"
+            />
+            <span className="text-sm text-gray-700">
+              Notify me by email when my analysis is ready
+            </span>
+          </label>
+
+          <button
+            onClick={handleSaveNotification}
+            disabled={!isEmailValid || savingNotification}
+            className="w-full btn btn-primary flex items-center justify-center gap-2"
+          >
+            {savingNotification ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : notificationSaved ? (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                Saved!
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save Email
+              </>
+            )}
+          </button>
         </div>
 
         {analysisProgress && (
           <div className="w-full max-w-md space-y-3">
             <p className="text-sm text-center text-gray-600">
-              {analysisProgress.completedPdfs} of {analysisProgress.totalPdfs} bids completed
+              Processing: {analysisProgress.completedPdfs} of {analysisProgress.totalPdfs} bids completed
             </p>
             <div className="space-y-2">
               {analysisProgress.pdfStatuses.map(pdf => (
@@ -345,7 +419,7 @@ export function GatherPhase() {
                     ${pdf.status === 'failed' ? 'bg-red-100 text-red-700' : ''}
                   `}>
                     {pdf.status === 'extracted' || pdf.status === 'verified' ? 'Done' : ''}
-                    {pdf.status === 'processing' || pdf.status === 'uploaded' ? 'Still processing...' : ''}
+                    {pdf.status === 'processing' || pdf.status === 'uploaded' ? 'Processing...' : ''}
                     {pdf.status === 'failed' ? 'Failed' : ''}
                   </span>
                 </div>
@@ -354,21 +428,16 @@ export function GatherPhase() {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
-          <button
-            onClick={handleRetryAnalysis}
-            className="btn btn-secondary flex-1 flex items-center justify-center gap-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Try Again
-          </button>
-          <a
-            href="mailto:bidsmart@theswitchison.org?subject=BidSmart%20Analysis%20Issue"
-            className="btn btn-primary flex-1 flex items-center justify-center gap-2"
-          >
-            <Mail className="w-4 h-4" />
-            Contact Support
-          </a>
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 max-w-md w-full">
+          <div className="flex items-start gap-3">
+            <FlaskConical className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-gray-700">Beta Testing</p>
+              <p className="text-sm text-gray-600 mt-1">
+                We are actively improving processing speed. Thank you for your patience!
+              </p>
+            </div>
+          </div>
         </div>
 
         {analysisProgress && analysisProgress.completedPdfs >= 2 && (
@@ -382,6 +451,10 @@ export function GatherPhase() {
             Continue with {analysisProgress.completedPdfs} completed bids
           </button>
         )}
+
+        <p className="text-xs text-gray-500 text-center max-w-md">
+          You can close this page. Use your email address to find your analysis on the home page when you return.
+        </p>
       </div>
     );
   }

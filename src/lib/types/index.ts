@@ -153,6 +153,13 @@ export interface Project {
   is_demo: boolean;
   is_public_demo?: boolean;
 
+  // Notification settings
+  notification_email?: string | null;
+  notify_on_completion: boolean;
+  notification_sent_at?: string | null;
+  analysis_queued_at?: string | null;
+  rerun_count: number;
+
   created_at: string;
   updated_at: string;
 }
