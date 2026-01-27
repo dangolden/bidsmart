@@ -31,7 +31,7 @@ function PrioritySlider({ label, value, onChange, description }: PrioritySliderP
 }
 
 export function GatherPhase() {
-  const { projectId, project, bids, requirements, completePhase, refreshRequirements } = usePhase();
+  const { projectId, project, bids, requirements, completePhase, refreshRequirements, ensureProjectExists } = usePhase();
 
   const [priorities, setPriorities] = useState({
     price: requirements?.priority_price ?? 3,
@@ -87,18 +87,20 @@ export function GatherPhase() {
   };
 
   const handleContinue = async () => {
-    if (!projectId || !canContinue) return;
+    if (!canContinue) return;
 
     setSaving(true);
     try {
-      await saveProjectRequirements(projectId, {
+      const activeProjectId = projectId || await ensureProjectExists();
+
+      await saveProjectRequirements(activeProjectId, {
         priority_price: priorities.price,
         priority_efficiency: priorities.efficiency,
         priority_warranty: priorities.warranty,
         priority_reputation: priorities.reputation,
         priority_timeline: priorities.timeline,
       });
-      await updateProjectDataSharingConsent(projectId, dataSharingConsent);
+      await updateProjectDataSharingConsent(activeProjectId, dataSharingConsent);
       await refreshRequirements();
       completePhase(1);
     } catch (err) {

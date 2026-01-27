@@ -44,8 +44,13 @@ function App() {
   };
 
   const handleCreateProject = (projectId: string) => {
-    setActiveProjectId(projectId);
-    setStoredProjectId(projectId);
+    if (projectId === 'new') {
+      setActiveProjectId('new');
+      setStoredProjectId(null);
+    } else {
+      setActiveProjectId(projectId);
+      setStoredProjectId(projectId);
+    }
     setShowWelcome(false);
   };
 

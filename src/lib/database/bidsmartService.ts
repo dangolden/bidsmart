@@ -110,6 +110,29 @@ export async function getDemoProject(userId: string): Promise<Project | null> {
   return data;
 }
 
+export async function getPublicDemoProjects(): Promise<Project[]> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('is_public_demo', true)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getProjectsWithPublicDemos(userId: string): Promise<Project[]> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .or(`user_id.eq.${userId},is_public_demo.eq.true`)
+    .order('is_public_demo', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
 export async function updateProject(
   projectId: string,
   updates: Partial<Project>
