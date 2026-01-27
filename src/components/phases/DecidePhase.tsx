@@ -6,6 +6,7 @@ import { IncentivesTable } from '../IncentivesTable';
 import { BidFaqSection } from '../BidFaqSection';
 import type { BidQuestion, RebateProgram, BidFaq } from '../../lib/types';
 import { getFaqsByBid } from '../../lib/database/bidsmartService';
+import { formatCurrency, formatDate } from '../../lib/utils/formatters';
 
 type DecideTab = 'incentives' | 'questions' | 'faqs';
 
@@ -76,25 +77,6 @@ export function DecidePhase() {
     }, 0);
   };
 
-  const formatCurrency = (amount: number | null | undefined) => {
-    if (!amount) return '-';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return null;
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
   const toggleQuestionAnswered = async (question: BidQuestion) => {
     await supabase
       .from('bid_questions')
@@ -111,7 +93,7 @@ export function DecidePhase() {
     return questions.filter((q) => q.bid_id === bidId);
   };
 
-  const copyQuestionsToClipboard = (bidId: string, contractorName: string) => {
+  const copyQuestionsToClipboard = async (bidId: string, contractorName: string) => {
     const bidQuestions = getQuestionsForBid(bidId);
     const unansweredQuestions = bidQuestions.filter((q) => !q.is_answered);
 
@@ -119,9 +101,26 @@ export function DecidePhase() {
       .map((q, i) => `${i + 1}. ${q.question_text}`)
       .join('\n\n')}`;
 
-    navigator.clipboard.writeText(text);
-    setCopiedContractor(bidId);
-    setTimeout(() => setCopiedContractor(null), 2000);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedContractor(bidId);
+      setTimeout(() => setCopiedContractor(null), 2000);
+    } catch {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopiedContractor(bidId);
+        setTimeout(() => setCopiedContractor(null), 2000);
+      } catch {
+        console.error('Failed to copy to clipboard');
+      }
+      document.body.removeChild(textArea);
+    }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -196,11 +195,11 @@ export function DecidePhase() {
   };
 
   const bidData = getBidData();
-  const lowestPrice = Math.min(...bidData.map((b) => b.totalAmount || Infinity));
-  const lowestNetCost = Math.min(...bidData.map((b) => b.netCost || Infinity));
-  const bestRating = Math.max(...bidData.map((b) => b.googleRating || 0));
-  const bestSeer = Math.max(...bidData.map((b) => b.seer2 || 0));
-  const bestWarranty = Math.max(...bidData.map((b) => (b.laborWarranty || 0) + (b.equipmentWarranty || 0)));
+  const lowestPrice = bidData.length > 0 ? Math.min(...bidData.map((b) => b.totalAmount || Infinity)) : 0;
+  const lowestNetCost = bidData.length > 0 ? Math.min(...bidData.map((b) => b.netCost || Infinity)) : 0;
+  const bestRating = bidData.length > 0 ? Math.max(...bidData.map((b) => b.googleRating || 0)) : 0;
+  const bestSeer = bidData.length > 0 ? Math.max(...bidData.map((b) => b.seer2 || 0)) : 0;
+  const bestWarranty = bidData.length > 0 ? Math.max(...bidData.map((b) => (b.laborWarranty || 0) + (b.equipmentWarranty || 0))) : 0;
 
   const handleContinue = () => {
     completePhase(3);

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, DollarSign, CheckSquare, Square, ExternalLink, Calendar, Clock, Info } from 'lucide-react';
 import type { RebateProgram } from '../lib/types';
+import { formatCurrency, formatDate } from '../lib/utils/formatters';
 
 interface IncentivesTableProps {
   rebatePrograms: RebateProgram[];
@@ -19,25 +20,6 @@ export function IncentivesTable({ rebatePrograms, selectedIncentives, onToggleIn
       newExpanded.add(programId);
     }
     setExpandedRows(newExpanded);
-  };
-
-  const formatCurrency = (amount: number | null | undefined) => {
-    if (!amount) return '-';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return null;
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
   };
 
   const getAmount = (program: RebateProgram) => {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
+import { formatCurrency, formatDate } from '../../lib/utils/formatters';
 
 type CompareTab = 'equipment' | 'contractors' | 'costs';
 
@@ -15,29 +16,14 @@ const LABEL_COL_WIDTH = '200px';
 const BID_COL_MIN_WIDTH = '180px';
 
 export function ComparePhase() {
-  const { bids, requirements, completePhase } = usePhase();
+  const { bids, completePhase } = usePhase();
   const [activeTab, setActiveTab] = useState<CompareTab>('equipment');
   const [showMoreEquipment, setShowMoreEquipment] = useState(false);
   const [showMoreContractors, setShowMoreContractors] = useState(false);
-  const [showMoreCosts, setShowMoreCosts] = useState(false);
+  const [showFinancingDetails, setShowFinancingDetails] = useState(false);
 
-  const formatCurrency = (amount: number | null | undefined) => {
-    if (!amount) return '-';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+  const formatDateDisplay = (dateString: string | null | undefined) => {
+    return formatDate(dateString) || '-';
   };
 
   const getHighestValue = (
@@ -72,8 +58,8 @@ export function ComparePhase() {
     },
     {
       key: 'costs',
-      label: 'Costs',
-      description: 'Pricing, warranties, and inclusions',
+      label: 'Cost & Scope',
+      description: 'Pricing, warranties, and what\'s included',
       icon: <DollarSign className="w-5 h-5" />
     },
   ];
@@ -140,7 +126,6 @@ export function ComparePhase() {
       equipmentWarranty: b.bid.equipment_warranty_years,
       financingAvailable: b.bid.financing_offered,
       financingTerms: b.bid.financing_terms,
-      inclusions: b.bid.inclusions || [],
       exclusions: b.bid.exclusions || [],
       estimatedDays: b.bid.estimated_days,
       startDateAvailable: b.bid.start_date_available,
@@ -152,9 +137,41 @@ export function ComparePhase() {
     }));
   };
 
+  const getScopeData = () => {
+    return bids.map((b) => ({
+      bidId: b.bid.id,
+      contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
+      permit: b.bid.scope_permit_included,
+      permitDetail: b.bid.scope_permit_detail,
+      disposal: b.bid.scope_disposal_included,
+      disposalDetail: b.bid.scope_disposal_detail,
+      electrical: b.bid.scope_electrical_included,
+      electricalDetail: b.bid.scope_electrical_detail,
+      ductwork: b.bid.scope_ductwork_included,
+      ductworkDetail: b.bid.scope_ductwork_detail,
+      thermostat: b.bid.scope_thermostat_included,
+      thermostatDetail: b.bid.scope_thermostat_detail,
+      manualJ: b.bid.scope_manual_j_included,
+      manualJDetail: b.bid.scope_manual_j_detail,
+      commissioning: b.bid.scope_commissioning_included,
+      commissioningDetail: b.bid.scope_commissioning_detail,
+      airHandler: b.bid.scope_air_handler_included,
+      airHandlerDetail: b.bid.scope_air_handler_detail,
+      lineSet: b.bid.scope_line_set_included,
+      lineSetDetail: b.bid.scope_line_set_detail,
+      disconnect: b.bid.scope_disconnect_included,
+      disconnectDetail: b.bid.scope_disconnect_detail,
+      pad: b.bid.scope_pad_included,
+      padDetail: b.bid.scope_pad_detail,
+      drainLine: b.bid.scope_drain_line_included,
+      drainLineDetail: b.bid.scope_drain_line_detail,
+    }));
+  };
+
   const equipmentData = getEquipmentData();
   const contractorData = getContractorData();
   const costData = getCostData();
+  const scopeData = getScopeData();
 
   const bestSeer = getHighestValue(equipmentData.map((e) => e.seer2));
   const bestHspf = getHighestValue(equipmentData.map((e) => e.hspf2));
@@ -165,78 +182,6 @@ export function ComparePhase() {
   const bestEquipmentWarranty = getHighestValue(costData.map((c) => c.equipmentWarranty));
   const fastestTimeline = getHighestValue(costData.map((c) => c.estimatedDays), false);
 
-  const getRecommendation = () => {
-    if (!requirements || bids.length === 0) return null;
-
-    let bestBidId: string | null = null;
-    let bestScore = -1;
-
-    bids.forEach((b) => {
-      const eq = equipmentData.find((e) => e.bidId === b.bid.id);
-      const cost = costData.find((c) => c.bidId === b.bid.id);
-      const contr = contractorData.find((c) => c.bidId === b.bid.id);
-
-      let score = 0;
-
-      if (cost?.totalAmount && lowestPrice) {
-        const priceScore = (lowestPrice / cost.totalAmount) * requirements.priority_price;
-        score += priceScore;
-      }
-
-      if (eq?.seer2 && bestSeer) {
-        const effScore = (eq.seer2 / bestSeer) * requirements.priority_efficiency;
-        score += effScore;
-      }
-
-      if (cost?.laborWarranty && bestLaborWarranty) {
-        const warrantyScore = (cost.laborWarranty / bestLaborWarranty) * requirements.priority_warranty;
-        score += warrantyScore;
-      }
-
-      if (contr?.googleRating && bestRating) {
-        const repScore = (contr.googleRating / bestRating) * requirements.priority_reputation;
-        score += repScore;
-      }
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestBidId = b.bid.id;
-      }
-    });
-
-    const bestBid = bids.find((b) => b.bid.id === bestBidId);
-    if (!bestBid) return null;
-
-    return {
-      contractor: bestBid.bid.contractor_name || bestBid.bid.contractor_company || 'Unknown',
-      reason: generateReasonText(bestBid.bid.id),
-    };
-  };
-
-  const generateReasonText = (bidId: string) => {
-    const reasons: string[] = [];
-    const cost = costData.find((c) => c.bidId === bidId);
-    const eq = equipmentData.find((e) => e.bidId === bidId);
-
-    if (cost?.totalAmount === lowestPrice) {
-      reasons.push('lowest price');
-    }
-    if (eq?.seer2 === bestSeer) {
-      reasons.push('highest efficiency');
-    }
-    if (cost?.laborWarranty === bestLaborWarranty && bestLaborWarranty && bestLaborWarranty > 1) {
-      reasons.push('best warranty');
-    }
-
-    if (reasons.length === 0) {
-      reasons.push('best overall balance of your priorities');
-    }
-
-    return `Based on your priorities, this bid offers the ${reasons.join(', ')}.`;
-  };
-
-  const recommendation = getRecommendation();
-
   const handleContinue = () => {
     completePhase(2);
   };
@@ -246,6 +191,21 @@ export function ComparePhase() {
 
   const labelCellStyle = { width: LABEL_COL_WIDTH, minWidth: LABEL_COL_WIDTH, maxWidth: LABEL_COL_WIDTH };
   const bidCellStyle = { minWidth: BID_COL_MIN_WIDTH };
+
+  const scopeItems = [
+    { key: 'permit', detailKey: 'permitDetail', label: 'Permits & Filing' },
+    { key: 'disposal', detailKey: 'disposalDetail', label: 'Old Equipment Disposal' },
+    { key: 'electrical', detailKey: 'electricalDetail', label: 'Electrical Work' },
+    { key: 'disconnect', detailKey: 'disconnectDetail', label: 'Electrical Disconnect' },
+    { key: 'ductwork', detailKey: 'ductworkDetail', label: 'Ductwork Modifications' },
+    { key: 'thermostat', detailKey: 'thermostatDetail', label: 'Thermostat' },
+    { key: 'manualJ', detailKey: 'manualJDetail', label: 'Manual J Calculation' },
+    { key: 'commissioning', detailKey: 'commissioningDetail', label: 'System Commissioning' },
+    { key: 'airHandler', detailKey: 'airHandlerDetail', label: 'Air Handler' },
+    { key: 'lineSet', detailKey: 'lineSetDetail', label: 'Refrigerant Line Set' },
+    { key: 'pad', detailKey: 'padDetail', label: 'Equipment Pad' },
+    { key: 'drainLine', detailKey: 'drainLineDetail', label: 'Condensate Drain Line' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -802,6 +762,23 @@ export function ComparePhase() {
                     ))}
                   </tr>
                   <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Estimated Duration</td>
+                    {costData.map((c, idx) => (
+                      <td
+                        key={c.bidId}
+                        style={bidCellStyle}
+                        className={`px-5 py-4 text-sm ${isHighlighted(c.estimatedDays, fastestTimeline) ? 'text-switch-green-700 font-semibold' : 'text-gray-600'} ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}
+                      >
+                        {c.estimatedDays ? `${c.estimatedDays} days` : '-'}
+                        {isHighlighted(c.estimatedDays, fastestTimeline) && c.estimatedDays && (
+                          <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                            FASTEST
+                          </span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-200">
                     <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Financing Available</td>
                     {costData.map((c, idx) => (
                       <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
@@ -817,29 +794,7 @@ export function ComparePhase() {
                       </td>
                     ))}
                   </tr>
-                  <tr className="border-b border-gray-200">
-                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">What is Included</td>
-                    {costData.map((c, idx) => (
-                      <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-900 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                        {c.inclusions.length > 0 ? (
-                          <ul className="text-xs space-y-1.5">
-                            {c.inclusions.slice(0, 4).map((item, i) => (
-                              <li key={i} className="flex items-start gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-switch-green-600 flex-shrink-0 mt-0.5" />
-                                <span className="text-gray-700">{item}</span>
-                              </li>
-                            ))}
-                            {c.inclusions.length > 4 && (
-                              <li className="text-gray-500 pl-5">+{c.inclusions.length - 4} more items</li>
-                            )}
-                          </ul>
-                        ) : (
-                          <span className="text-gray-400">Not specified</span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr className={showMoreCosts ? 'border-b border-gray-200 bg-gray-50/50' : ''}>
+                  <tr className={showFinancingDetails ? 'border-b border-gray-200 bg-gray-50/50' : ''}>
                     <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">What is NOT Included</td>
                     {costData.map((c, idx) => (
                       <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-900 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
@@ -862,50 +817,33 @@ export function ComparePhase() {
                     ))}
                   </tr>
 
-                  {showMoreCosts && (
+                  {showFinancingDetails && (
                     <>
                       <tr className="border-b border-gray-200">
-                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Estimated Duration</td>
-                        {costData.map((c, idx) => (
-                          <td
-                            key={c.bidId}
-                            style={bidCellStyle}
-                            className={`px-5 py-4 text-sm ${isHighlighted(c.estimatedDays, fastestTimeline) ? 'text-switch-green-700 font-semibold' : 'text-gray-600'} ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}
-                          >
-                            {c.estimatedDays ? `${c.estimatedDays} days` : '-'}
-                            {isHighlighted(c.estimatedDays, fastestTimeline) && c.estimatedDays && (
-                              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
-                                FASTEST
-                              </span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                      <tr className="border-b border-gray-200 bg-gray-50/50">
                         <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Available Start Date</td>
                         {costData.map((c, idx) => (
                           <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                            {formatDate(c.startDateAvailable)}
-                          </td>
-                        ))}
-                      </tr>
-                      <tr className="border-b border-gray-200">
-                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Quote Valid Until</td>
-                        {costData.map((c, idx) => (
-                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                            {formatDate(c.validUntil)}
+                            {formatDateDisplay(c.startDateAvailable)}
                           </td>
                         ))}
                       </tr>
                       <tr className="border-b border-gray-200 bg-gray-50/50">
-                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Bid Date</td>
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Quote Valid Until</td>
                         {costData.map((c, idx) => (
                           <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                            {formatDate(c.bidDate)}
+                            {formatDateDisplay(c.validUntil)}
                           </td>
                         ))}
                       </tr>
                       <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Bid Date</td>
+                        {costData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {formatDateDisplay(c.bidDate)}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
                         <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Materials Cost</td>
                         {costData.map((c, idx) => (
                           <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
@@ -913,7 +851,7 @@ export function ComparePhase() {
                           </td>
                         ))}
                       </tr>
-                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                      <tr className="border-b border-gray-200">
                         <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Permit Cost</td>
                         {costData.map((c, idx) => (
                           <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
@@ -921,7 +859,7 @@ export function ComparePhase() {
                           </td>
                         ))}
                       </tr>
-                      <tr className="border-b border-gray-200">
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
                         <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Deposit Required</td>
                         {costData.map((c, idx) => (
                           <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
@@ -929,7 +867,7 @@ export function ComparePhase() {
                           </td>
                         ))}
                       </tr>
-                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                      <tr className="border-b border-gray-200">
                         <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Payment Schedule</td>
                         {costData.map((c, idx) => (
                           <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < costData.length - 1 ? 'border-r border-gray-100' : ''}`}>
@@ -953,46 +891,90 @@ export function ComparePhase() {
           </table>
         </div>
 
-        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200">
-          <button
-            onClick={() => {
-              if (activeTab === 'equipment') setShowMoreEquipment(!showMoreEquipment);
-              if (activeTab === 'contractors') setShowMoreContractors(!showMoreContractors);
-              if (activeTab === 'costs') setShowMoreCosts(!showMoreCosts);
-            }}
-            className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            {(activeTab === 'equipment' && showMoreEquipment) ||
-             (activeTab === 'contractors' && showMoreContractors) ||
-             (activeTab === 'costs' && showMoreCosts) ? (
-              <>
-                <ChevronUp className="w-4 h-4" />
-                Show Less
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4" />
-                Show More Details
-              </>
-            )}
-          </button>
-        </div>
+        {(activeTab === 'equipment' || activeTab === 'contractors' || activeTab === 'costs') && (
+          <div className="px-5 py-3 bg-gray-50 border-t border-gray-200">
+            <button
+              onClick={() => {
+                if (activeTab === 'equipment') setShowMoreEquipment(!showMoreEquipment);
+                if (activeTab === 'contractors') setShowMoreContractors(!showMoreContractors);
+                if (activeTab === 'costs') setShowFinancingDetails(!showFinancingDetails);
+              }}
+              className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              {(activeTab === 'equipment' && showMoreEquipment) ||
+               (activeTab === 'contractors' && showMoreContractors) ||
+               (activeTab === 'costs' && showFinancingDetails) ? (
+                <>
+                  <ChevronUp className="w-4 h-4" />
+                  Show Less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4" />
+                  {activeTab === 'costs' ? 'Show Financial Terms & Details' : 'Show More Details'}
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
-      {recommendation && (
-        <div className="bg-switch-green-50 border border-switch-green-200 rounded-xl p-5">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-switch-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <Star className="w-5 h-5 text-switch-green-700" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-switch-green-900">
-                Recommended: {recommendation.contractor}
-              </h3>
-              <p className="text-sm text-switch-green-700 mt-1">
-                {recommendation.reason}
-              </p>
-            </div>
+      {activeTab === 'costs' && (
+        <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
+          <div className="px-5 py-3 border-b-2 border-gray-200 bg-gradient-to-r from-gray-700 to-gray-800">
+            <h2 className="font-semibold text-white">Scope - What's Included</h2>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full" style={{ minWidth: tableMinWidth, tableLayout: 'fixed' }}>
+              <thead>
+                <tr className="bg-gray-900">
+                  <th style={labelCellStyle} className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
+                    Scope Item
+                  </th>
+                  {scopeData.map((s, idx) => (
+                    <th key={s.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < scopeData.length - 1 ? 'border-r border-gray-700' : ''}`}>
+                      {s.contractor}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {scopeItems.map((item, rowIdx) => (
+                  <tr key={item.key} className={`border-b border-gray-200 ${rowIdx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">
+                      {item.label}
+                    </td>
+                    {scopeData.map((s, idx) => {
+                      const value = s[item.key as keyof typeof s];
+                      const detail = s[item.detailKey as keyof typeof s];
+                      return (
+                        <td key={s.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < scopeData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                          {value === true ? (
+                            <div>
+                              <span className="inline-flex items-center gap-1 text-switch-green-700 font-medium">
+                                <CheckCircle className="w-5 h-5" /> Included
+                              </span>
+                              {detail && typeof detail === 'string' && (
+                                <p className="text-xs text-gray-600 mt-1">{detail}</p>
+                              )}
+                            </div>
+                          ) : value === false ? (
+                            <span className="inline-flex items-center gap-1 text-red-500">
+                              <XCircle className="w-5 h-5" /> Not Included
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-gray-400" title="Not specified in bid">
+                              <HelpCircle className="w-5 h-5" /> Unknown
+                            </span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

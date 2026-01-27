@@ -213,7 +213,35 @@ export interface ContractorBid {
   scope_summary?: string | null;
   inclusions?: string[] | null;
   exclusions?: string[] | null;
-  
+
+  // Structured scope booleans (for comparison grid)
+  scope_permit_included?: boolean | null;
+  scope_disposal_included?: boolean | null;
+  scope_electrical_included?: boolean | null;
+  scope_ductwork_included?: boolean | null;
+  scope_thermostat_included?: boolean | null;
+  scope_manual_j_included?: boolean | null;
+  scope_commissioning_included?: boolean | null;
+  scope_air_handler_included?: boolean | null;
+  scope_line_set_included?: boolean | null;
+  scope_disconnect_included?: boolean | null;
+  scope_pad_included?: boolean | null;
+  scope_drain_line_included?: boolean | null;
+
+  // Scope details (specific info like "Smart Thermostat" instead of just boolean)
+  scope_permit_detail?: string | null;
+  scope_disposal_detail?: string | null;
+  scope_electrical_detail?: string | null;
+  scope_ductwork_detail?: string | null;
+  scope_thermostat_detail?: string | null;
+  scope_manual_j_detail?: string | null;
+  scope_commissioning_detail?: string | null;
+  scope_air_handler_detail?: string | null;
+  scope_line_set_detail?: string | null;
+  scope_disconnect_detail?: string | null;
+  scope_pad_detail?: string | null;
+  scope_drain_line_detail?: string | null;
+
   // Source tracking
   bid_date?: string | null;
   valid_until?: string | null;

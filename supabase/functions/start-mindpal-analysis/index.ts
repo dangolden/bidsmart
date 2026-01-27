@@ -1,0 +1,180 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
+import { supabaseAdmin } from "../_shared/supabase.ts";
+import { verifyAuth, verifyProjectOwnership } from "../_shared/auth.ts";
+
+const MINDPAL_API_ENDPOINT = "https://api-v3.mindpal.io/api/v1/workflow-runs";
+const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+
+const WORKFLOW_ID = "6977761cea6802fb7c1424b7";
+const PDF_URLS_FIELD_ID = "69782151847543b8bcec4b87";
+const USER_PRIORITIES_FIELD_ID = "69782151847543b8bcec4b88";
+const REQUEST_ID_FIELD_ID = "69782151847543b8bcec4b89";
+const CALLBACK_URL_FIELD_ID = "6978231d847543b8bcec4b8f";
+
+interface RequestBody {
+  projectId: string;
+  pdfUploadIds: string[];
+  userPriorities: Record<string, number>;
+}
+
+interface MindPalPayload {
+  workflow_id: string;
+  inputs: Array<{
+    field_id: string;
+    value: string;
+  }>;
+}
+
+function generateUUID(): string {
+  return crypto.randomUUID();
+}
+
+async function uploadFilesToStorage(
+  projectId: string,
+  pdfUploadIds: string[]
+): Promise<string[]> {
+  const pdfUrls: string[] = [];
+
+  for (const pdfUploadId of pdfUploadIds) {
+    const { data: pdfUpload, error: pdfError } = await supabaseAdmin
+      .from("pdf_uploads")
+      .select("file_path")
+      .eq("id", pdfUploadId)
+      .eq("project_id", projectId)
+      .maybeSingle();
+
+    if (pdfError || !pdfUpload) {
+      throw new Error(`PDF upload ${pdfUploadId} not found`);
+    }
+
+    const { data: publicUrlData, error: urlError } = await supabaseAdmin
+      .storage
+      .from("bid-pdfs")
+      .createSignedUrl(pdfUpload.file_path, 3600);
+
+    if (urlError || !publicUrlData?.signedUrl) {
+      throw new Error(`Failed to generate signed URL for ${pdfUploadId}`);
+    }
+
+    pdfUrls.push(publicUrlData.signedUrl);
+  }
+
+  return pdfUrls;
+}
+
+function constructMindPalPayload(
+  pdfUrls: string[],
+  userPriorities: Record<string, number>,
+  requestId: string,
+  callbackUrl: string
+): MindPalPayload {
+  return {
+    workflow_id: WORKFLOW_ID,
+    inputs: [
+      {
+        field_id: PDF_URLS_FIELD_ID,
+        value: JSON.stringify(pdfUrls),
+      },
+      {
+        field_id: USER_PRIORITIES_FIELD_ID,
+        value: JSON.stringify(userPriorities),
+      },
+      {
+        field_id: REQUEST_ID_FIELD_ID,
+        value: requestId,
+      },
+      {
+        field_id: CALLBACK_URL_FIELD_ID,
+        value: callbackUrl,
+      },
+    ],
+  };
+}
+
+async function callMindPalAPI(payload: MindPalPayload): Promise<{
+  workflow_run_id: string;
+}> {
+  if (!MINDPAL_API_KEY) {
+    throw new Error("MindPal API key not configured");
+  }
+
+  const response = await fetch(MINDPAL_API_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${MINDPAL_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("MindPal API error:", errorText);
+    throw new Error(`MindPal API failed: ${response.status} - ${errorText}`);
+  }
+
+  const result = await response.json();
+  return result;
+}
+
+Deno.serve(async (req: Request) => {
+  try {
+    const corsResponse = handleCors(req);
+    if (corsResponse) return corsResponse;
+
+    if (req.method !== "POST") {
+      return errorResponse("Method not allowed", 405);
+    }
+
+    const authResult = await verifyAuth(req);
+    if (authResult instanceof Response) {
+      return authResult;
+    }
+    const { userExtId } = authResult;
+    const authHeader = req.headers.get("Authorization")!;
+
+    const body: RequestBody = await req.json();
+    const { projectId, pdfUploadIds, userPriorities } = body;
+
+    if (!projectId || !pdfUploadIds || !Array.isArray(pdfUploadIds) || pdfUploadIds.length === 0) {
+      return errorResponse("Missing or invalid projectId or pdfUploadIds");
+    }
+
+    if (!userPriorities || typeof userPriorities !== "object") {
+      return errorResponse("Missing or invalid userPriorities");
+    }
+
+    const isOwner = await verifyProjectOwnership(userExtId, projectId, authHeader);
+    if (!isOwner) {
+      return errorResponse("Not authorized to access this project", 403);
+    }
+
+    const pdfUrls = await uploadFilesToStorage(projectId, pdfUploadIds);
+
+    const requestId = generateUUID();
+    const callbackUrl = `${SUPABASE_URL}/functions/v1/mindpal-callback`;
+
+    const payload = constructMindPalPayload(pdfUrls, userPriorities, requestId, callbackUrl);
+
+    const mindpalResult = await callMindPalAPI(payload);
+
+    const workflowRunId = mindpalResult.workflow_run_id;
+
+    return jsonResponse({
+      success: true,
+      projectId,
+      requestId,
+      workflowRunId,
+      pdfCount: pdfUploadIds.length,
+      message: "Analysis started successfully",
+    });
+  } catch (error) {
+    console.error("Error in start-mindpal-analysis:", error);
+    return errorResponse(
+      error instanceof Error ? error.message : "Internal server error",
+      500
+    );
+  }
+});

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
-  ArrowUpDown, Check, X, AlertTriangle, Award, Star,
-  Zap, Shield, Clock, DollarSign, ThermometerSun, Target
+  ArrowUpDown, Check, X, AlertTriangle, Award, Star, HelpCircle,
+  Zap, Shield, Clock, DollarSign, ThermometerSun, Target, ClipboardList
 } from 'lucide-react';
 import * as db from '../lib/database/bidsmartService';
 import type { ContractorBid, BidEquipment, ProjectRequirements } from '../lib/types';
+import { formatCurrency } from '../lib/utils/formatters';
 
 interface BidComparisonTableProps {
   projectId: string;
@@ -12,7 +13,7 @@ interface BidComparisonTableProps {
   requirements?: ProjectRequirements | null;
 }
 
-type CompareView = 'specs' | 'contractor' | 'pricing';
+type CompareView = 'specs' | 'contractor' | 'pricing' | 'scope';
 
 export function BidComparisonTable({ projectId: _projectId, bids, requirements }: BidComparisonTableProps) {
   const [equipment, setEquipment] = useState<Record<string, BidEquipment[]>>({});
@@ -32,15 +33,6 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
     }
     setEquipment(equipMap);
     setLoading(false);
-  }
-
-  function formatCurrency(amount: number | null | undefined) {
-    if (amount == null) return '—';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(amount);
   }
 
   function getBestValue(values: (number | null | undefined)[], higherIsBetter = true): number | null {
@@ -194,6 +186,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
         <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto">
           {[
             { id: 'specs', label: 'Equipment', fullLabel: 'Equipment Specs', icon: ThermometerSun },
+            { id: 'scope', label: 'Scope', fullLabel: 'Scope Included', icon: ClipboardList },
             { id: 'contractor', label: 'Contractor', fullLabel: 'Contractor Info', icon: Shield },
             { id: 'pricing', label: 'Pricing', fullLabel: 'Pricing Breakdown', icon: DollarSign },
           ].map((tab) => (
@@ -514,6 +507,45 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                       </td>
                     ))}
                   </tr>
+                </>
+              )}
+
+              {view === 'scope' && (
+                <>
+                  {[
+                    { key: 'scope_permit_included', label: 'Permits & Filing' },
+                    { key: 'scope_disposal_included', label: 'Old Equipment Disposal' },
+                    { key: 'scope_electrical_included', label: 'Electrical Work' },
+                    { key: 'scope_disconnect_included', label: 'Electrical Disconnect' },
+                    { key: 'scope_ductwork_included', label: 'Ductwork Modifications' },
+                    { key: 'scope_thermostat_included', label: 'Thermostat' },
+                    { key: 'scope_manual_j_included', label: 'Manual J Calculation' },
+                    { key: 'scope_commissioning_included', label: 'System Commissioning' },
+                    { key: 'scope_air_handler_included', label: 'Air Handler' },
+                    { key: 'scope_line_set_included', label: 'Refrigerant Line Set' },
+                    { key: 'scope_pad_included', label: 'Equipment Pad' },
+                    { key: 'scope_drain_line_included', label: 'Condensate Drain Line' },
+                  ].map((item) => (
+                    <tr key={item.key}>
+                      <td className="sticky left-0 bg-white font-medium">{item.label}</td>
+                      {sortedBids.map((bid) => {
+                        const value = bid[item.key as keyof ContractorBid];
+                        return (
+                          <td key={bid.id}>
+                            {value === true ? (
+                              <Check className="w-5 h-5 text-green-600" />
+                            ) : value === false ? (
+                              <X className="w-5 h-5 text-red-400" />
+                            ) : (
+                              <span title="Not specified">
+                                <HelpCircle className="w-5 h-5 text-gray-300" />
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
                 </>
               )}
 

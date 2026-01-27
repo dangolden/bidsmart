@@ -645,6 +645,22 @@ export async function getRebatesByState(stateCode: string): Promise<RebateProgra
   return data || [];
 }
 
+interface ProjectRebateWithProgram {
+  id: string;
+  project_id: string;
+  rebate_program_id: string;
+  is_eligible: boolean | null;
+  eligibility_notes: string | null;
+  estimated_amount: number | null;
+  applied_amount: number | null;
+  application_status: string | null;
+  application_date: string | null;
+  approval_date: string | null;
+  created_at: string;
+  updated_at: string;
+  rebate_programs: RebateProgram;
+}
+
 export async function getProjectRebates(projectId: string): Promise<Array<{
   program: RebateProgram;
   projectRebate: ProjectRebate;
@@ -659,13 +675,13 @@ export async function getProjectRebates(projectId: string): Promise<Array<{
 
   if (error) throw error;
 
-  return (data || []).map((item: any) => ({
+  return (data as ProjectRebateWithProgram[] || []).map((item) => ({
     program: item.rebate_programs,
     projectRebate: {
       id: item.id,
       project_id: item.project_id,
       rebate_program_id: item.rebate_program_id,
-      is_eligible: item.is_eligible,
+      is_eligible: item.is_eligible ?? false,
       eligibility_notes: item.eligibility_notes,
       estimated_amount: item.estimated_amount,
       applied_amount: item.applied_amount,
@@ -763,29 +779,55 @@ export async function getProjectSummary(projectId: string): Promise<ProjectSumma
   };
 }
 
-/**
- * Get project summary using the database function
- * This is more efficient as it does a single round trip
- */
-export async function getProjectSummaryRPC(projectId: string): Promise<any> {
-  const { data, error } = await supabase.rpc('get_project_summary', {
-    p_project_id: projectId,
-  });
-
-  if (error) throw error;
-  return data;
-}
-
 // ============================================
 // STORAGE
 // ============================================
+
+const MAX_PDF_SIZE_BYTES = 25 * 1024 * 1024;
+const ALLOWED_PDF_EXTENSIONS = ['pdf'];
+const ALLOWED_PDF_MIME_TYPES = ['application/pdf'];
+
+export interface PdfValidationError {
+  code: 'INVALID_EXTENSION' | 'INVALID_MIME_TYPE' | 'FILE_TOO_LARGE';
+  message: string;
+}
+
+export function validatePdfFile(file: File): PdfValidationError | null {
+  const fileExt = file.name.split('.').pop()?.toLowerCase();
+  if (!fileExt || !ALLOWED_PDF_EXTENSIONS.includes(fileExt)) {
+    return {
+      code: 'INVALID_EXTENSION',
+      message: 'Only PDF files are allowed. Please upload a .pdf file.',
+    };
+  }
+
+  if (!ALLOWED_PDF_MIME_TYPES.includes(file.type)) {
+    return {
+      code: 'INVALID_MIME_TYPE',
+      message: 'Invalid file type. Please upload a valid PDF document.',
+    };
+  }
+
+  if (file.size > MAX_PDF_SIZE_BYTES) {
+    return {
+      code: 'FILE_TOO_LARGE',
+      message: `File size exceeds the maximum allowed size of ${MAX_PDF_SIZE_BYTES / (1024 * 1024)}MB.`,
+    };
+  }
+
+  return null;
+}
 
 export async function uploadPdfToStorage(
   projectId: string,
   file: File
 ): Promise<{ path: string; url: string }> {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+  const validationError = validatePdfFile(file);
+  if (validationError) {
+    throw new Error(validationError.message);
+  }
+
+  const fileName = `${Date.now()}_${crypto.randomUUID()}.pdf`;
   const filePath = `bids/${projectId}/${fileName}`;
 
   const { error: uploadError } = await supabase.storage
@@ -794,7 +836,6 @@ export async function uploadPdfToStorage(
 
   if (uploadError) throw uploadError;
 
-  // Get signed URL for MindPal (expires in 1 hour)
   const { data: urlData, error: urlError } = await supabase.storage
     .from('bid-pdfs')
     .createSignedUrl(filePath, 3600);

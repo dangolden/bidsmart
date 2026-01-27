@@ -4,9 +4,16 @@ import { supabaseAdmin } from "../_shared/supabase.ts";
 import { verifyHmacSignature, createCallbackPayload } from "../_shared/hmac.ts";
 import {
   type MindPalCallbackPayload,
+  type MindPalFaqItem,
+  type MindPalQuestionItem,
   mapConfidenceToLevel,
   mapLineItemType,
 } from "../_shared/types.ts";
+
+interface ExtendedCallbackPayload extends MindPalCallbackPayload {
+  faqs?: MindPalFaqItem[];
+  questions?: MindPalQuestionItem[];
+}
 
 const MINDPAL_CALLBACK_SECRET = Deno.env.get("MINDPAL_CALLBACK_SECRET");
 
@@ -24,7 +31,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Server configuration error", 500);
     }
 
-    const payload: MindPalCallbackPayload = await req.json();
+    const payload: ExtendedCallbackPayload = await req.json();
     const { request_id: pdfUploadId, signature, timestamp } = payload;
 
     if (!pdfUploadId || !signature || !timestamp) {
@@ -137,6 +144,18 @@ Deno.serve(async (req: Request) => {
       scope_summary: payload.scope_of_work?.summary,
       inclusions: payload.scope_of_work?.inclusions,
       exclusions: payload.scope_of_work?.exclusions,
+      scope_permit_included: payload.scope_of_work?.permit_included,
+      scope_disposal_included: payload.scope_of_work?.disposal_included,
+      scope_electrical_included: payload.scope_of_work?.electrical_work_included,
+      scope_ductwork_included: payload.scope_of_work?.ductwork_included,
+      scope_thermostat_included: payload.scope_of_work?.thermostat_included,
+      scope_manual_j_included: payload.scope_of_work?.manual_j_included,
+      scope_commissioning_included: payload.scope_of_work?.commissioning_included,
+      scope_air_handler_included: payload.scope_of_work?.air_handler_included,
+      scope_line_set_included: payload.scope_of_work?.line_set_included,
+      scope_disconnect_included: payload.scope_of_work?.disconnect_included,
+      scope_pad_included: payload.scope_of_work?.pad_included,
+      scope_drain_line_included: payload.scope_of_work?.drain_line_included,
       bid_date: payload.dates?.bid_date || payload.dates?.quote_date,
       valid_until: payload.dates?.valid_until || payload.timeline?.bid_valid_until,
       pdf_upload_id: pdfUploadId,
@@ -224,6 +243,47 @@ Deno.serve(async (req: Request) => {
 
       if (equipmentError) {
         console.error("Failed to create equipment:", equipmentError);
+      }
+    }
+
+    if (payload.faqs && payload.faqs.length > 0) {
+      const faqRecords = payload.faqs.map((faq) => ({
+        bid_id: bid.id,
+        faq_key: faq.faq_key,
+        question_text: faq.question_text,
+        answer_text: faq.answer_text,
+        answer_confidence: faq.answer_confidence,
+        is_answered: faq.is_answered,
+        display_order: faq.display_order,
+      }));
+
+      const { error: faqsError } = await supabaseAdmin
+        .from("bid_faqs")
+        .insert(faqRecords);
+
+      if (faqsError) {
+        console.error("Failed to create FAQs:", faqsError);
+      }
+    }
+
+    if (payload.questions && payload.questions.length > 0) {
+      const questionRecords = payload.questions.map((q) => ({
+        bid_id: bid.id,
+        question_text: q.question_text,
+        question_category: q.question_category,
+        priority: q.priority,
+        is_answered: false,
+        auto_generated: true,
+        missing_field: q.missing_field,
+        display_order: q.display_order,
+      }));
+
+      const { error: questionsError } = await supabaseAdmin
+        .from("bid_questions")
+        .insert(questionRecords);
+
+      if (questionsError) {
+        console.error("Failed to create questions:", questionsError);
       }
     }
 
