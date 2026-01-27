@@ -4,6 +4,7 @@ import { GatherPhase } from './phases/GatherPhase';
 import { ComparePhase } from './phases/ComparePhase';
 import { DecidePhase } from './phases/DecidePhase';
 import { VerifyPhase } from './phases/VerifyPhase';
+import { AlphaBanner } from './AlphaBanner';
 import type { UserExt } from '../lib/types';
 
 interface BidSmartFlowProps {
@@ -20,9 +21,12 @@ function PhaseContentWrapper({ onNavigateHome }: { onNavigateHome?: () => void }
   );
 
   return (
-    <PhaseLayout onNavigateHome={onNavigateHome} projectName={project?.project_name}>
-      {content}
-    </PhaseLayout>
+    <>
+      <AlphaBanner />
+      <PhaseLayout onNavigateHome={onNavigateHome} projectName={project?.project_name}>
+        {content}
+      </PhaseLayout>
+    </>
   );
 }
 

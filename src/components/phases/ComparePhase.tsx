@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, ChevronDown, ChevronUp, HelpCircle, FlaskConical } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { formatCurrency, formatDate } from '../../lib/utils/formatters';
 
@@ -213,6 +213,13 @@ export function ComparePhase() {
         <h1 className="text-2xl font-bold text-gray-900">Compare Your Bids</h1>
         <p className="text-gray-600 mt-1">
           Review the equipment, contractors, and costs side by side.
+        </p>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+        <FlaskConical className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-amber-800">
+          <span className="font-medium">Alpha:</span> Some extracted data may be incomplete. If something looks wrong, please verify against the original bid document.
         </p>
       </div>
 

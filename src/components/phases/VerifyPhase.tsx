@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle2, Circle, AlertTriangle, Info, ChevronDown, ChevronUp, Printer } from 'lucide-react';
+import { CheckCircle2, Circle, AlertTriangle, Info, ChevronDown, ChevronUp, Printer, FlaskConical } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { supabase } from '../../lib/supabaseClient';
 import type { QIIChecklistItem, ProjectQIIChecklist, QIICategory } from '../../lib/types';
@@ -152,6 +152,13 @@ export function VerifyPhase() {
           <Printer className="w-4 h-4" />
           Print
         </button>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 print:hidden">
+        <FlaskConical className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-amber-800">
+          <span className="font-medium">Alpha:</span> This checklist is based on industry best practices. Some items may not apply to your specific installation type.
+        </p>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, Users, Shield, X, Loader2, Info } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, Users, Shield, X, Loader2, Info, RefreshCw, Mail, FlaskConical } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject, validatePdfFile } from '../../lib/database/bidsmartService';
 import { uploadPdfFile, startBatchAnalysis, pollBatchExtractionStatus, type BatchExtractionStatus } from '../../lib/services/mindpalService';
@@ -40,7 +40,7 @@ interface UploadedPdf {
   error?: string;
 }
 
-type AnalysisState = 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error';
+type AnalysisState = 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error' | 'timeout';
 
 export function GatherPhase() {
   const { projectId, project, bids, requirements, completePhase, refreshRequirements, refreshBids, ensureProjectExists } = usePhase();
@@ -57,7 +57,9 @@ export function GatherPhase() {
   const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
   const [analysisProgress, setAnalysisProgress] = useState<BatchExtractionStatus | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [analysisElapsedSeconds, setAnalysisElapsedSeconds] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  const analysisTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [dataSharingConsent, setDataSharingConsent] = useState(project?.data_sharing_consent ?? false);
   const [showPrivacyDetails, setShowPrivacyDetails] = useState(false);
   const [projectDetails, setProjectDetails] = useState(project?.project_details ?? '');
@@ -81,6 +83,25 @@ export function GatherPhase() {
       setProjectDetails(project.project_details ?? '');
     }
   }, [project]);
+
+  useEffect(() => {
+    if (analysisState === 'analyzing') {
+      setAnalysisElapsedSeconds(0);
+      analysisTimerRef.current = setInterval(() => {
+        setAnalysisElapsedSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (analysisTimerRef.current) {
+        clearInterval(analysisTimerRef.current);
+        analysisTimerRef.current = null;
+      }
+    }
+    return () => {
+      if (analysisTimerRef.current) {
+        clearInterval(analysisTimerRef.current);
+      }
+    };
+  }, [analysisState]);
 
   const existingBidsCount = bids.filter(b => b.bid.total_bid_amount > 0 && b.bid.contractor_name).length;
   const validPendingCount = uploadedPdfs.filter(p => p.status === 'pending' || p.status === 'uploaded').length;
@@ -223,7 +244,7 @@ export function GatherPhase() {
           return;
         }
 
-        await pollBatchExtractionStatus(activeProjectId, {
+        const pollResult = await pollBatchExtractionStatus(activeProjectId, {
           intervalMs: 3000,
           maxAttempts: 200,
           onProgress: (status) => {
@@ -232,6 +253,12 @@ export function GatherPhase() {
         });
 
         await refreshBids();
+
+        if (!pollResult.allSuccessful && pollResult.processingPdfs > 0) {
+          setAnalysisState('timeout');
+          return;
+        }
+
         setAnalysisState('complete');
       }
 
@@ -263,7 +290,105 @@ export function GatherPhase() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const formatElapsedTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  };
+
+  const handleRetryAnalysis = () => {
+    setAnalysisState('idle');
+    setAnalysisProgress(null);
+    setAnalysisError(null);
+    setAnalysisElapsedSeconds(0);
+  };
+
+  if (analysisState === 'timeout') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
+        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
+          <Clock className="w-8 h-8 text-amber-600" />
+        </div>
+
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-semibold text-gray-900">Analysis Taking Longer Than Expected</h2>
+          <p className="text-gray-600 max-w-md">
+            Some of your bids are still being processed. This can happen with complex or lengthy documents.
+          </p>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 max-w-md w-full">
+          <div className="flex items-start gap-3">
+            <FlaskConical className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-800">Alpha Testing Note</p>
+              <p className="text-sm text-amber-700 mt-1">
+                We are actively improving our processing speed. Your patience helps us make BidSmart better!
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {analysisProgress && (
+          <div className="w-full max-w-md space-y-3">
+            <p className="text-sm text-center text-gray-600">
+              {analysisProgress.completedPdfs} of {analysisProgress.totalPdfs} bids completed
+            </p>
+            <div className="space-y-2">
+              {analysisProgress.pdfStatuses.map(pdf => (
+                <div key={pdf.id} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded">
+                  <span className="truncate flex-1 mr-2">{pdf.fileName}</span>
+                  <span className={`
+                    px-2 py-0.5 rounded text-xs font-medium
+                    ${pdf.status === 'extracted' || pdf.status === 'verified' ? 'bg-green-100 text-green-700' : ''}
+                    ${pdf.status === 'processing' || pdf.status === 'uploaded' ? 'bg-amber-100 text-amber-700' : ''}
+                    ${pdf.status === 'failed' ? 'bg-red-100 text-red-700' : ''}
+                  `}>
+                    {pdf.status === 'extracted' || pdf.status === 'verified' ? 'Done' : ''}
+                    {pdf.status === 'processing' || pdf.status === 'uploaded' ? 'Still processing...' : ''}
+                    {pdf.status === 'failed' ? 'Failed' : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+          <button
+            onClick={handleRetryAnalysis}
+            className="btn btn-secondary flex-1 flex items-center justify-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Try Again
+          </button>
+          <a
+            href="mailto:bidsmart@theswitchison.org?subject=BidSmart%20Analysis%20Issue"
+            className="btn btn-primary flex-1 flex items-center justify-center gap-2"
+          >
+            <Mail className="w-4 h-4" />
+            Contact Support
+          </a>
+        </div>
+
+        {analysisProgress && analysisProgress.completedPdfs >= 2 && (
+          <button
+            onClick={() => {
+              setAnalysisState('complete');
+              completePhase(1);
+            }}
+            className="text-sm text-switch-green-600 hover:text-switch-green-700 underline"
+          >
+            Continue with {analysisProgress.completedPdfs} completed bids
+          </button>
+        )}
+      </div>
+    );
+  }
+
   if (analysisState === 'uploading' || analysisState === 'analyzing') {
+    const showLongWaitMessage = analysisElapsedSeconds > 120;
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
         <div className="w-16 h-16 bg-switch-green-100 rounded-full flex items-center justify-center">
@@ -279,7 +404,26 @@ export function GatherPhase() {
               ? 'We are securely uploading your bid documents.'
               : 'Our AI is extracting and comparing data from your bid documents. This usually takes 1-3 minutes.'}
           </p>
+          {analysisState === 'analyzing' && (
+            <p className="text-sm text-gray-500">
+              Elapsed: {formatElapsedTime(analysisElapsedSeconds)}
+            </p>
+          )}
         </div>
+
+        {showLongWaitMessage && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 max-w-md">
+            <div className="flex items-start gap-3">
+              <FlaskConical className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">Taking longer than usual</p>
+                <p className="text-sm text-amber-700 mt-1">
+                  Complex documents may take extra time. Thank you for your patience during our alpha testing!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {analysisProgress && (
           <div className="w-full max-w-md space-y-4">

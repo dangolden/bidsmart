@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, BookOpen, Award, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock } from 'lucide-react';
+import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, BookOpen, Award, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock, FlaskConical } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { supabase } from '../../lib/supabaseClient';
 import { IncentivesTable } from '../IncentivesTable';
@@ -236,6 +236,13 @@ export function DecidePhase() {
         <h1 className="text-2xl font-bold text-gray-900">Make Your Decision</h1>
         <p className="text-gray-600 mt-1">
           Review incentives, ask questions, and understand your bids to choose the best contractor.
+        </p>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+        <FlaskConical className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-amber-800">
+          <span className="font-medium">Alpha:</span> Rebate eligibility and amounts are estimates. Always verify with the program administrator before making decisions.
         </p>
       </div>
 
