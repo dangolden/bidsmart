@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, ChevronDown, ChevronUp, ClipboardList, HelpCircle } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { formatCurrency, formatDate } from '../../lib/utils/formatters';
 
-type CompareTab = 'equipment' | 'contractors' | 'costs';
+type CompareTab = 'equipment' | 'contractors' | 'costs' | 'scope';
 
 interface TabConfig {
   key: CompareTab;
@@ -61,6 +61,12 @@ export function ComparePhase() {
       label: 'Costs',
       description: 'Pricing, warranties, and inclusions',
       icon: <DollarSign className="w-5 h-5" />
+    },
+    {
+      key: 'scope',
+      label: 'Scope',
+      description: 'What\'s included in each bid',
+      icon: <ClipboardList className="w-5 h-5" />
     },
   ];
 
@@ -138,9 +144,29 @@ export function ComparePhase() {
     }));
   };
 
+  const getScopeData = () => {
+    return bids.map((b) => ({
+      bidId: b.bid.id,
+      contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
+      permit: b.bid.scope_permit_included,
+      disposal: b.bid.scope_disposal_included,
+      electrical: b.bid.scope_electrical_included,
+      ductwork: b.bid.scope_ductwork_included,
+      thermostat: b.bid.scope_thermostat_included,
+      manualJ: b.bid.scope_manual_j_included,
+      commissioning: b.bid.scope_commissioning_included,
+      airHandler: b.bid.scope_air_handler_included,
+      lineSet: b.bid.scope_line_set_included,
+      disconnect: b.bid.scope_disconnect_included,
+      pad: b.bid.scope_pad_included,
+      drainLine: b.bid.scope_drain_line_included,
+    }));
+  };
+
   const equipmentData = getEquipmentData();
   const contractorData = getContractorData();
   const costData = getCostData();
+  const scopeData = getScopeData();
 
   const bestSeer = getHighestValue(equipmentData.map((e) => e.seer2));
   const bestHspf = getHighestValue(equipmentData.map((e) => e.hspf2));
@@ -933,6 +959,65 @@ export function ComparePhase() {
                       </tr>
                     </>
                   )}
+                </tbody>
+              </>
+            )}
+
+            {activeTab === 'scope' && (
+              <>
+                <thead>
+                  <tr className="bg-gray-900">
+                    <th style={labelCellStyle} className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
+                      Scope Item
+                    </th>
+                    {scopeData.map((s, idx) => (
+                      <th key={s.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < scopeData.length - 1 ? 'border-r border-gray-700' : ''}`}>
+                        {s.contractor}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { key: 'permit', label: 'Permits & Filing' },
+                    { key: 'disposal', label: 'Old Equipment Disposal' },
+                    { key: 'electrical', label: 'Electrical Work' },
+                    { key: 'disconnect', label: 'Electrical Disconnect' },
+                    { key: 'ductwork', label: 'Ductwork Modifications' },
+                    { key: 'thermostat', label: 'Thermostat' },
+                    { key: 'manualJ', label: 'Manual J Calculation' },
+                    { key: 'commissioning', label: 'System Commissioning' },
+                    { key: 'airHandler', label: 'Air Handler' },
+                    { key: 'lineSet', label: 'Refrigerant Line Set' },
+                    { key: 'pad', label: 'Equipment Pad' },
+                    { key: 'drainLine', label: 'Condensate Drain Line' },
+                  ].map((item, rowIdx) => (
+                    <tr key={item.key} className={`border-b border-gray-200 ${rowIdx % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+                      <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">
+                        {item.label}
+                      </td>
+                      {scopeData.map((s, idx) => {
+                        const value = s[item.key as keyof typeof s];
+                        return (
+                          <td key={s.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < scopeData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {value === true ? (
+                              <span className="inline-flex items-center gap-1 text-switch-green-700 font-medium">
+                                <CheckCircle className="w-5 h-5" /> Included
+                              </span>
+                            ) : value === false ? (
+                              <span className="inline-flex items-center gap-1 text-red-500">
+                                <XCircle className="w-5 h-5" /> Not Included
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-gray-400" title="Not specified in bid">
+                                <HelpCircle className="w-5 h-5" /> Unknown
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
                 </tbody>
               </>
             )}
