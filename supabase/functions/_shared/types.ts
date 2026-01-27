@@ -142,6 +142,13 @@ export interface ScopeInfo {
   electrical_work_included?: boolean;
   ductwork_included?: boolean;
   thermostat_included?: boolean;
+  manual_j_included?: boolean;
+  commissioning_included?: boolean;
+  air_handler_included?: boolean;
+  line_set_included?: boolean;
+  disconnect_included?: boolean;
+  pad_included?: boolean;
+  drain_line_included?: boolean;
   confidence?: number;
 }
 
@@ -205,4 +212,62 @@ export function mapLineItemType(type: string | undefined): LineItemType {
     warranty: "warranty",
   };
   return typeMap[type.toLowerCase()] || "other";
+}
+
+export type QuestionCategory =
+  | "pricing"
+  | "warranty"
+  | "equipment"
+  | "timeline"
+  | "scope"
+  | "credentials";
+
+export type QuestionPriority = "high" | "medium" | "low";
+
+export interface MindPalQuestionItem {
+  bid_id: string;
+  question_text: string;
+  question_category: QuestionCategory;
+  priority: QuestionPriority;
+  missing_field?: string | null;
+  context?: string;
+  display_order: number;
+}
+
+export interface MindPalQuestionsCallback {
+  request_id: string;
+  project_id: string;
+  signature: string;
+  timestamp: string;
+  status: "success" | "failed";
+  questions: MindPalQuestionItem[];
+  analysis_context?: {
+    total_bids_compared: number;
+    scope_differences_found?: string[];
+    price_range?: {
+      lowest: number;
+      highest: number;
+      average: number;
+    };
+    equipment_differences?: string[];
+  };
+}
+
+export interface MindPalFaqItem {
+  bid_id: string;
+  faq_key: string;
+  question_text: string;
+  answer_text: string;
+  answer_confidence: ConfidenceLevel;
+  is_answered: boolean;
+  display_order: number;
+}
+
+export interface MindPalFaqsCallback {
+  request_id: string;
+  project_id: string;
+  signature: string;
+  timestamp: string;
+  status: "success" | "failed";
+  faqs: MindPalFaqItem[];
 }
