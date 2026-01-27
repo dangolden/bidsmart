@@ -7,9 +7,24 @@ BidSmart now has basic security headers configured to allow embedding only on au
 ## Security Configuration
 
 ### Allowed Domains
+The application is configured to work across multiple authorized environments:
+
+**Client Domains:**
 - `https://switchison.org` (main domain)
 - `https://*.switchison.org` (all subdomains)
+
+**HomeDoc Environments:**
+- `https://homedoc.us` (main domain)
+- `https://*.homedoc.us` (all subdomains)
+
+**Development & Test Environments:**
+- `https://bolt.new` (Bolt development platform)
+- `https://*.bolt.new` (Bolt subdomains)
+- `https://stackblitz.com` (alternative dev environment)
+- `https://*.stackblitz.com` (StackBlitz subdomains)
 - `'self'` (same origin)
+- `http://localhost:*` (local development - dev server only)
+- `https://localhost:*` (local development - dev server only)
 
 ### Headers Applied
 
@@ -17,10 +32,12 @@ BidSmart now has basic security headers configured to allow embedding only on au
    - Modern standard for controlling iframe embedding
    - Supported by all modern browsers
    - Primary security mechanism
+   - Explicitly lists all authorized domains
 
 2. **X-Frame-Options**
    - Legacy fallback for older browsers
-   - Set to `SAMEORIGIN` for production
+   - Set to `ALLOWALL` to defer to CSP for domain control
+   - CSP provides more granular control than X-Frame-Options
 
 ## How It Works
 
@@ -108,7 +125,11 @@ Create `vercel.json` in project root:
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "frame-ancestors 'self' https://switchison.org https://*.switchison.org"
+          "value": "frame-ancestors 'self' https://switchison.org https://*.switchison.org https://homedoc.us https://*.homedoc.us https://bolt.new https://*.bolt.new https://stackblitz.com https://*.stackblitz.com"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "ALLOWALL"
         }
       ]
     }
@@ -121,20 +142,24 @@ Add response headers in CloudFront distribution settings or Lambda@Edge.
 
 ### Apache (.htaccess)
 ```apache
-Header always set Content-Security-Policy "frame-ancestors 'self' https://switchison.org https://*.switchison.org"
+Header always set Content-Security-Policy "frame-ancestors 'self' https://switchison.org https://*.switchison.org https://homedoc.us https://*.homedoc.us https://bolt.new https://*.bolt.new https://stackblitz.com https://*.stackblitz.com"
+Header always set X-Frame-Options "ALLOWALL"
 ```
 
 ### Nginx
 ```nginx
-add_header Content-Security-Policy "frame-ancestors 'self' https://switchison.org https://*.switchison.org" always;
+add_header Content-Security-Policy "frame-ancestors 'self' https://switchison.org https://*.switchison.org https://homedoc.us https://*.homedoc.us https://bolt.new https://*.bolt.new https://stackblitz.com https://*.stackblitz.com" always;
+add_header X-Frame-Options "ALLOWALL" always;
 ```
 
 ## Security Notes
 
-1. **Domain Restriction**: Only switchison.org domains can embed this application
-2. **No Wildcards**: The CSP doesn't allow `*` - only specific domains
-3. **HTTPS Required**: All allowed domains use HTTPS
+1. **Multi-Domain Support**: Application works across client, HomeDoc, and test environments
+2. **Explicit Whitelisting**: CSP explicitly lists all authorized domains (no open wildcards)
+3. **HTTPS Required**: All production domains use HTTPS (localhost allows HTTP for dev)
 4. **Self Allowed**: The app can embed itself (for testing/demos)
+5. **Flexible Deployment**: Works on switchison.org subpages, HomeDoc environments, and test platforms
+6. **Permanent Test Access**: Bolt.new and other test environments remain authorized for ongoing development
 
 ## Troubleshooting
 

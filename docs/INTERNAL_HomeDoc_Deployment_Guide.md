@@ -117,23 +117,22 @@ VITE_APP_ENV=production
 
 ### 3. Build Configuration
 
-**Update `vite.config.ts`:**
+**Verify `vite.config.ts`:**
 
-Ensure security headers are configured:
+Security headers are pre-configured for multi-domain support:
 
 ```typescript
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    headers: {
-      'Content-Security-Policy': "frame-ancestors 'self' https://switchison.org https://*.switchison.org",
-      'X-Frame-Options': 'SAMEORIGIN',
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'strict-origin-when-cross-origin'
-    }
-  }
-});
+// Already configured - supports switchison.org, homedoc.us, bolt.new, and localhost
+// See vite.config.ts for full configuration
 ```
+
+**Authorized Domains:**
+- Client: `switchison.org` and all subdomains
+- HomeDoc: `homedoc.us` and all subdomains
+- Test: `bolt.new`, `stackblitz.com` and all subdomains
+- Dev: `localhost` (all ports)
+
+**Note:** Configuration supports flexible deployment across all environments. See `docs/DEPLOYMENT_DOMAINS.md` for complete details.
 
 **Test Build Locally:**
 
@@ -210,14 +209,14 @@ bidsmart.homedoc.com → Netlify site
 
 Same process as above, but HomeDoc controls DNS.
 
-### Configure Security Headers
+### Verify Security Headers
 
-Create `public/_headers`:
+The `public/_headers` file is pre-configured with multi-domain support:
 
 ```
 /*
-  Content-Security-Policy: frame-ancestors 'self' https://switchison.org https://*.switchison.org
-  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: frame-ancestors 'self' https://switchison.org https://*.switchison.org https://homedoc.us https://*.homedoc.us https://bolt.new https://*.bolt.new https://stackblitz.com https://*.stackblitz.com
+  X-Frame-Options: ALLOWALL
   X-Content-Type-Options: nosniff
   X-XSS-Protection: 1; mode=block
   Referrer-Policy: strict-origin-when-cross-origin
@@ -226,6 +225,8 @@ Create `public/_headers`:
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 ```
+
+**Note:** This configuration allows embedding across client, HomeDoc, and test environments. The `netlify.toml` file automatically applies these headers during deployment.
 
 ### Verify Deployment
 
@@ -267,7 +268,7 @@ Create `public/_headers`:
 
 ### Configure Security Headers
 
-Create `vercel.json`:
+If using Vercel instead of Netlify, create `vercel.json`:
 
 ```json
 {
@@ -277,21 +278,31 @@ Create `vercel.json`:
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "frame-ancestors 'self' https://switchison.org https://*.switchison.org"
+          "value": "frame-ancestors 'self' https://switchison.org https://*.switchison.org https://homedoc.us https://*.homedoc.us https://bolt.new https://*.bolt.new https://stackblitz.com https://*.stackblitz.com"
         },
         {
           "key": "X-Frame-Options",
-          "value": "SAMEORIGIN"
+          "value": "ALLOWALL"
         },
         {
           "key": "X-Content-Type-Options",
           "value": "nosniff"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
         }
       ]
     }
   ]
 }
 ```
+
+**Note:** Netlify is recommended and already configured via `netlify.toml`. Only create `vercel.json` if deploying to Vercel instead.
 
 ---
 

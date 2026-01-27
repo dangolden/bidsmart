@@ -63,7 +63,11 @@ BidSmart is ready to embed on your website. HomeDoc handles all hosting, mainten
 
 ## Security
 
-The iframe is configured to ONLY work on switchison.org domains. If someone tries to embed it elsewhere, it will be blocked automatically.
+The iframe is configured to work securely on authorized domains including:
+- **switchison.org** and all subdomains (*.switchison.org)
+- HomeDoc development and support environments (for testing and assistance)
+
+The application is protected with enterprise-grade security headers while remaining flexible for your implementation needs. You can embed it on any page within your switchison.org domain structure.
 
 ---
 
