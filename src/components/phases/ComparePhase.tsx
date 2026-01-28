@@ -195,7 +195,10 @@ export function ComparePhase() {
   };
 
   const handleDownloadReport = async () => {
-    if (!projectId || !user?.email) return;
+    if (!projectId || !user?.email) {
+      alert('Missing project or user information');
+      return;
+    }
 
     setDownloadingReport(true);
     try {
@@ -204,6 +207,7 @@ export function ComparePhase() {
         headers: {
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
           'X-User-Email': user.email,
         },
         body: JSON.stringify({
@@ -213,7 +217,9 @@ export function ComparePhase() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate report');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Report generation failed:', errorData);
+        throw new Error(errorData.error || `Server error: ${response.status}`);
       }
 
       const blob = await response.blob();
@@ -227,14 +233,18 @@ export function ComparePhase() {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Error downloading report:', error);
-      alert('Failed to download report. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to download report';
+      alert(`Download failed: ${message}`);
     } finally {
       setDownloadingReport(false);
     }
   };
 
   const handleEmailReport = async () => {
-    if (!projectId || !user?.email) return;
+    if (!projectId || !user?.email) {
+      alert('Missing project or user information');
+      return;
+    }
 
     setEmailingReport(true);
     try {
@@ -243,6 +253,7 @@ export function ComparePhase() {
         headers: {
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
           'X-User-Email': user.email,
         },
         body: JSON.stringify({
@@ -252,14 +263,20 @@ export function ComparePhase() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send report');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Email send failed:', errorData);
+        throw new Error(errorData.error || `Server error: ${response.status}`);
       }
+
+      const result = await response.json();
+      console.log('Email sent successfully:', result);
 
       setReportSent(true);
       setTimeout(() => setReportSent(false), 5000);
     } catch (error) {
       console.error('Error emailing report:', error);
-      alert('Failed to send report email. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to send report';
+      alert(`Email failed: ${message}`);
     } finally {
       setEmailingReport(false);
     }

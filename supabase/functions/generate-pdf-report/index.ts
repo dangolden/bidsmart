@@ -299,14 +299,19 @@ Deno.serve(async (req: Request) => {
 
     const authResult = await verifyEmailAuth(req);
     if (authResult instanceof Response) {
+      console.error("Authentication failed");
       return authResult;
     }
+
+    console.log("Authenticated user:", authResult.email);
 
     const { project_id, send_email }: GenerateReportRequest = await req.json();
 
     if (!project_id) {
       return errorResponse("Missing project_id");
     }
+
+    console.log("Generating report for project:", project_id, "send_email:", send_email);
 
     const projectData = await fetchProjectData(project_id);
     const htmlReport = generateHTMLReport(projectData);
@@ -333,6 +338,8 @@ Deno.serve(async (req: Request) => {
         "Content-Type": "text/html",
         "Content-Disposition": `attachment; filename="bidsmart-report-${project_id}.html"`,
         "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, X-User-Email",
       },
     });
 
