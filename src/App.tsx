@@ -1,17 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useUser } from './hooks/useUser';
 import { UnifiedHomePage } from './components/UnifiedHomePage';
 import { BidSmartFlow } from './components/BidSmartFlow';
 
 const ACTIVE_PROJECT_KEY = 'bidsmart_active_project';
-
-function getStoredProjectId(): string | null {
-  try {
-    return localStorage.getItem(ACTIVE_PROJECT_KEY);
-  } catch {
-    return null;
-  }
-}
 
 function setStoredProjectId(projectId: string | null): void {
   try {
@@ -28,14 +20,6 @@ function App() {
   const { user, loading, error } = useUser();
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [showHome, setShowHome] = useState(true);
-
-  useEffect(() => {
-    const storedProjectId = getStoredProjectId();
-    if (storedProjectId) {
-      setActiveProjectId(storedProjectId);
-      setShowHome(false);
-    }
-  }, []);
 
   const handleSelectProject = (projectId: string) => {
     setActiveProjectId(projectId);
