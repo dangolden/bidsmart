@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useUser } from './hooks/useUser';
-import { WelcomeScreen } from './components/WelcomeScreen';
+import { UnifiedHomePage } from './components/UnifiedHomePage';
 import { BidSmartFlow } from './components/BidSmartFlow';
 
 const ACTIVE_PROJECT_KEY = 'bidsmart_active_project';
@@ -27,35 +27,32 @@ function setStoredProjectId(projectId: string | null): void {
 function App() {
   const { user, loading, error } = useUser();
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [showHome, setShowHome] = useState(true);
 
   useEffect(() => {
     const storedProjectId = getStoredProjectId();
     if (storedProjectId) {
       setActiveProjectId(storedProjectId);
-      setShowWelcome(false);
+      setShowHome(false);
     }
   }, []);
 
   const handleSelectProject = (projectId: string) => {
     setActiveProjectId(projectId);
     setStoredProjectId(projectId);
-    setShowWelcome(false);
+    setShowHome(false);
   };
 
-  const handleCreateProject = (projectId: string) => {
-    if (projectId === 'new') {
-      setActiveProjectId('new');
-      setStoredProjectId(null);
-    } else {
-      setActiveProjectId(projectId);
-      setStoredProjectId(projectId);
-    }
-    setShowWelcome(false);
+  const handleStartProject = (projectId: string) => {
+    setActiveProjectId(projectId);
+    setStoredProjectId(projectId);
+    setShowHome(false);
   };
 
   const handleNavigateHome = () => {
-    setShowWelcome(true);
+    setActiveProjectId(null);
+    setStoredProjectId(null);
+    setShowHome(true);
   };
 
   if (loading) {
@@ -91,12 +88,12 @@ function App() {
     );
   }
 
-  if (showWelcome || !activeProjectId) {
+  if (showHome || !activeProjectId) {
     return (
-      <WelcomeScreen
+      <UnifiedHomePage
         user={user}
         onSelectProject={handleSelectProject}
-        onCreateProject={handleCreateProject}
+        onStartProject={handleStartProject}
       />
     );
   }

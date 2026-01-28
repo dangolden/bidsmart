@@ -152,6 +152,10 @@ export interface Project {
   // Demo project flags
   is_demo: boolean;
   is_public_demo?: boolean;
+  demo_description?: string | null;
+
+  // Draft project tracking
+  session_id?: string | null;
 
   // Notification settings
   notification_email?: string | null;

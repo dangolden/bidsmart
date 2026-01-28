@@ -34,6 +34,7 @@ interface PhaseState {
   questions: BidQuestion[];
   loading: boolean;
   error: string | null;
+  isDemoMode: boolean;
 }
 
 interface PhaseContextValue extends PhaseState {
@@ -97,6 +98,7 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
     questions: [],
     loading: true,
     error: null,
+    isDemoMode: false,
   });
 
   useEffect(() => {
@@ -182,6 +184,7 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
           questions: questions || [],
           loading: false,
           error: null,
+          isDemoMode: project?.is_public_demo ?? false,
         });
 
         if (projectId) {

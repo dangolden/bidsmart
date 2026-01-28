@@ -7,6 +7,7 @@ interface PhaseLayoutProps {
   children: ReactNode;
   onNavigateHome?: () => void;
   projectName?: string;
+  isDemoMode?: boolean;
 }
 
 const PHASES: { phase: Phase; label: string }[] = [
@@ -16,7 +17,7 @@ const PHASES: { phase: Phase; label: string }[] = [
   { phase: 4, label: 'VERIFY' },
 ];
 
-export function PhaseLayout({ children, onNavigateHome, projectName }: PhaseLayoutProps) {
+export function PhaseLayout({ children, onNavigateHome, projectName, isDemoMode = false }: PhaseLayoutProps) {
   const { currentPhase, phaseStatus, goToPhase, canAccessPhase } = usePhase();
 
   return (
@@ -37,6 +38,11 @@ export function PhaseLayout({ children, onNavigateHome, projectName }: PhaseLayo
               <span className="text-sm font-medium text-gray-900 truncate max-w-[200px] sm:max-w-none">
                 {projectName || 'Current Project'}
               </span>
+              {isDemoMode && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-teal-100 text-teal-700 ml-2 flex-shrink-0">
+                  Demo
+                </span>
+              )}
             </div>
           )}
           <div className="flex items-center justify-between">

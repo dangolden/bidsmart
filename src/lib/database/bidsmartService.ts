@@ -224,6 +224,39 @@ export async function deleteProject(projectId: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function getProjectBySessionId(sessionId: string): Promise<Project | null> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('session_id', sessionId)
+    .eq('status', 'draft')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createDraftProject(
+  userId: string,
+  sessionId: string
+): Promise<Project> {
+  const { data, error } = await supabase
+    .from('projects')
+    .insert({
+      user_id: userId,
+      session_id: sessionId,
+      project_name: 'My Heat Pump Project',
+      status: 'draft',
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 // ============================================
 // CONTRACTOR BIDS
 // ============================================
