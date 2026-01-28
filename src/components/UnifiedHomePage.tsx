@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, BarChart3, CheckCircle, ClipboardCheck, FileText, X, Clock, CheckCircle2, AlertCircle, Plus, ArrowRight, Users, Shield, Info, Mail, Loader2 } from 'lucide-react';
+import { Upload, BarChart3, CheckCircle, ClipboardCheck, FileText, X, Clock, CheckCircle2, AlertCircle, Plus, ArrowRight, Users, Shield, Info, Mail, Loader2, ChevronRight } from 'lucide-react';
 import type { UserExt } from '../lib/types';
 import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
@@ -125,10 +125,32 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
   const [showPriorities, setShowPriorities] = useState(false);
   const [showProjectDetails, setShowProjectDetails] = useState(false);
+  const [isHeaderSticky, setIsHeaderSticky] = useState(false);
+  const heroSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkForDraftProject();
   }, [user.id]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (heroSectionRef.current) {
+        const heroBottom = heroSectionRef.current.getBoundingClientRect().bottom;
+        if (heroBottom <= 0 && !isHeaderSticky) {
+          setIsHeaderSticky(true);
+          window.scrollTo({ top: heroSectionRef.current.offsetHeight, behavior: 'instant' });
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isHeaderSticky]);
+
+  const handleReturnToDashboard = () => {
+    setIsHeaderSticky(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     if (analysisState === 'analyzing') {
@@ -434,28 +456,46 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <AlphaBanner />
 
-      <div className="max-w-4xl w-full mx-auto px-4 py-8">
-        <div className="flex items-center justify-center mb-6">
-          <img src={SwitchLogo} alt="SwitchIsOn" className="h-12 w-auto" />
-        </div>
+      {!isHeaderSticky && (
+        <div ref={heroSectionRef} className="max-w-4xl w-full mx-auto px-4 py-8">
+          <div className="flex items-center justify-center mb-6">
+            <img src={SwitchLogo} alt="SwitchIsOn" className="h-12 w-auto" />
+          </div>
 
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Heat Pump Bid Compare Tool <span className="text-base font-normal text-gray-500">(Beta)</span>
-          </h1>
-          <p className="text-gray-600 max-w-2xl mx-auto text-sm">
-            Upload your contractor bids to get an AI-powered comparison and make an informed decision.
-          </p>
-        </div>
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Heat Pump Bid Compare Tool <span className="text-base font-normal text-gray-500">(Beta)</span>
+            </h1>
+            <p className="text-gray-600 max-w-2xl mx-auto text-sm">
+              Upload your contractor bids to get an AI-powered comparison and make an informed decision.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <ReturningUserSection onSelectProject={onSelectProject} />
-          <TryTheToolSection onSelectDemo={onSelectProject} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <ReturningUserSection onSelectProject={onSelectProject} />
+            <TryTheToolSection onSelectDemo={onSelectProject} />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
+          {isHeaderSticky && (
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+              <button
+                onClick={handleReturnToDashboard}
+                className="flex items-center gap-2 text-gray-600 hover:text-switch-green-600 transition-colors group min-h-[44px] -my-2 py-2"
+                aria-label="Return to Bid Compare Dashboard"
+              >
+                <img src={SwitchLogo} alt="Switch Is On" className="w-8 h-8" />
+                <span className="text-sm font-medium hidden sm:inline">Dashboard</span>
+              </button>
+              <ChevronRight className="w-4 h-4 text-gray-300" />
+              <span className="text-sm font-medium text-gray-900 truncate">
+                Start New Comparison
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-3">
             {PHASES.map((phase, index) => {
               const isActive = phase.number === 1;
