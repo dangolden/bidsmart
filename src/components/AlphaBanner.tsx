@@ -47,13 +47,13 @@ export function AlphaBanner({ dismissible = true, variant = 'full' }: AlphaBanne
 
   return (
     <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-200">
-      <div className="max-w-4xl mx-auto px-4 py-4">
-        <div className="flex items-start gap-3">
+      <div className="max-w-4xl mx-auto px-4 py-3">
+        <div className="flex items-center gap-3">
           <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
             <FlaskConical className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex-1 min-w-0 flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-200 text-blue-800">
                 EARLY ACCESS
               </span>
@@ -61,24 +61,13 @@ export function AlphaBanner({ dismissible = true, variant = 'full' }: AlphaBanne
                 Help Shape the Future of BidSmart
               </h3>
             </div>
-            <p className="mt-2 text-sm text-blue-800">
-              You're using an early version actively being improved. We'd love to hear what's working, what could be better, or any issues you find. Your feedback directly influences our roadmap.
-            </p>
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                onClick={() => setShowFeedback(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <MessageSquare className="w-4 h-4" />
-                Share Feedback
-              </button>
-              <a
-                href="mailto:bidsmart@theswitchison.org"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 rounded-lg transition-colors"
-              >
-                Email Us
-              </a>
-            </div>
+            <button
+              onClick={() => setShowFeedback(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Share Feedback
+            </button>
           </div>
           {dismissible && (
             <button

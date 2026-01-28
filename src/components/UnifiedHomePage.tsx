@@ -112,7 +112,7 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
   });
 
   const [projectDetails, setProjectDetails] = useState('');
-  const [dataSharingConsent, setDataSharingConsent] = useState(false);
+  const [dataSharingConsent, setDataSharingConsent] = useState(true);
   const [showPrivacyDetails, setShowPrivacyDetails] = useState(false);
   const [notificationEmail, setNotificationEmail] = useState('');
 
@@ -491,8 +491,9 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
           </div>
         </div>
 
-        <div className="mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <ReturningUserSection onSelectProject={onSelectProject} />
+          <TryTheToolSection onSelectDemo={onSelectProject} />
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
@@ -500,9 +501,33 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
             <Upload className="w-5 h-5 text-switch-green-600" />
             Start a New Bid Comparison
           </h2>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-gray-600 mb-4">
             Upload at least 2 contractor bid PDFs to compare.
           </p>
+
+          <div className="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100">
+            {PHASES.map((phase, index) => {
+              const Icon = phase.icon;
+              const isActive = index === 0;
+              return (
+                <div key={phase.number} className="flex items-center flex-1">
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isActive ? phase.color : 'bg-gray-100'}`}>
+                      <Icon className={`w-4 h-4 ${isActive ? '' : 'text-gray-400'}`} />
+                    </div>
+                    <div className="hidden sm:block">
+                      <div className="text-xs font-semibold text-gray-500">{phase.label}</div>
+                    </div>
+                  </div>
+                  {index < PHASES.length - 1 && (
+                    <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-gray-300 flex-shrink-0">
+                      <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
             <div className="flex gap-3">
@@ -544,18 +569,18 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
             className={`
-              border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer
+              border-2 border-dashed rounded-xl p-5 text-center transition-colors cursor-pointer
               ${dragActive ? 'border-switch-green-500 bg-switch-green-50' : 'border-gray-300 hover:border-gray-400'}
             `}
           >
-            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileText className="w-6 h-6 text-gray-400" />
+            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <FileText className="w-5 h-5 text-gray-400" />
             </div>
-            <p className="text-gray-600 mb-2">Drag and drop PDF bid documents here</p>
-            <p className="text-sm text-gray-400 mb-4">or</p>
+            <p className="text-gray-600 mb-1.5 text-sm">Drag and drop PDF bid documents here</p>
+            <p className="text-sm text-gray-400 mb-3">or</p>
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-secondary text-sm"
               onClick={(e) => {
                 e.stopPropagation();
                 fileInputRef.current?.click();
@@ -563,7 +588,7 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
             >
               Browse Files
             </button>
-            <p className="text-xs text-gray-400 mt-4">
+            <p className="text-xs text-gray-400 mt-3">
               Supported formats: PDF (max 25MB each)
             </p>
           </div>
@@ -790,8 +815,6 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
             )}
           </div>
         </div>
-
-        <TryTheToolSection onSelectDemo={onSelectProject} />
 
         <p className="text-xs text-gray-400 text-center mt-8 pb-6">
           Powered by TheSwitchIsOn.org
