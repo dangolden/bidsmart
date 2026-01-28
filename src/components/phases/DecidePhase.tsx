@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, BookOpen, Award, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock, FlaskConical } from 'lucide-react';
+import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, BookOpen, Award, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock, FlaskConical, Download, FileCheck2 } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { supabase } from '../../lib/supabaseClient';
 import { IncentivesTable } from '../IncentivesTable';
@@ -18,7 +18,7 @@ interface TabConfig {
 }
 
 export function DecidePhase() {
-  const { bids, questions, refreshQuestions, completePhase } = usePhase();
+  const { bids, questions, refreshQuestions, completePhase, projectId } = usePhase();
   const [activeTab, setActiveTab] = useState<DecideTab>('incentives');
   const [rebatePrograms, setRebatePrograms] = useState<RebateProgram[]>([]);
   const [selectedIncentives, setSelectedIncentives] = useState<Set<string>>(new Set());
@@ -209,6 +209,11 @@ export function DecidePhase() {
     setSelectedContractor(selectedContractor === bidId ? null : bidId);
   };
 
+  function handleDownloadChecklist() {
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-contractor-checklist?project_id=${projectId}`;
+    window.open(url, '_blank');
+  }
+
   const tabs: TabConfig[] = [
     {
       key: 'incentives',
@@ -303,6 +308,40 @@ export function DecidePhase() {
           </button>
         ))}
       </div>
+
+      {selectedContractor && (
+        <div className="bg-gradient-to-r from-switch-green-50 to-blue-50 border-2 border-switch-green-300 rounded-xl p-6 shadow-lg">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-white rounded-lg">
+              <FileCheck2 className="w-8 h-8 text-switch-green-600" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="w-5 h-5 text-switch-green-600" />
+                <h3 className="text-lg font-bold text-gray-900">
+                  {bidData.find(b => b.bidId === selectedContractor)?.contractor} Selected
+                </h3>
+              </div>
+              <p className="text-gray-700 mb-4">
+                Give your contractor this quality installation checklist before work begins.
+                It sets clear expectations and ensures industry-standard practices are followed.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={handleDownloadChecklist}
+                  className="btn btn-primary flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Checklist
+                </button>
+                <div className="text-sm text-gray-600 flex items-center gap-2 px-4 py-2 bg-white rounded-lg border border-gray-200">
+                  <span className="font-medium">Next Step:</span> Share this with your contractor before installation
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeTab === 'incentives' && (
         <div className="space-y-6">

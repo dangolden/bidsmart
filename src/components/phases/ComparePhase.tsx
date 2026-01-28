@@ -109,6 +109,7 @@ export function ComparePhase() {
       yearEstablished: b.bid.contractor_year_established,
       googleRating: b.bid.contractor_google_rating,
       reviewCount: b.bid.contractor_google_review_count,
+      switchRating: b.bid.contractor_switch_rating,
       certifications: b.bid.contractor_certifications || [],
       license: b.bid.contractor_license,
       licenseState: b.bid.contractor_license_state,
@@ -651,6 +652,40 @@ export function ComparePhase() {
                     ))}
                   </tr>
                   <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">
+                      <div className="flex items-center gap-2">
+                        <span>Switch Rating</span>
+                        <span className="text-xs text-gray-500 font-normal">(verified homeowners)</span>
+                      </div>
+                    </td>
+                    {contractorData.map((c, idx) => {
+                      const bestSwitchRating = getHighestValue(contractorData.map((cd) => cd.switchRating), true);
+                      return (
+                        <td
+                          key={c.bidId}
+                          style={bidCellStyle}
+                          className={`px-5 py-4 text-sm font-semibold ${isHighlighted(c.switchRating, bestSwitchRating) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}
+                        >
+                          {c.switchRating ? (
+                            <span className="flex items-center gap-2">
+                              <span className="flex items-center gap-1">
+                                {c.switchRating.toFixed(1)}
+                                <Star className="w-4 h-4 text-switch-green-600 fill-switch-green-600" />
+                              </span>
+                              {isHighlighted(c.switchRating, bestSwitchRating) && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                                  TOP
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 text-xs">No reviews yet</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  <tr className="border-b border-gray-200">
                     <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Certifications</td>
                     {contractorData.map((c, idx) => (
                       <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-900 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
