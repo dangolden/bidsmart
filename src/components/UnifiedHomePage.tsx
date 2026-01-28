@@ -350,6 +350,7 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
         projectId,
         pdfUploadIds,
         priorities,
+        user.email,
         projectDetails
       );
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, Users, Shield, X, Loader2, Info, Mail, FlaskConical, Save } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
+import { useUser } from '../../hooks/useUser';
 import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject, validatePdfFile, updateProjectNotificationSettings } from '../../lib/database/bidsmartService';
 import { uploadPdfFile, startBatchAnalysis, pollBatchExtractionStatus, type BatchExtractionStatus } from '../../lib/services/mindpalService';
 
@@ -44,6 +45,7 @@ type AnalysisState = 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error' |
 
 export function GatherPhase() {
   const { projectId, project, bids, requirements, completePhase, refreshRequirements, refreshBids, ensureProjectExists } = usePhase();
+  const { user } = useUser();
 
   const [priorities, setPriorities] = useState({
     price: requirements?.priority_price ?? 3,
@@ -91,6 +93,12 @@ export function GatherPhase() {
       setNotifyOnCompletion(project.notify_on_completion ?? true);
     }
   }, [project]);
+
+  useEffect(() => {
+    if (user?.email && !notificationEmail) {
+      setNotificationEmail(user.email);
+    }
+  }, [user, notificationEmail]);
 
   useEffect(() => {
     if (analysisState === 'analyzing') {
@@ -239,10 +247,17 @@ export function GatherPhase() {
 
         setAnalysisState('analyzing');
 
+        if (!user?.email) {
+          setAnalysisState('error');
+          setAnalysisError('User email not found');
+          return;
+        }
+
         const analysisResult = await startBatchAnalysis(
           activeProjectId,
           pdfUploadIds,
           priorities,
+          user.email,
           projectDetails
         );
 
@@ -816,6 +831,76 @@ export function GatherPhase() {
             )}
           </div>
         </label>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Mail className="w-5 h-5 text-switch-green-600" />
+          <h2 className="text-lg font-semibold text-gray-900">Get Notified When Ready</h2>
+        </div>
+        <p className="text-sm text-gray-600 mb-4">
+          Bid analysis typically takes 2-3 minutes. We'll email you when your results are ready to view.
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="notify-email" className="block text-sm font-medium text-gray-700 mb-2">
+              Email Address
+            </label>
+            <input
+              id="notify-email"
+              type="email"
+              value={notificationEmail}
+              onChange={(e) => {
+                setNotificationEmail(e.target.value);
+                setNotificationSaved(false);
+              }}
+              placeholder="your.email@example.com"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
+            />
+          </div>
+
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={notifyOnCompletion}
+              onChange={(e) => {
+                setNotifyOnCompletion(e.target.checked);
+                setNotificationSaved(false);
+              }}
+              className="mt-0.5 w-4 h-4 rounded border-gray-300 text-switch-green-600 focus:ring-switch-green-500 focus:ring-offset-0 cursor-pointer"
+            />
+            <span className="text-sm text-gray-700">
+              Send me an email when my analysis is complete
+            </span>
+          </label>
+
+          {notificationEmail && (
+            <button
+              type="button"
+              onClick={handleSaveNotification}
+              disabled={savingNotification || !notificationEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notificationEmail.trim())}
+              className="btn btn-secondary text-sm flex items-center gap-2"
+            >
+              {savingNotification ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : notificationSaved ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Saved!
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Notification Settings
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex justify-end">

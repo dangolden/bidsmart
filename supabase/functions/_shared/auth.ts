@@ -1,48 +1,51 @@
-import { createUserClient } from "./supabase.ts";
+import { supabaseAdmin } from "./supabase.ts";
 import { errorResponse } from "./cors.ts";
 
 export interface AuthResult {
   userId: string;
   userExtId: string;
+  email: string;
 }
 
-export async function verifyAuth(req: Request): Promise<AuthResult | Response> {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
-    return errorResponse("Missing Authorization header", 401);
+export async function verifyEmailAuth(req: Request): Promise<AuthResult | Response> {
+  const userEmail = req.headers.get("X-User-Email");
+
+  if (!userEmail) {
+    return errorResponse("Missing X-User-Email header", 401);
   }
 
-  const supabase = createUserClient(authHeader);
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    return errorResponse("Invalid or expired token", 401);
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(userEmail)) {
+    return errorResponse("Invalid email format", 400);
   }
 
-  const { data: userExt, error: userExtError } = await supabase
+  const { data: userExt, error: userExtError } = await supabaseAdmin
     .from("users_ext")
-    .select("id")
-    .eq("auth_user_id", user.id)
+    .select("id, email, auth_user_id")
+    .eq("email", userEmail)
     .maybeSingle();
 
-  if (userExtError || !userExt) {
-    return errorResponse("User profile not found", 404);
+  if (userExtError) {
+    console.error("Error fetching user:", userExtError);
+    return errorResponse("Database error", 500);
+  }
+
+  if (!userExt) {
+    return errorResponse("User not found", 404);
   }
 
   return {
-    userId: user.id,
+    userId: userExt.auth_user_id || userExt.id,
     userExtId: userExt.id,
+    email: userExt.email,
   };
 }
 
 export async function verifyProjectOwnership(
   userExtId: string,
-  projectId: string,
-  authHeader: string
+  projectId: string
 ): Promise<boolean> {
-  const supabase = createUserClient(authHeader);
-
-  const { data: project, error } = await supabase
+  const { data: project, error } = await supabaseAdmin
     .from("projects")
     .select("id, user_id")
     .eq("id", projectId)

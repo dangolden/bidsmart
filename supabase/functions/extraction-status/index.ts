@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
-import { createUserClient } from "../_shared/supabase.ts";
-import { verifyAuth } from "../_shared/auth.ts";
+import { supabaseAdmin } from "../_shared/supabase.ts";
+import { verifyEmailAuth } from "../_shared/auth.ts";
 
 Deno.serve(async (req: Request) => {
   try {
@@ -12,11 +12,10 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Method not allowed", 405);
     }
 
-    const authResult = await verifyAuth(req);
+    const authResult = await verifyEmailAuth(req);
     if (authResult instanceof Response) {
       return authResult;
     }
-    const authHeader = req.headers.get("Authorization")!;
 
     const url = new URL(req.url);
     const pdfUploadId = url.searchParams.get("pdfUploadId");
@@ -25,9 +24,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Missing pdfUploadId parameter");
     }
 
-    const supabase = createUserClient(authHeader);
-
-    const { data: pdfUpload, error } = await supabase
+    const { data: pdfUpload, error } = await supabaseAdmin
       .from("pdf_uploads")
       .select(`
         id,

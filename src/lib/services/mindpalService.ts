@@ -56,17 +56,19 @@ interface PollOptions {
   onStatusChange?: (status: ExtractionStatusResult) => void;
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+async function getAuthHeaders(userEmail: string): Promise<Record<string, string>> {
   return {
     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
     'Content-Type': 'application/json',
     'apikey': SUPABASE_ANON_KEY,
+    'X-User-Email': userEmail,
   };
 }
 
 export async function uploadAndExtract(
   projectId: string,
-  file: File
+  file: File,
+  userEmail: string
 ): Promise<TriggerExtractionResult> {
   try {
     const { path } = await db.uploadPdfToStorage(projectId, file);
@@ -78,7 +80,7 @@ export async function uploadAndExtract(
       status: 'uploaded',
     });
 
-    const result = await triggerExtraction(projectId, pdfUpload.id);
+    const result = await triggerExtraction(projectId, pdfUpload.id, userEmail);
 
     return {
       success: result.success,
@@ -98,10 +100,11 @@ export async function uploadAndExtract(
 
 export async function triggerExtraction(
   projectId: string,
-  pdfUploadId: string
+  pdfUploadId: string,
+  userEmail: string
 ): Promise<TriggerExtractionResult> {
   try {
-    const headers = await getAuthHeaders();
+    const headers = await getAuthHeaders(userEmail);
 
     const response = await fetch(`${SUPABASE_URL}/functions/v1/send-to-mindpal`, {
       method: 'POST',
@@ -135,10 +138,11 @@ export async function triggerExtraction(
 }
 
 export async function getExtractionStatus(
-  pdfUploadId: string
+  pdfUploadId: string,
+  userEmail: string
 ): Promise<ExtractionStatusResult> {
   try {
-    const headers = await getAuthHeaders();
+    const headers = await getAuthHeaders(userEmail);
 
     const response = await fetch(
       `${SUPABASE_URL}/functions/v1/extraction-status?pdfUploadId=${encodeURIComponent(pdfUploadId)}`,
@@ -173,6 +177,7 @@ export async function getExtractionStatus(
 
 export async function pollExtractionStatus(
   pdfUploadId: string,
+  userEmail: string,
   options: PollOptions = {}
 ): Promise<ExtractionStatusResult> {
   const {
@@ -189,7 +194,7 @@ export async function pollExtractionStatus(
       attempts++;
 
       try {
-        const status = await getExtractionStatus(pdfUploadId);
+        const status = await getExtractionStatus(pdfUploadId, userEmail);
 
         if (status.status !== lastStatus) {
           lastStatus = status.status;
@@ -233,7 +238,7 @@ export async function pollExtractionStatus(
   });
 }
 
-export async function retryExtraction(pdfUploadId: string): Promise<TriggerExtractionResult> {
+export async function retryExtraction(pdfUploadId: string, userEmail: string): Promise<TriggerExtractionResult> {
   const pdfUpload = await db.getPdfUpload(pdfUploadId);
   if (!pdfUpload) {
     return { success: false, pdfUploadId, error: 'PDF upload not found' };
@@ -245,7 +250,7 @@ export async function retryExtraction(pdfUploadId: string): Promise<TriggerExtra
 
   await db.incrementPdfRetryCount(pdfUploadId);
 
-  return triggerExtraction(pdfUpload.project_id, pdfUploadId);
+  return triggerExtraction(pdfUpload.project_id, pdfUploadId, userEmail);
 }
 
 export async function processMindPalCallback(
@@ -470,10 +475,11 @@ export async function startBatchAnalysis(
   projectId: string,
   pdfUploadIds: string[],
   userPriorities: UserPriorities,
+  userEmail: string,
   projectDetails?: string
 ): Promise<BatchAnalysisResult> {
   try {
-    const headers = await getAuthHeaders();
+    const headers = await getAuthHeaders(userEmail);
 
     const prioritiesPayload = {
       upfront_cost: userPriorities.price,

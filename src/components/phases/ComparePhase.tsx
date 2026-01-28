@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, ChevronDown, ChevronUp, HelpCircle, FlaskConical } from 'lucide-react';
+import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, ChevronDown, ChevronUp, HelpCircle, FlaskConical, Download, Mail, Loader2 } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
+import { useUser } from '../../hooks/useUser';
 import { formatCurrency, formatDate } from '../../lib/utils/formatters';
 
 type CompareTab = 'equipment' | 'contractors' | 'costs';
@@ -15,12 +16,19 @@ interface TabConfig {
 const LABEL_COL_WIDTH = '200px';
 const BID_COL_MIN_WIDTH = '180px';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 export function ComparePhase() {
-  const { bids, completePhase } = usePhase();
+  const { bids, completePhase, projectId } = usePhase();
+  const { user } = useUser();
   const [activeTab, setActiveTab] = useState<CompareTab>('equipment');
   const [showMoreEquipment, setShowMoreEquipment] = useState(false);
   const [showMoreContractors, setShowMoreContractors] = useState(false);
   const [showFinancingDetails, setShowFinancingDetails] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+  const [emailingReport, setEmailingReport] = useState(false);
+  const [reportSent, setReportSent] = useState(false);
 
   const formatDateDisplay = (dateString: string | null | undefined) => {
     return formatDate(dateString) || '-';
@@ -184,6 +192,77 @@ export function ComparePhase() {
 
   const handleContinue = () => {
     completePhase(2);
+  };
+
+  const handleDownloadReport = async () => {
+    if (!projectId || !user?.email) return;
+
+    setDownloadingReport(true);
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-pdf-report`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'X-User-Email': user.email,
+        },
+        body: JSON.stringify({
+          project_id: projectId,
+          send_email: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate report');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bidsmart-report-${new Date().toISOString().split('T')[0]}.html`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      alert('Failed to download report. Please try again.');
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
+
+  const handleEmailReport = async () => {
+    if (!projectId || !user?.email) return;
+
+    setEmailingReport(true);
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-pdf-report`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'X-User-Email': user.email,
+        },
+        body: JSON.stringify({
+          project_id: projectId,
+          send_email: true,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send report');
+      }
+
+      setReportSent(true);
+      setTimeout(() => setReportSent(false), 5000);
+    } catch (error) {
+      console.error('Error emailing report:', error);
+      alert('Failed to send report email. Please try again.');
+    } finally {
+      setEmailingReport(false);
+    }
   };
 
   const bidCount = bids.length;
@@ -985,6 +1064,63 @@ export function ComparePhase() {
           </div>
         </div>
       )}
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Export Your Analysis</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Download or email a comprehensive report with all your bid comparisons.
+        </p>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={handleDownloadReport}
+            disabled={downloadingReport}
+            className="btn btn-secondary flex items-center gap-2"
+          >
+            {downloadingReport ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Download Report
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={handleEmailReport}
+            disabled={emailingReport}
+            className="btn btn-secondary flex items-center gap-2"
+          >
+            {emailingReport ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Sending...
+              </>
+            ) : reportSent ? (
+              <>
+                <CheckCircle className="w-4 h-4" />
+                Sent to {user?.email}
+              </>
+            ) : (
+              <>
+                <Mail className="w-4 h-4" />
+                Email Report
+              </>
+            )}
+          </button>
+        </div>
+
+        {reportSent && (
+          <p className="text-sm text-switch-green-600 mt-3 flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" />
+            Report sent successfully! Check your email.
+          </p>
+        )}
+      </div>
 
       <div className="flex justify-end">
         <button

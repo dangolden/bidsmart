@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
-import { verifyAuth, verifyProjectOwnership } from "../_shared/auth.ts";
+import { verifyEmailAuth, verifyProjectOwnership } from "../_shared/auth.ts";
 import { generateHmacSignature, createCallbackPayload } from "../_shared/hmac.ts";
 import type { MindPalTriggerRequest } from "../_shared/types.ts";
 
@@ -24,12 +24,11 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Method not allowed", 405);
     }
 
-    const authResult = await verifyAuth(req);
+    const authResult = await verifyEmailAuth(req);
     if (authResult instanceof Response) {
       return authResult;
     }
     const { userExtId } = authResult;
-    const authHeader = req.headers.get("Authorization")!;
 
     const body: RequestBody = await req.json();
     const { projectId, pdfUploadId } = body;
@@ -38,7 +37,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Missing projectId or pdfUploadId");
     }
 
-    const isOwner = await verifyProjectOwnership(userExtId, projectId, authHeader);
+    const isOwner = await verifyProjectOwnership(userExtId, projectId);
     if (!isOwner) {
       return errorResponse("Not authorized to access this project", 403);
     }
