@@ -321,10 +321,59 @@ Deno.serve(async (req: Request) => {
       console.error("Failed to calculate scores:", scoreError);
     }
 
+    const { data: allProjectPdfs } = await supabaseAdmin
+      .from("pdf_uploads")
+      .select("id, status")
+      .eq("project_id", projectId);
+
+    const allComplete = allProjectPdfs?.every(
+      (pdf) => pdf.status === "extracted" || pdf.status === "verified" || pdf.status === "review_needed" || pdf.status === "failed"
+    );
+
+    const successfulCount = allProjectPdfs?.filter(
+      (pdf) => pdf.status === "extracted" || pdf.status === "verified" || pdf.status === "review_needed"
+    ).length ?? 0;
+
+    if (allComplete && successfulCount >= 2) {
+      await supabaseAdmin
+        .from("projects")
+        .update({
+          status: "comparing",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", projectId);
+
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+      if (supabaseUrl && supabaseServiceKey) {
+        try {
+          const notificationResponse = await fetch(
+            `${supabaseUrl}/functions/v1/send-completion-notification`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${supabaseServiceKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ project_id: projectId }),
+            }
+          );
+
+          if (!notificationResponse.ok) {
+            console.error("Failed to trigger notification:", await notificationResponse.text());
+          }
+        } catch (notifyError) {
+          console.error("Error triggering notification:", notifyError);
+        }
+      }
+    }
+
     return jsonResponse({
       success: true,
       status: needsReview ? "review_needed" : "extracted",
       bidId: bid.id,
+      projectComplete: allComplete && successfulCount >= 2,
     });
 
   } catch (error) {

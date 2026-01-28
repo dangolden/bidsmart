@@ -169,6 +169,52 @@ export async function updateProjectDataSharingConsent(
   return updateProject(projectId, updates);
 }
 
+export async function updateProjectNotificationSettings(
+  projectId: string,
+  email: string,
+  notifyOnCompletion: boolean
+): Promise<Project | null> {
+  return updateProject(projectId, {
+    notification_email: email,
+    notify_on_completion: notifyOnCompletion,
+  });
+}
+
+export async function setProjectAnalysisQueued(
+  projectId: string
+): Promise<Project | null> {
+  return updateProject(projectId, {
+    analysis_queued_at: new Date().toISOString(),
+    status: 'analyzing',
+  });
+}
+
+export async function incrementProjectRerunCount(
+  projectId: string
+): Promise<Project | null> {
+  const project = await getProject(projectId);
+  if (!project) return null;
+
+  return updateProject(projectId, {
+    rerun_count: (project.rerun_count || 0) + 1,
+  });
+}
+
+export async function getProjectsByNotificationEmail(
+  email: string
+): Promise<Project[]> {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .ilike('notification_email', normalizedEmail)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
 export async function deleteProject(projectId: string): Promise<void> {
   const { error } = await supabase
     .from('projects')
@@ -176,6 +222,39 @@ export async function deleteProject(projectId: string): Promise<void> {
     .eq('id', projectId);
 
   if (error) throw error;
+}
+
+export async function getProjectBySessionId(sessionId: string): Promise<Project | null> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('session_id', sessionId)
+    .eq('status', 'draft')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createDraftProject(
+  userId: string,
+  sessionId: string
+): Promise<Project> {
+  const { data, error } = await supabase
+    .from('projects')
+    .insert({
+      user_id: userId,
+      session_id: sessionId,
+      project_name: 'My Heat Pump Project',
+      status: 'draft',
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 }
 
 // ============================================
@@ -225,6 +304,16 @@ export async function getBidsByProject(projectId: string): Promise<ContractorBid
 
   if (error) throw error;
   return data || [];
+}
+
+export async function getBidCountByProject(projectId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('contractor_bids')
+    .select('*', { count: 'exact', head: true })
+    .eq('project_id', projectId);
+
+  if (error) throw error;
+  return count || 0;
 }
 
 export async function updateBid(
@@ -784,8 +873,12 @@ export async function getProjectSummary(projectId: string): Promise<ProjectSumma
 // ============================================
 
 const MAX_PDF_SIZE_BYTES = 25 * 1024 * 1024;
-const ALLOWED_PDF_EXTENSIONS = ['pdf'];
-const ALLOWED_PDF_MIME_TYPES = ['application/pdf'];
+const ALLOWED_PDF_EXTENSIONS = ['pdf', 'doc', 'docx'];
+const ALLOWED_PDF_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+];
 
 export interface PdfValidationError {
   code: 'INVALID_EXTENSION' | 'INVALID_MIME_TYPE' | 'FILE_TOO_LARGE';
@@ -797,14 +890,14 @@ export function validatePdfFile(file: File): PdfValidationError | null {
   if (!fileExt || !ALLOWED_PDF_EXTENSIONS.includes(fileExt)) {
     return {
       code: 'INVALID_EXTENSION',
-      message: 'Only PDF files are allowed. Please upload a .pdf file.',
+      message: 'Only PDF and Word documents (.pdf, .doc, .docx) are allowed.',
     };
   }
 
   if (!ALLOWED_PDF_MIME_TYPES.includes(file.type)) {
     return {
       code: 'INVALID_MIME_TYPE',
-      message: 'Invalid file type. Please upload a valid PDF document.',
+      message: 'Invalid file type. Please upload a valid PDF or Word document.',
     };
   }
 
@@ -827,7 +920,8 @@ export async function uploadPdfToStorage(
     throw new Error(validationError.message);
   }
 
-  const fileName = `${Date.now()}_${crypto.randomUUID()}.pdf`;
+  const fileExt = file.name.split('.').pop()?.toLowerCase() || 'pdf';
+  const fileName = `${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
   const filePath = `bids/${projectId}/${fileName}`;
 
   const { error: uploadError } = await supabase.storage

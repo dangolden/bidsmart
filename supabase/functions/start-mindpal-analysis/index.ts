@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
-import { verifyAuth, verifyProjectOwnership } from "../_shared/auth.ts";
+import { verifyEmailAuth, verifyProjectOwnership } from "../_shared/auth.ts";
 
 const MINDPAL_API_ENDPOINT = "https://api-v3.mindpal.io/api/v1/workflow-runs";
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
@@ -128,12 +128,11 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Method not allowed", 405);
     }
 
-    const authResult = await verifyAuth(req);
+    const authResult = await verifyEmailAuth(req);
     if (authResult instanceof Response) {
       return authResult;
     }
     const { userExtId } = authResult;
-    const authHeader = req.headers.get("Authorization")!;
 
     const body: RequestBody = await req.json();
     const { projectId, pdfUploadIds, userPriorities } = body;
@@ -146,7 +145,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Missing or invalid userPriorities");
     }
 
-    const isOwner = await verifyProjectOwnership(userExtId, projectId, authHeader);
+    const isOwner = await verifyProjectOwnership(userExtId, projectId);
     if (!isOwner) {
       return errorResponse("Not authorized to access this project", 403);
     }
@@ -156,17 +155,39 @@ Deno.serve(async (req: Request) => {
     const requestId = generateUUID();
     const callbackUrl = `${SUPABASE_URL}/functions/v1/mindpal-callback`;
 
+    console.log("Callback URL:", callbackUrl);
+
     const payload = constructMindPalPayload(pdfUrls, userPriorities, requestId, callbackUrl);
 
     const mindpalResult = await callMindPalAPI(payload);
 
     const workflowRunId = mindpalResult.workflow_run_id;
 
+    await supabaseAdmin
+      .from("pdf_uploads")
+      .update({
+        status: "processing",
+        mindpal_status: "processing",
+        mindpal_run_id: workflowRunId,
+        processing_started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .in("id", pdfUploadIds);
+
+    await supabaseAdmin
+      .from("projects")
+      .update({
+        status: "analyzing",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", projectId);
+
     return jsonResponse({
       success: true,
       projectId,
       requestId,
       workflowRunId,
+      callbackUrl,
       pdfCount: pdfUploadIds.length,
       message: "Analysis started successfully",
     });

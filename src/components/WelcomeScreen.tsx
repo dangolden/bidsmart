@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
-import { FolderOpen, Calendar, FileText, ChevronRight, Play } from 'lucide-react';
-import { getProjectsWithPublicDemos } from '../lib/database/bidsmartService';
+import { FolderOpen, Calendar, FileText, ChevronRight, Play, Search, Clock, CheckCircle2 } from 'lucide-react';
+import { getProjectsWithPublicDemos, getBidCountByProject } from '../lib/database/bidsmartService';
 import type { UserExt, Project } from '../lib/types';
 import { DashboardPhasePreview } from './DashboardPhasePreview';
+import { PreviousAnalysisLookup } from './PreviousAnalysisLookup';
 import { formatDate } from '../lib/utils/formatters';
 import SwitchLogo from '../assets/switchlogo.svg';
+
+interface ProjectWithBidCount extends Project {
+  bidCount?: number;
+}
 
 interface WelcomeScreenProps {
   user: UserExt;
@@ -13,8 +18,9 @@ interface WelcomeScreenProps {
 }
 
 export function WelcomeScreen({ user, onSelectProject, onCreateProject }: WelcomeScreenProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithBidCount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showLookup, setShowLookup] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -23,7 +29,13 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
   async function loadProjects() {
     try {
       const allProjects = await getProjectsWithPublicDemos(user.id);
-      setProjects(allProjects);
+      const projectsWithCounts = await Promise.all(
+        allProjects.map(async (project) => {
+          const bidCount = await getBidCountByProject(project.id);
+          return { ...project, bidCount };
+        })
+      );
+      setProjects(projectsWithCounts);
     } catch (err) {
       console.error('Failed to load projects:', err);
     } finally {
@@ -36,21 +48,27 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
   }
 
   function getStatusBadge(status: string) {
-    const statusConfig: Record<string, { label: string; className: string }> = {
-      draft: { label: 'Draft', className: 'bg-gray-100 text-gray-600' },
-      collecting_bids: { label: 'Gathering Bids', className: 'bg-blue-100 text-blue-700' },
-      analyzing: { label: 'Analyzing', className: 'bg-amber-100 text-amber-700' },
-      comparing: { label: 'Comparing', className: 'bg-switch-green-100 text-switch-green-700' },
-      decided: { label: 'Decision Made', className: 'bg-switch-green-100 text-switch-green-700' },
-      completed: { label: 'Completed', className: 'bg-gray-100 text-gray-600' },
+    const statusConfig: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
+      draft: { label: 'Draft', icon: <FileText className="w-3 h-3" />, className: 'bg-gray-100 text-gray-600' },
+      collecting_bids: { label: 'Gathering Bids', icon: <FileText className="w-3 h-3" />, className: 'bg-blue-100 text-blue-700' },
+      analyzing: { label: 'Processing', icon: <Clock className="w-3 h-3 animate-pulse" />, className: 'bg-amber-100 text-amber-700' },
+      comparing: { label: 'Ready', icon: <CheckCircle2 className="w-3 h-3" />, className: 'bg-switch-green-100 text-switch-green-700' },
+      decided: { label: 'Decision Made', icon: <CheckCircle2 className="w-3 h-3" />, className: 'bg-switch-green-100 text-switch-green-700' },
+      completed: { label: 'Completed', icon: <CheckCircle2 className="w-3 h-3" />, className: 'bg-gray-100 text-gray-600' },
     };
 
     const config = statusConfig[status] || statusConfig.draft;
     return (
-      <span className={`text-xs px-2 py-1 rounded-full font-medium ${config.className}`}>
+      <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${config.className}`}>
+        {config.icon}
         {config.label}
       </span>
     );
+  }
+
+  function handleLookupSelect(projectId: string) {
+    setShowLookup(false);
+    onSelectProject(projectId);
   }
 
   if (loading) {
@@ -123,6 +141,12 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
                         <Calendar className="w-3.5 h-3.5" />
                         {formatDate(project.created_at)}
                       </span>
+                      {project.bidCount !== undefined && project.bidCount > 0 && (
+                        <span className="flex items-center gap-1">
+                          <FileText className="w-3.5 h-3.5" />
+                          {project.bidCount} {project.bidCount === 1 ? 'bid' : 'bids'}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
@@ -132,16 +156,37 @@ export function WelcomeScreen({ user, onSelectProject, onCreateProject }: Welcom
           </div>
         )}
 
-        <div className="mt-12 text-center">
-          <div className="mb-6 pb-6 border-b border-gray-200">
+        <div className="mt-12 max-w-2xl mx-auto">
+          <div className="bg-gray-100 rounded-xl p-6 mb-6">
+            <h3 className="text-sm font-medium text-gray-900 mb-2">Looking for a previous analysis?</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              If you submitted bids and provided your email, you can look up your analysis here.
+            </p>
+            <button
+              onClick={() => setShowLookup(true)}
+              className="btn btn-secondary flex items-center gap-2"
+            >
+              <Search className="w-4 h-4" />
+              Find My Analysis
+            </button>
+          </div>
+
+          <div className="text-center pb-6 border-b border-gray-200">
             <p className="text-sm text-gray-600">
               Don't have bids ready? View a demo comparison of real bids.
             </p>
           </div>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-400 text-center mt-6">
             Powered by TheSwitchIsOn.org
           </p>
         </div>
+
+        {showLookup && (
+          <PreviousAnalysisLookup
+            onSelectProject={handleLookupSelect}
+            onClose={() => setShowLookup(false)}
+          />
+        )}
       </div>
     </div>
   );

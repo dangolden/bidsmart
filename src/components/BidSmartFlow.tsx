@@ -4,6 +4,8 @@ import { GatherPhase } from './phases/GatherPhase';
 import { ComparePhase } from './phases/ComparePhase';
 import { DecidePhase } from './phases/DecidePhase';
 import { VerifyPhase } from './phases/VerifyPhase';
+import { AlphaBanner } from './AlphaBanner';
+import { DemoBanner } from './DemoBanner';
 import type { UserExt } from '../lib/types';
 
 interface BidSmartFlowProps {
@@ -13,20 +15,24 @@ interface BidSmartFlowProps {
 }
 
 function PhaseContentWrapper({ onNavigateHome }: { onNavigateHome?: () => void }) {
-  const { currentPhase, loading, error, project } = usePhase();
+  const { currentPhase, loading, error, project, isDemoMode } = usePhase();
 
   const content = (
-    <PhaseContent loading={loading} error={error} currentPhase={currentPhase} />
+    <PhaseContent loading={loading} error={error} currentPhase={currentPhase} isDemoMode={isDemoMode} />
   );
 
   return (
-    <PhaseLayout onNavigateHome={onNavigateHome} projectName={project?.project_name}>
-      {content}
-    </PhaseLayout>
+    <>
+      <AlphaBanner />
+      <PhaseLayout onNavigateHome={onNavigateHome} projectName={project?.project_name} isDemoMode={isDemoMode}>
+        {isDemoMode && <DemoBanner onStartOwn={onNavigateHome} />}
+        {content}
+      </PhaseLayout>
+    </>
   );
 }
 
-function PhaseContent({ loading, error, currentPhase }: { loading: boolean; error: string | null; currentPhase: number }) {
+function PhaseContent({ loading, error, currentPhase, isDemoMode }: { loading: boolean; error: string | null; currentPhase: number; isDemoMode: boolean }) {
 
   if (loading) {
     return (
@@ -55,7 +61,7 @@ function PhaseContent({ loading, error, currentPhase }: { loading: boolean; erro
 
   switch (currentPhase) {
     case 1:
-      return <GatherPhase />;
+      return isDemoMode ? <ComparePhase /> : <GatherPhase />;
     case 2:
       return <ComparePhase />;
     case 3:
@@ -63,7 +69,7 @@ function PhaseContent({ loading, error, currentPhase }: { loading: boolean; erro
     case 4:
       return <VerifyPhase />;
     default:
-      return <GatherPhase />;
+      return isDemoMode ? <ComparePhase /> : <GatherPhase />;
   }
 }
 
