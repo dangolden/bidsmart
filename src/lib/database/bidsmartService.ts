@@ -1117,3 +1117,34 @@ export async function deleteBidFaq(faqId: string): Promise<void> {
 
   if (error) throw error;
 }
+
+export async function getFaqsByProject(
+  projectId: string,
+  bids: Array<{ bid: ContractorBid }>
+): Promise<import('../types').ProjectFaqData> {
+  const overallFaqsPromise = supabase
+    .from('project_faqs')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('display_order', { ascending: true });
+
+  const bidFaqsPromises = bids.map(async (bidData, index) => {
+    const faqs = await getFaqsByBid(bidData.bid.id);
+    return {
+      bid_id: bidData.bid.id,
+      bid_index: index,
+      contractor_name: bidData.bid.contractor_name || bidData.bid.contractor_company || `Bid ${index + 1}`,
+      faqs,
+    };
+  });
+
+  const [overallResult, ...bidFaqResults] = await Promise.all([
+    overallFaqsPromise,
+    ...bidFaqsPromises,
+  ]);
+
+  return {
+    overall: overallResult.data || [],
+    by_bid: bidFaqResults,
+  };
+}
