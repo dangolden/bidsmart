@@ -57,12 +57,8 @@ interface PollOptions {
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) {
-    throw new Error('Not authenticated');
-  }
   return {
-    'Authorization': `Bearer ${session.access_token}`,
+    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
     'Content-Type': 'application/json',
     'apikey': SUPABASE_ANON_KEY,
   };
