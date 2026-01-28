@@ -50,7 +50,7 @@ export function OverallFaqsCard({ faqs }: OverallFaqsCardProps) {
         <div className="flex items-center gap-3">
           <Lightbulb className="w-6 h-6 text-white" />
           <div>
-            <h3 className="font-bold text-white text-lg">Overall Comparison FAQs</h3>
+            <h3 className="font-bold text-white text-lg">Overall Comparison Common Questions</h3>
             <p className="text-switch-green-100 text-sm">General questions about your bids</p>
           </div>
         </div>
@@ -83,7 +83,7 @@ export function OverallFaqsCard({ faqs }: OverallFaqsCardProps) {
 
                   {!hasAnswer && !isExpanded && (
                     <p className="text-sm text-gray-500 mt-1">
-                      Answer pending from AI analysis
+                      Being analyzed...
                     </p>
                   )}
                 </div>
@@ -98,7 +98,7 @@ export function OverallFaqsCard({ faqs }: OverallFaqsCardProps) {
                   ) : (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                       <p className="text-sm text-amber-800">
-                        This answer will be generated during bid analysis. The AI will review all your
+                        This answer is being generated during bid analysis. The AI will review all your
                         bids and provide insights to help you make an informed decision.
                       </p>
                     </div>

@@ -54,7 +54,7 @@ export function BidSpecificFaqsCard({ bidFaqSets, switchPreferredBids = new Set(
         <div className="flex items-center gap-3">
           <FileText className="w-6 h-6 text-white" />
           <div>
-            <h3 className="font-bold text-white text-lg">Bid-Specific FAQs</h3>
+            <h3 className="font-bold text-white text-lg">Bid-Specific Common Questions</h3>
             <p className="text-blue-100 text-sm">Questions about each contractor's bid</p>
           </div>
         </div>
@@ -94,7 +94,7 @@ export function BidSpecificFaqsCard({ bidFaqSets, switchPreferredBids = new Set(
           <div className="p-8 text-center">
             <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-600 text-sm">
-              No FAQs available for this bid yet. They will be generated during analysis.
+              No common questions available for this bid yet. They will be generated during analysis.
             </p>
           </div>
         ) : (
@@ -124,7 +124,7 @@ export function BidSpecificFaqsCard({ bidFaqSets, switchPreferredBids = new Set(
 
                     {!hasAnswer && !isExpanded && (
                       <p className="text-sm text-gray-500 mt-1">
-                        Answer pending from AI analysis
+                        Being analyzed...
                       </p>
                     )}
                   </div>
@@ -139,7 +139,7 @@ export function BidSpecificFaqsCard({ bidFaqSets, switchPreferredBids = new Set(
                     ) : (
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                         <p className="text-sm text-amber-800">
-                          This answer will be generated during bid analysis. The AI will review {activeBidFaqSet.contractor_name}'s
+                          This answer is being generated during bid analysis. The AI will review {activeBidFaqSet.contractor_name}'s
                           bid and provide detailed insights to help you make an informed decision.
                         </p>
                       </div>
