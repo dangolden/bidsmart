@@ -434,12 +434,28 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <AlphaBanner />
 
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-center mb-3">
-            <img src={SwitchLogo} alt="SwitchIsOn" className="h-12 w-auto" />
-          </div>
+      <div className="max-w-4xl w-full mx-auto px-4 py-8">
+        <div className="flex items-center justify-center mb-6">
+          <img src={SwitchLogo} alt="SwitchIsOn" className="h-12 w-auto" />
+        </div>
 
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Heat Pump Bid Compare Tool <span className="text-base font-normal text-gray-500">(Beta)</span>
+          </h1>
+          <p className="text-gray-600 max-w-2xl mx-auto text-sm">
+            Upload your contractor bids to get an AI-powered comparison and make an informed decision.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <ReturningUserSection onSelectProject={onSelectProject} />
+          <TryTheToolSection onSelectDemo={onSelectProject} />
+        </div>
+      </div>
+
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-3">
             {PHASES.map((phase, index) => {
               const isActive = phase.number === 1;
@@ -485,20 +501,6 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
       </div>
 
       <div className="flex-1 max-w-4xl w-full mx-auto px-4 py-6">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Heat Pump Bid Compare Tool <span className="text-base font-normal text-gray-500">(Beta)</span>
-          </h1>
-          <p className="text-gray-600 max-w-2xl mx-auto text-sm">
-            Upload your contractor bids to get an AI-powered comparison and make an informed decision.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <ReturningUserSection onSelectProject={onSelectProject} />
-          <TryTheToolSection onSelectDemo={onSelectProject} />
-        </div>
-
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
             <Upload className="w-5 h-5 text-switch-green-600" />

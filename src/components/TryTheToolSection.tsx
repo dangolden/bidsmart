@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Play, FileText, ChevronRight, Loader2 } from 'lucide-react';
+import { Play, ChevronRight, Loader2, FileText } from 'lucide-react';
 import { getPublicDemoProjects, getBidCountByProject } from '../lib/database/bidsmartService';
 import type { Project } from '../lib/types';
 
@@ -71,9 +71,6 @@ export function TryTheToolSection({ onSelectDemo }: TryTheToolSectionProps) {
             onClick={() => onSelectDemo(demo.id)}
             className="w-full bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg p-3 flex items-center gap-3 transition-colors text-left group"
           >
-            <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
-              <Play className="w-5 h-5 text-teal-600" />
-            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 <h3 className="font-medium text-gray-900 text-sm">{demo.project_name}</h3>
