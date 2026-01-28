@@ -1,6 +1,7 @@
 import { supabase } from '../supabaseClient';
 import * as db from '../database/bidsmartService';
 import type { ConfidenceLevel, LineItemType, MindPalExtractionResponse } from '../types';
+import { getAuthHeaders as getParentAuthHeaders } from '../parentAuth';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -57,11 +58,13 @@ interface PollOptions {
 }
 
 async function getAuthHeaders(userEmail: string): Promise<Record<string, string>> {
+  // Get auth headers (uses signed token if available, falls back to email)
+  const authHeaders = getParentAuthHeaders(userEmail);
+  
   return {
     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-    'Content-Type': 'application/json',
     'apikey': SUPABASE_ANON_KEY,
-    'X-User-Email': userEmail,
+    ...authHeaders,
   };
 }
 

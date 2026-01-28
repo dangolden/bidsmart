@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import type { UserExt } from '../lib/types';
+import { getAuthTokenFromUrl, storeAuthToken } from '../lib/parentAuth';
 
 const STORAGE_KEY = 'bidsmart_user';
 const DEFAULT_EMAIL = 'demo@theswitchison.org';
@@ -11,9 +12,22 @@ interface StoredUser {
   name: string;
 }
 
+/**
+ * Gets user info from URL parameters
+ * Supports both signed auth tokens (preferred) and legacy email params
+ */
 function getUrlParams(): StoredUser | null {
   if (typeof window === 'undefined') return null;
 
+  // Try signed auth token first (more secure)
+  const authToken = getAuthTokenFromUrl();
+  if (authToken) {
+    // Store token for subsequent API requests
+    storeAuthToken(authToken.token);
+    return { email: authToken.email, name: authToken.name };
+  }
+
+  // Fall back to legacy email param (less secure, for backward compat)
   const params = new URLSearchParams(window.location.search);
   const email = params.get('user_email');
   const name = params.get('user_name');
