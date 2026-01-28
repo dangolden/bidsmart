@@ -547,7 +547,7 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
             Start a New Bid Comparison
           </h2>
           <p className="text-sm text-gray-600 mb-6">
-            Upload at least 2 contractor bid PDFs to compare.
+            Upload at least 2 contractor bid documents to compare (PDF, DOC, or DOCX).
           </p>
 
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
@@ -577,7 +577,7 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,application/pdf"
+            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             multiple
             onChange={handleFileSelect}
             className="hidden"
@@ -597,7 +597,7 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
             <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
               <FileText className="w-5 h-5 text-gray-400" />
             </div>
-            <p className="text-gray-600 mb-1.5 text-sm">Drag and drop PDF bid documents here</p>
+            <p className="text-gray-600 mb-1.5 text-sm">Drag and drop bid documents here</p>
             <p className="text-sm text-gray-400 mb-3">or</p>
             <button
               type="button"
@@ -610,7 +610,7 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
               Browse Files
             </button>
             <p className="text-xs text-gray-400 mt-3">
-              Supported formats: PDF (max 25MB each)
+              Supported formats: PDF, DOC, DOCX (max 25MB each)
             </p>
           </div>
 

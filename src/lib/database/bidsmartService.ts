@@ -873,8 +873,12 @@ export async function getProjectSummary(projectId: string): Promise<ProjectSumma
 // ============================================
 
 const MAX_PDF_SIZE_BYTES = 25 * 1024 * 1024;
-const ALLOWED_PDF_EXTENSIONS = ['pdf'];
-const ALLOWED_PDF_MIME_TYPES = ['application/pdf'];
+const ALLOWED_PDF_EXTENSIONS = ['pdf', 'doc', 'docx'];
+const ALLOWED_PDF_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+];
 
 export interface PdfValidationError {
   code: 'INVALID_EXTENSION' | 'INVALID_MIME_TYPE' | 'FILE_TOO_LARGE';
@@ -886,14 +890,14 @@ export function validatePdfFile(file: File): PdfValidationError | null {
   if (!fileExt || !ALLOWED_PDF_EXTENSIONS.includes(fileExt)) {
     return {
       code: 'INVALID_EXTENSION',
-      message: 'Only PDF files are allowed. Please upload a .pdf file.',
+      message: 'Only PDF and Word documents (.pdf, .doc, .docx) are allowed.',
     };
   }
 
   if (!ALLOWED_PDF_MIME_TYPES.includes(file.type)) {
     return {
       code: 'INVALID_MIME_TYPE',
-      message: 'Invalid file type. Please upload a valid PDF document.',
+      message: 'Invalid file type. Please upload a valid PDF or Word document.',
     };
   }
 
@@ -916,7 +920,8 @@ export async function uploadPdfToStorage(
     throw new Error(validationError.message);
   }
 
-  const fileName = `${Date.now()}_${crypto.randomUUID()}.pdf`;
+  const fileExt = file.name.split('.').pop()?.toLowerCase() || 'pdf';
+  const fileName = `${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
   const filePath = `bids/${projectId}/${fileName}`;
 
   const { error: uploadError } = await supabase.storage
