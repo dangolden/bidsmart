@@ -222,16 +222,16 @@ export function DecidePhase() {
       icon: <DollarSign className="w-5 h-5" />
     },
     {
-      key: 'questions',
-      label: 'Contractor Questions',
-      description: 'Ask contractors for clarification',
-      icon: <HelpCircle className="w-5 h-5" />
-    },
-    {
       key: 'faqs',
       label: 'FAQs',
       description: 'Common questions about your bids',
       icon: <BookOpen className="w-5 h-5" />
+    },
+    {
+      key: 'questions',
+      label: 'Contractor Questions',
+      description: 'Ask contractors for clarification',
+      icon: <HelpCircle className="w-5 h-5" />
     },
   ];
 
@@ -357,6 +357,37 @@ export function DecidePhase() {
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No Incentives Available</h3>
               <p className="text-gray-600">There are currently no active rebate programs in the system.</p>
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'faqs' && (
+        <div className="space-y-6">
+          {bids.length === 0 ? (
+            <div className="bg-white rounded-xl border-2 border-gray-200 p-12 text-center">
+              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Bids Available</h3>
+              <p className="text-gray-600">Upload your contractor bids to see FAQ analysis.</p>
+            </div>
+          ) : (
+            bids.map((bidInfo) => {
+              const faqs = bidFaqs.get(bidInfo.bid.id) || [];
+              const contractorName = bidInfo.bid.contractor_name || bidInfo.bid.contractor_company || 'Unknown Contractor';
+
+              return (
+                <div key={bidInfo.bid.id} className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-bold text-gray-900">{contractorName}</h3>
+                    {bidInfo.bid.contractor_is_switch_preferred && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-switch-green-500 to-switch-green-600 text-white rounded-full text-xs font-medium">
+                        <Award className="w-3 h-3" /> Switch Preferred
+                      </span>
+                    )}
+                  </div>
+                  <BidFaqSection faqs={faqs} contractorName={contractorName} />
+                </div>
+              );
+            })
           )}
         </div>
       )}
@@ -753,37 +784,6 @@ export function DecidePhase() {
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No Bids to Review</h3>
               <p className="text-gray-600">Upload your contractor bids in the Gather phase to see them here.</p>
             </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'faqs' && (
-        <div className="space-y-6">
-          {bids.length === 0 ? (
-            <div className="bg-white rounded-xl border-2 border-gray-200 p-12 text-center">
-              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Bids Available</h3>
-              <p className="text-gray-600">Upload your contractor bids to see FAQ analysis.</p>
-            </div>
-          ) : (
-            bids.map((bidInfo) => {
-              const faqs = bidFaqs.get(bidInfo.bid.id) || [];
-              const contractorName = bidInfo.bid.contractor_name || bidInfo.bid.contractor_company || 'Unknown Contractor';
-
-              return (
-                <div key={bidInfo.bid.id} className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-bold text-gray-900">{contractorName}</h3>
-                    {bidInfo.bid.contractor_is_switch_preferred && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-switch-green-500 to-switch-green-600 text-white rounded-full text-xs font-medium">
-                        <Award className="w-3 h-3" /> Switch Preferred
-                      </span>
-                    )}
-                  </div>
-                  <BidFaqSection faqs={faqs} contractorName={contractorName} />
-                </div>
-              );
-            })
           )}
         </div>
       )}
