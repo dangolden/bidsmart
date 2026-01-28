@@ -431,64 +431,67 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <AlphaBanner />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="text-center mb-8">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-center mb-3">
-            <img src={SwitchLogo} alt="SwitchIsOn" className="h-16 w-auto" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">
-            Heat Pump Bid Compare Tool <span className="text-base font-normal text-gray-500">(Beta)</span>
-          </h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Upload your contractor bids to get an AI-powered comparison and make an informed decision.
-          </p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Your Bid Comparison Journey
-            </h2>
-            <p className="text-gray-600 text-sm">
-              Follow these four simple steps to confidently choose the right heat pump contractor
-            </p>
+            <img src={SwitchLogo} alt="SwitchIsOn" className="h-12 w-auto" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="flex items-center justify-between mb-3">
             {PHASES.map((phase, index) => {
-              const Icon = phase.icon;
+              const isActive = phase.number === 1;
+
               return (
-                <div key={phase.number} className="relative">
-                  <div className="bg-gray-50 rounded-lg p-4 h-full flex flex-col items-center text-center">
-                    <div className={`w-12 h-12 rounded-full ${phase.color} flex items-center justify-center mb-3`}>
-                      <Icon className="w-6 h-6" />
+                <div key={phase.number} className="flex items-center flex-1">
+                  <div className="flex items-center gap-2 transition-all min-w-0">
+                    <div
+                      className={`
+                        w-10 h-10 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors flex-shrink-0
+                        ${isActive ? 'bg-switch-green-600 text-white' : 'bg-gray-200 text-gray-400'}
+                      `}
+                    >
+                      {phase.number}
                     </div>
-                    <div className="mb-2">
-                      <div className="text-xs font-semibold text-gray-500 mb-1">
-                        STEP {phase.number}
-                      </div>
-                      <h3 className="font-semibold text-gray-900 text-sm mb-1">
-                        {phase.title}
-                      </h3>
-                    </div>
-                    <p className="text-xs text-gray-600 leading-relaxed">
-                      {phase.description}
-                    </p>
+                    <span
+                      className={`
+                        text-xs sm:text-sm font-medium hidden md:block truncate
+                        ${isActive ? 'text-gray-900' : 'text-gray-500'}
+                      `}
+                    >
+                      {phase.label}
+                    </span>
                   </div>
+
                   {index < PHASES.length - 1 && (
-                    <div className="hidden md:block absolute top-1/4 -right-2 w-4 h-4">
-                      <svg viewBox="0 0 24 24" fill="none" className="w-full h-full text-gray-300">
-                        <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                    <div className="flex-1 mx-2 sm:mx-3 min-w-[12px]">
+                      <div className="h-0.5 bg-gray-200 transition-colors" />
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
+
+          <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-switch-green-600 transition-all duration-500"
+              style={{ width: '0%' }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 max-w-4xl w-full mx-auto px-4 py-6">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Heat Pump Bid Compare Tool <span className="text-base font-normal text-gray-500">(Beta)</span>
+          </h1>
+          <p className="text-gray-600 max-w-2xl mx-auto text-sm">
+            Upload your contractor bids to get an AI-powered comparison and make an informed decision.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -501,33 +504,9 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
             <Upload className="w-5 h-5 text-switch-green-600" />
             Start a New Bid Comparison
           </h2>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-gray-600 mb-6">
             Upload at least 2 contractor bid PDFs to compare.
           </p>
-
-          <div className="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100">
-            {PHASES.map((phase, index) => {
-              const Icon = phase.icon;
-              const isActive = index === 0;
-              return (
-                <div key={phase.number} className="flex items-center flex-1">
-                  <div className="flex items-center gap-2 flex-1">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isActive ? phase.color : 'bg-gray-100'}`}>
-                      <Icon className={`w-4 h-4 ${isActive ? '' : 'text-gray-400'}`} />
-                    </div>
-                    <div className="hidden sm:block">
-                      <div className="text-xs font-semibold text-gray-500">{phase.label}</div>
-                    </div>
-                  </div>
-                  {index < PHASES.length - 1 && (
-                    <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-gray-300 flex-shrink-0">
-                      <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </div>
-              );
-            })}
-          </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
             <div className="flex gap-3">
@@ -816,7 +795,7 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 text-center mt-8 pb-6">
+        <p className="text-xs text-gray-400 text-center mt-6 pb-4">
           Powered by TheSwitchIsOn.org
         </p>
       </div>
