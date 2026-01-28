@@ -1,5 +1,7 @@
 # BidSmart Staging Deployment Guide
 
+> **Last updated**: January 28, 2026
+
 This guide walks through setting up a staging environment for testing before pushing changes to production.
 
 ## Overview
