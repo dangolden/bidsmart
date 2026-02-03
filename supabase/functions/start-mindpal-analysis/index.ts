@@ -3,15 +3,16 @@ import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
 import { verifyEmailAuth, verifyProjectOwnership } from "../_shared/auth.ts";
 
-const MINDPAL_API_ENDPOINT = "https://api-v3.mindpal.io/api/v1/workflow-runs";
+const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://api-v3.mindpal.io/api/v1/workflow-runs";
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 
-const WORKFLOW_ID = "6977761cea6802fb7c1424b7";
-const PDF_URLS_FIELD_ID = "69782151847543b8bcec4b87";
-const USER_PRIORITIES_FIELD_ID = "69782151847543b8bcec4b88";
-const REQUEST_ID_FIELD_ID = "69782151847543b8bcec4b89";
-const CALLBACK_URL_FIELD_ID = "6978231d847543b8bcec4b8f";
+// MindPal workflow configuration - set via environment variables
+const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "";
+const PDF_URLS_FIELD_ID = Deno.env.get("MINDPAL_PDF_URLS_FIELD_ID") || "";
+const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "";
+const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "";
+const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "";
 
 interface RequestBody {
   projectId: string;
@@ -98,6 +99,9 @@ async function callMindPalAPI(payload: MindPalPayload): Promise<{
 }> {
   if (!MINDPAL_API_KEY) {
     throw new Error("MindPal API key not configured");
+  }
+  if (!WORKFLOW_ID || !PDF_URLS_FIELD_ID || !USER_PRIORITIES_FIELD_ID || !REQUEST_ID_FIELD_ID || !CALLBACK_URL_FIELD_ID) {
+    throw new Error("MindPal workflow configuration incomplete - check environment variables");
   }
 
   const response = await fetch(MINDPAL_API_ENDPOINT, {
