@@ -4,6 +4,9 @@ import { usePhase } from '../../context/PhaseContext';
 import { useUser } from '../../hooks/useUser';
 import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject, validatePdfFile, updateProjectNotificationSettings } from '../../lib/database/bidsmartService';
 import { uploadPdfFile, startBatchAnalysis, pollBatchExtractionStatus, type BatchExtractionStatus } from '../../lib/services/mindpalService';
+import { AnalysisSubmissionInterstitial } from '../AnalysisSubmissionInterstitial';
+import { useAnalysisNotification } from '../../hooks/useAnalysisNotification';
+import { NotificationToast } from '../NotificationToast';
 
 interface PrioritySliderProps {
   label: string;
@@ -41,7 +44,7 @@ interface UploadedPdf {
   error?: string;
 }
 
-type AnalysisState = 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error' | 'timeout';
+type AnalysisState = 'idle' | 'submitting' | 'uploading' | 'analyzing' | 'complete' | 'error' | 'timeout';
 
 export function GatherPhase() {
   const { projectId, project, bids, requirements, completePhase, refreshRequirements, refreshBids, ensureProjectExists } = usePhase();
@@ -70,6 +73,9 @@ export function GatherPhase() {
   const [notifyOnCompletion, setNotifyOnCompletion] = useState(project?.notify_on_completion ?? true);
   const [savingNotification, setSavingNotification] = useState(false);
   const [notificationSaved, setNotificationSaved] = useState(false);
+  const [enableSound, setEnableSound] = useState(true);
+  const [showCompletionToast, setShowCompletionToast] = useState(false);
+  const { notify, requestPermission, permission, toggleSound } = useAnalysisNotification();
 
   useEffect(() => {
     if (requirements) {
@@ -214,9 +220,13 @@ export function GatherPhase() {
     return [...alreadyUploaded, ...pdfUploadIds];
   };
 
-  const handleContinue = async () => {
+  const handleContinue = () => {
     if (!canContinue) return;
+    // Show interstitial instead of starting immediately
+    setAnalysisState('submitting');
+  };
 
+  const handleConfirmSubmission = async () => {
     setAnalysisError(null);
 
     try {
@@ -269,7 +279,7 @@ export function GatherPhase() {
 
         const pollResult = await pollBatchExtractionStatus(activeProjectId, {
           intervalMs: 3000,
-          maxAttempts: 200,
+          maxAttempts: 600, // Extended to 30 minutes for beta
           onProgress: (status) => {
             setAnalysisProgress(status);
           },
@@ -283,6 +293,17 @@ export function GatherPhase() {
         }
 
         setAnalysisState('complete');
+        
+        // Trigger notifications on completion
+        if (enableSound) {
+          await notify(activeProjectId, {
+            title: 'Analysis Complete!',
+            body: 'Your bid comparison is ready to view.',
+            playSound: true,
+            showBrowserNotification: true,
+          });
+        }
+        setShowCompletionToast(true);
       }
 
       await refreshRequirements();
@@ -338,6 +359,36 @@ export function GatherPhase() {
       setSavingNotification(false);
     }
   };
+
+  // Show interstitial when user clicks continue
+  if (analysisState === 'submitting') {
+    return (
+      <>
+        <AnalysisSubmissionInterstitial
+          email={notificationEmail}
+          onEmailChange={setNotificationEmail}
+          notifyOnCompletion={notifyOnCompletion}
+          onNotifyChange={setNotifyOnCompletion}
+          enableSound={enableSound}
+          onEnableSoundChange={(enabled) => {
+            setEnableSound(enabled);
+            toggleSound(enabled);
+          }}
+          onRequestNotificationPermission={requestPermission}
+          notificationPermission={permission}
+          bidCount={validPendingCount + existingBidsCount}
+          onSaveAndContinue={handleConfirmSubmission}
+          isSaving={false}
+        />
+        <NotificationToast
+          show={showCompletionToast}
+          title="Analysis Complete!"
+          message="Your bid comparison is ready to view."
+          onClose={() => setShowCompletionToast(false)}
+        />
+      </>
+    );
+  }
 
   if (analysisState === 'timeout') {
     const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notificationEmail.trim());
@@ -919,6 +970,13 @@ export function GatherPhase() {
           Upload at least 2 bids to continue
         </p>
       )}
+
+      <NotificationToast
+        show={showCompletionToast}
+        title="Analysis Complete!"
+        message="Your bid comparison is ready to view."
+        onClose={() => setShowCompletionToast(false)}
+      />
     </div>
   );
 }
