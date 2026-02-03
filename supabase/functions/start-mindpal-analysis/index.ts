@@ -7,12 +7,13 @@ const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://ap
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 
-// MindPal workflow configuration - set via environment variables
-const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "";
-const PDF_URLS_FIELD_ID = Deno.env.get("MINDPAL_PDF_URLS_FIELD_ID") || "";
-const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "";
-const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "";
-const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "";
+// MindPal v8 workflow configuration - set via environment variables
+// Workflow: BidSmart Analyzer v8 (697a111dfac1e3c184d4907e)
+const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "697a111dfac1e3c184d4907e";
+const DOCUMENT_URLS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENT_URLS_FIELD_ID") || "697a111ffac1e3c184d4908a";
+const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "697a111ffac1e3c184d4908b";
+const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "697a1120fac1e3c184d4908c";
+const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "697a1120fac1e3c184d4908d";
 
 interface RequestBody {
   projectId: string;
@@ -75,7 +76,7 @@ function constructMindPalPayload(
     workflow_id: WORKFLOW_ID,
     inputs: [
       {
-        field_id: PDF_URLS_FIELD_ID,
+        field_id: DOCUMENT_URLS_FIELD_ID,
         value: JSON.stringify(pdfUrls),
       },
       {
@@ -100,7 +101,7 @@ async function callMindPalAPI(payload: MindPalPayload): Promise<{
   if (!MINDPAL_API_KEY) {
     throw new Error("MindPal API key not configured");
   }
-  if (!WORKFLOW_ID || !PDF_URLS_FIELD_ID || !USER_PRIORITIES_FIELD_ID || !REQUEST_ID_FIELD_ID || !CALLBACK_URL_FIELD_ID) {
+  if (!WORKFLOW_ID || !DOCUMENT_URLS_FIELD_ID || !USER_PRIORITIES_FIELD_ID || !REQUEST_ID_FIELD_ID || !CALLBACK_URL_FIELD_ID) {
     throw new Error("MindPal workflow configuration incomplete - check environment variables");
   }
 
