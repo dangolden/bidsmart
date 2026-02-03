@@ -7,13 +7,13 @@ const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://ap
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 
-// MindPal v8 workflow configuration - set via environment variables
-// Workflow: BidSmart Analyzer v8 (697a111dfac1e3c184d4907e)
-const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "697a111dfac1e3c184d4907e";
-const DOCUMENT_URLS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENT_URLS_FIELD_ID") || "697a111ffac1e3c184d4908a";
-const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "697a111ffac1e3c184d4908b";
-const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "697a1120fac1e3c184d4908c";
-const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "697a1120fac1e3c184d4908d";
+// MindPal v10 workflow configuration - set via environment variables
+// Workflow: BidSmart Analyzer v10 (697fc84945bf3484d9a860fb)
+const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "697fc84945bf3484d9a860fb";
+const DOCUMENT_URLS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENT_URLS_FIELD_ID") || "697fc84945bf3484d9a860fe";
+const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "697fc84945bf3484d9a86100";
+const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "697fc84945bf3484d9a86101";
+const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "697fc84945bf3484d9a860ff";
 
 interface RequestBody {
   projectId: string;
