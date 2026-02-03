@@ -2,12 +2,24 @@ const ALLOWED_ORIGINS = [
   "https://theswitchison.org",
   "https://www.theswitchison.org",
   "https://bidsmart.theswitchison.org",
+  "https://bidcompare.netlify.app",
   "http://localhost:5173",
   "http://localhost:3000",
 ];
 
+// Also allow Netlify deploy previews (pattern: https://deploy-preview-*--bidcompare.netlify.app)
+const NETLIFY_PREVIEW_PATTERN = /^https:\/\/deploy-preview-\d+--bidcompare\.netlify\.app$/;
+
 export function getCorsHeaders(origin?: string | null): Record<string, string> {
-  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  let allowedOrigin = ALLOWED_ORIGINS[0];
+  
+  if (origin) {
+    // Check if origin is in allowed list or matches Netlify preview pattern
+    if (ALLOWED_ORIGINS.includes(origin) || NETLIFY_PREVIEW_PATTERN.test(origin)) {
+      allowedOrigin = origin;
+    }
+  }
+  
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
