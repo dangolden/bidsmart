@@ -1,8 +1,8 @@
 const ALLOWED_ORIGINS = [
+  "https://bidcompare.netlify.app",
   "https://theswitchison.org",
   "https://www.theswitchison.org",
   "https://bidsmart.theswitchison.org",
-  "https://bidcompare.netlify.app",
   "http://localhost:5173",
   "http://localhost:3000",
 ];
