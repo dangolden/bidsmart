@@ -123,8 +123,8 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
   const analysisTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
-  const [showPriorities, setShowPriorities] = useState(false);
-  const [showProjectDetails, setShowProjectDetails] = useState(false);
+  const [showPriorities, setShowPriorities] = useState(true);
+  const [showProjectDetails, setShowProjectDetails] = useState(true);
   const [isHeaderSticky, setIsHeaderSticky] = useState(false);
   const heroSectionRef = useRef<HTMLDivElement>(null);
 
