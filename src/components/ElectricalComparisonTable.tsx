@@ -35,7 +35,7 @@ export function ElectricalComparisonTable({ bids, className = '' }: ElectricalCo
     );
   }
 
-  const getStatusIcon = (value: boolean | null) => {
+  const getStatusIcon = (value: boolean | null | undefined) => {
     if (value === true) return <CheckCircle2 className="w-5 h-5 text-switch-green-600" />;
     if (value === false) return <XCircle className="w-5 h-5 text-gray-400" />;
     return <span className="text-gray-400 text-sm">—</span>;

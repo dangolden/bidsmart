@@ -253,6 +253,18 @@ export interface ContractorBid {
   scope_pad_detail?: string | null;
   scope_drain_line_detail?: string | null;
 
+  // Electrical work details (v8 fields)
+  electrical_panel_assessment_included?: boolean | null;
+  electrical_panel_upgrade_included?: boolean | null;
+  electrical_panel_upgrade_cost?: number | null;
+  electrical_existing_panel_amps?: number | null;
+  electrical_proposed_panel_amps?: number | null;
+  electrical_breaker_size_required?: number | null;
+  electrical_dedicated_circuit_included?: boolean | null;
+  electrical_permit_included?: boolean | null;
+  electrical_load_calculation_included?: boolean | null;
+  electrical_notes?: string | null;
+
   // Source tracking
   bid_date?: string | null;
   valid_until?: string | null;

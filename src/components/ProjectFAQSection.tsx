@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, HelpCircle, CheckCircle, AlertCircle, Info, FileText } from 'lucide-react';
-import type { FAQData, OverallFAQ, FAQEvidence } from '../lib/types';
+import type { FAQData, FAQEvidence } from '../lib/types';
 
 interface ProjectFAQSectionProps {
   faqData: FAQData | null;
