@@ -3,7 +3,7 @@ import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
 import { verifyEmailAuth, verifyProjectOwnership } from "../_shared/auth.ts";
 
-const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://api-v3.mindpal.io/api/v1/workflow-runs";
+const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://app.mindpal.space/api/v2/workflow/run";
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 
@@ -105,13 +105,29 @@ async function callMindPalAPI(payload: MindPalPayload): Promise<{
     throw new Error("MindPal workflow configuration incomplete - check environment variables");
   }
 
-  const response = await fetch(MINDPAL_API_ENDPOINT, {
+  const apiUrl = `${MINDPAL_API_ENDPOINT}?workflow_id=${WORKFLOW_ID}`;
+  
+  console.log("MindPal API Request:", {
+    url: apiUrl,
+    workflow_id: WORKFLOW_ID,
+    payload: JSON.stringify(payload, null, 2),
+    api_key_present: !!MINDPAL_API_KEY,
+    api_key_length: MINDPAL_API_KEY?.length
+  });
+
+  const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${MINDPAL_API_KEY}`,
+      "x-api-key": MINDPAL_API_KEY,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
+  });
+
+  console.log("MindPal API Response:", {
+    status: response.status,
+    statusText: response.statusText,
+    headers: Object.fromEntries(response.headers.entries())
   });
 
   if (!response.ok) {
