@@ -22,11 +22,9 @@ interface RequestBody {
 }
 
 interface MindPalPayload {
-  workflow_id: string;
-  inputs: Array<{
-    field_id: string;
-    value: string;
-  }>;
+  data: {
+    [key: string]: string;
+  };
 }
 
 function generateUUID(): string {
@@ -73,25 +71,12 @@ function constructMindPalPayload(
   callbackUrl: string
 ): MindPalPayload {
   return {
-    workflow_id: WORKFLOW_ID,
-    inputs: [
-      {
-        field_id: DOCUMENT_URLS_FIELD_ID,
-        value: JSON.stringify(pdfUrls),
-      },
-      {
-        field_id: USER_PRIORITIES_FIELD_ID,
-        value: JSON.stringify(userPriorities),
-      },
-      {
-        field_id: REQUEST_ID_FIELD_ID,
-        value: requestId,
-      },
-      {
-        field_id: CALLBACK_URL_FIELD_ID,
-        value: callbackUrl,
-      },
-    ],
+    data: {
+      [DOCUMENT_URLS_FIELD_ID]: JSON.stringify(pdfUrls),
+      [USER_PRIORITIES_FIELD_ID]: JSON.stringify(userPriorities),
+      [REQUEST_ID_FIELD_ID]: requestId,
+      [CALLBACK_URL_FIELD_ID]: callbackUrl,
+    },
   };
 }
 
