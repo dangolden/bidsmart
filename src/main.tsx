@@ -1,4 +1,5 @@
-// Version: 2.0.2 - Base64 Upload Production Deploy
+// Version: 2.0.3 - Base64 Upload - Build 20260206-1517
+// Force new bundle hash to bypass aggressive browser caching
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
