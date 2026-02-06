@@ -150,6 +150,20 @@ Deno.serve(async (req: Request) => {
     const { userExtId } = authResult;
 
     const body: RequestBody = await req.json();
+    
+    // DEBUG: Log the incoming request body
+    console.log("Incoming request body:", JSON.stringify({
+      projectId: body.projectId,
+      hasDocuments: !!body.documents,
+      documentsType: typeof body.documents,
+      documentsIsArray: Array.isArray(body.documents),
+      documentsLength: body.documents?.length,
+      hasPdfUploadIds: !!body.pdfUploadIds,
+      hasUserPriorities: !!body.userPriorities,
+      useBase64: body.useBase64,
+      bodyKeys: Object.keys(body)
+    }, null, 2));
+    
     const { projectId, pdfUploadIds, documents, userPriorities, useBase64 } = body;
 
     // Validate project ID
@@ -161,6 +175,11 @@ Deno.serve(async (req: Request) => {
     const isBase64Mode = documents && Array.isArray(documents) && documents.length > 0;
 
     if (!isBase64Mode) {
+      console.error("Documents validation failed:", {
+        documents,
+        isArray: Array.isArray(documents),
+        length: documents?.length
+      });
       return errorResponse("Missing or invalid documents array");
     }
 

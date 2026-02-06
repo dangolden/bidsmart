@@ -578,15 +578,30 @@ export async function startBatchAnalysisWithBase64(
       project_details: projectDetails || '',
     };
 
+    const requestPayload = {
+      projectId,
+      documents, // Base64 documents instead of pdfUploadIds
+      userPriorities: prioritiesPayload,
+      useBase64: true, // Flag to indicate Base64 mode
+    };
+
+    console.log('🚀 Sending to Edge Function:', {
+      projectId,
+      documentsCount: documents.length,
+      documentsStructure: documents[0] ? Object.keys(documents[0]) : [],
+      firstDocumentSample: documents[0] ? {
+        filename: documents[0].filename,
+        mime_type: documents[0].mime_type,
+        base64_length: documents[0].base64_content?.length,
+        size: documents[0].size
+      } : null,
+      useBase64: true
+    });
+
     const response = await fetch(`${SUPABASE_URL}/functions/v1/start-mindpal-analysis`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        projectId,
-        documents, // Base64 documents instead of pdfUploadIds
-        userPriorities: prioritiesPayload,
-        useBase64: true, // Flag to indicate Base64 mode
-      }),
+      body: JSON.stringify(requestPayload),
     });
 
     const data = await response.json();
