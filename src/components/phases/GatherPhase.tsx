@@ -3,7 +3,7 @@ import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, U
 import { usePhase } from '../../context/PhaseContext';
 import { useUser } from '../../hooks/useUser';
 import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject, validatePdfFile, updateProjectNotificationSettings } from '../../lib/database/bidsmartService';
-import { uploadPdfFile, startBatchAnalysis, startBatchAnalysisWithBase64, pollBatchExtractionStatus, type BatchExtractionStatus } from '../../lib/services/mindpalService';
+import { startBatchAnalysisWithBase64, pollBatchExtractionStatus, type BatchExtractionStatus } from '../../lib/services/mindpalService';
 import { AnalysisSubmissionInterstitial } from '../AnalysisSubmissionInterstitial';
 import { useAnalysisNotification } from '../../hooks/useAnalysisNotification';
 import { NotificationToast } from '../NotificationToast';
@@ -190,35 +190,6 @@ export function GatherPhase() {
     setUploadedPdfs(prev => prev.filter(p => p.id !== id));
   };
 
-  const uploadAllFiles = async (activeProjectId: string): Promise<string[]> => {
-    const pdfUploadIds: string[] = [];
-    const pendingPdfs = uploadedPdfs.filter(p => p.status === 'pending');
-
-    for (const pdf of pendingPdfs) {
-      setUploadedPdfs(prev =>
-        prev.map(p => p.id === pdf.id ? { ...p, status: 'uploading', progress: 50 } : p)
-      );
-
-      const result = await uploadPdfFile(activeProjectId, pdf.file);
-
-      if (result.error || !result.pdfUploadId) {
-        setUploadedPdfs(prev =>
-          prev.map(p => p.id === pdf.id ? { ...p, status: 'error', error: result.error } : p)
-        );
-      } else {
-        setUploadedPdfs(prev =>
-          prev.map(p => p.id === pdf.id ? { ...p, status: 'uploaded', progress: 100, pdfUploadId: result.pdfUploadId } : p)
-        );
-        pdfUploadIds.push(result.pdfUploadId);
-      }
-    }
-
-    const alreadyUploaded = uploadedPdfs
-      .filter(p => p.status === 'uploaded' && p.pdfUploadId)
-      .map(p => p.pdfUploadId!);
-
-    return [...alreadyUploaded, ...pdfUploadIds];
-  };
 
   const handleContinue = () => {
     if (!canContinue) return;
