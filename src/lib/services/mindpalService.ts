@@ -3,7 +3,10 @@ import * as db from '../database/bidsmartService';
 import type { ConfidenceLevel, LineItemType, MindPalExtractionResponse } from '../types';
 import { getAuthHeaders as getParentAuthHeaders } from '../parentAuth';
 import { prepareDocumentsForUpload, checkPayloadLimits, validateFileForBase64 } from '../utils/fileHandler';
+import { MINDPAL_CONFIG } from '../../config/mindpal.config';
 
+// Build version to force new bundle hash
+const BUILD_VERSION = '2.0.3-20260206-1600';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
