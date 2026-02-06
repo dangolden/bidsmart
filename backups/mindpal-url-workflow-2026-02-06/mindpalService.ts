@@ -2,7 +2,6 @@ import { supabase } from '../supabaseClient';
 import * as db from '../database/bidsmartService';
 import type { ConfidenceLevel, LineItemType, MindPalExtractionResponse } from '../types';
 import { getAuthHeaders as getParentAuthHeaders } from '../parentAuth';
-import { type Base64Document, prepareDocumentsForUpload, checkPayloadLimits, validateFileForBase64 } from '../utils/fileHandler';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -523,91 +522,6 @@ export async function startBatchAnalysis(
     };
   } catch (error) {
     console.error('Error starting batch analysis:', error);
-    return {
-      success: false,
-      projectId,
-      error: error instanceof Error ? error.message : 'Failed to start analysis',
-    };
-  }
-}
-
-/**
- * Start batch analysis with Base64 encoded documents
- * This bypasses URL fetching by embedding file content directly in the request
- */
-export async function startBatchAnalysisWithBase64(
-  projectId: string,
-  files: File[],
-  userPriorities: UserPriorities,
-  userEmail: string,
-  projectDetails?: string,
-  onProgress?: (stage: string, current: number, total: number) => void
-): Promise<BatchAnalysisResult> {
-  try {
-    // Validate files
-    for (const file of files) {
-      const error = validateFileForBase64(file);
-      if (error) {
-        return { success: false, projectId, error };
-      }
-    }
-
-    // Check payload limits
-    const payloadCheck = checkPayloadLimits(files);
-    if (!payloadCheck.valid) {
-      return { success: false, projectId, error: payloadCheck.message };
-    }
-
-    onProgress?.('Converting files', 0, files.length);
-
-    // Convert files to Base64
-    const documents = await prepareDocumentsForUpload(files, (current, total, filename) => {
-      onProgress?.(`Converting ${filename}`, current, total);
-    });
-
-    onProgress?.('Uploading to server', files.length, files.length);
-
-    const headers = await getAuthHeaders(userEmail);
-
-    const prioritiesPayload = {
-      upfront_cost: userPriorities.price,
-      energy_efficiency: userPriorities.efficiency,
-      warranty_length: userPriorities.warranty,
-      contractor_reputation: userPriorities.reputation,
-      installation_timeline: userPriorities.timeline,
-      project_details: projectDetails || '',
-    };
-
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/start-mindpal-analysis`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        projectId,
-        documents, // Base64 documents instead of pdfUploadIds
-        userPriorities: prioritiesPayload,
-        useBase64: true, // Flag to indicate Base64 mode
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        projectId,
-        error: data.error || `Request failed: ${response.status}`,
-      };
-    }
-
-    return {
-      success: true,
-      projectId,
-      requestId: data.requestId,
-      workflowRunId: data.workflowRunId,
-      pdfCount: documents.length,
-    };
-  } catch (error) {
-    console.error('Error starting batch analysis with Base64:', error);
     return {
       success: false,
       projectId,

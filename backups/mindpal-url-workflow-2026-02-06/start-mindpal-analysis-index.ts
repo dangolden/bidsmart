@@ -10,37 +10,21 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 // MindPal v10 workflow configuration - set via environment variables
 // Workflow: BidSmart Analyzer v10 (697fc84945bf3484d9a860fb)
 const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "697fc84945bf3484d9a860fb";
-// Field IDs for URL-based mode (legacy)
 const DOCUMENT_URLS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENT_URLS_FIELD_ID") || "697fc84945bf3484d9a860fe";
-// Field ID for Base64 documents mode
-const DOCUMENTS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENTS_FIELD_ID") || "documents";
 const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "697fc84945bf3484d9a86100";
 const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "697fc84945bf3484d9a86101";
 const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "697fc84945bf3484d9a860ff";
 
-// Base64 document structure
-interface Base64Document {
-  filename: string;
-  mimeType: string;
-  content: string; // Base64 encoded
-  size: number;
-}
-
-// Request body - supports both URL-based and Base64 modes
 interface RequestBody {
   projectId: string;
-  pdfUploadIds?: string[]; // Legacy URL-based mode
-  documents?: Base64Document[]; // New Base64 mode
+  pdfUploadIds: string[];
   userPriorities: Record<string, number>;
-  useBase64?: boolean; // Flag to indicate Base64 mode
 }
 
 interface MindPalPayload {
-  request_id: string;
-  documents?: Base64Document[];
-  document_urls?: string[];
-  user_priorities: string;
-  callback_url: string;
+  data: {
+    [key: string]: string;
+  };
 }
 
 function generateUUID(): string {
@@ -80,31 +64,19 @@ async function uploadFilesToStorage(
   return pdfUrls;
 }
 
-function constructMindPalPayloadWithUrls(
+function constructMindPalPayload(
   pdfUrls: string[],
   userPriorities: Record<string, number>,
   requestId: string,
   callbackUrl: string
 ): MindPalPayload {
   return {
-    request_id: requestId,
-    document_urls: pdfUrls,
-    user_priorities: JSON.stringify(userPriorities),
-    callback_url: callbackUrl,
-  };
-}
-
-function constructMindPalPayloadWithBase64(
-  documents: Base64Document[],
-  userPriorities: Record<string, number>,
-  requestId: string,
-  callbackUrl: string
-): MindPalPayload {
-  return {
-    request_id: requestId,
-    documents: documents,
-    user_priorities: JSON.stringify(userPriorities),
-    callback_url: callbackUrl,
+    data: {
+      [DOCUMENT_URLS_FIELD_ID]: JSON.stringify(pdfUrls),
+      [USER_PRIORITIES_FIELD_ID]: JSON.stringify(userPriorities),
+      [REQUEST_ID_FIELD_ID]: requestId,
+      [CALLBACK_URL_FIELD_ID]: callbackUrl,
+    },
   };
 }
 
@@ -169,19 +141,10 @@ Deno.serve(async (req: Request) => {
     const { userExtId } = authResult;
 
     const body: RequestBody = await req.json();
-    const { projectId, pdfUploadIds, documents, userPriorities, useBase64 } = body;
+    const { projectId, pdfUploadIds, userPriorities } = body;
 
-    // Validate project ID
-    if (!projectId) {
-      return errorResponse("Missing projectId");
-    }
-
-    // Validate we have either documents (Base64) or pdfUploadIds (URL mode)
-    const isBase64Mode = useBase64 && documents && Array.isArray(documents) && documents.length > 0;
-    const isUrlMode = !useBase64 && pdfUploadIds && Array.isArray(pdfUploadIds) && pdfUploadIds.length > 0;
-
-    if (!isBase64Mode && !isUrlMode) {
-      return errorResponse("Missing or invalid documents or pdfUploadIds");
+    if (!projectId || !pdfUploadIds || !Array.isArray(pdfUploadIds) || pdfUploadIds.length === 0) {
+      return errorResponse("Missing or invalid projectId or pdfUploadIds");
     }
 
     if (!userPriorities || typeof userPriorities !== "object") {
@@ -193,32 +156,30 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Not authorized to access this project", 403);
     }
 
+    const pdfUrls = await uploadFilesToStorage(projectId, pdfUploadIds);
+
     const requestId = generateUUID();
     const callbackUrl = `${SUPABASE_URL}/functions/v1/mindpal-callback`;
 
-    console.log("Analysis mode:", isBase64Mode ? "Base64" : "URL");
     console.log("Callback URL:", callbackUrl);
 
-    let payload: MindPalPayload;
-    let documentCount: number;
-
-    if (isBase64Mode) {
-      // Base64 mode - documents embedded directly
-      console.log("Processing Base64 documents:", documents!.length);
-      payload = constructMindPalPayloadWithBase64(documents!, userPriorities, requestId, callbackUrl);
-      documentCount = documents!.length;
-    } else {
-      // URL mode - generate signed URLs from storage
-      const pdfUrls = await uploadFilesToStorage(projectId, pdfUploadIds!);
-      console.log("Generated signed URLs:", pdfUrls.length);
-      payload = constructMindPalPayloadWithUrls(pdfUrls, userPriorities, requestId, callbackUrl);
-      documentCount = pdfUploadIds!.length;
-    }
+    const payload = constructMindPalPayload(pdfUrls, userPriorities, requestId, callbackUrl);
 
     const mindpalResult = await callMindPalAPI(payload);
+
     const workflowRunId = mindpalResult.workflow_run_id;
 
-    // Update project status
+    await supabaseAdmin
+      .from("pdf_uploads")
+      .update({
+        status: "processing",
+        mindpal_status: "processing",
+        mindpal_run_id: workflowRunId,
+        processing_started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .in("id", pdfUploadIds);
+
     await supabaseAdmin
       .from("projects")
       .update({
@@ -227,28 +188,13 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", projectId);
 
-    // If URL mode, also update pdf_uploads table
-    if (isUrlMode && pdfUploadIds) {
-      await supabaseAdmin
-        .from("pdf_uploads")
-        .update({
-          status: "processing",
-          mindpal_status: "processing",
-          mindpal_run_id: workflowRunId,
-          processing_started_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .in("id", pdfUploadIds);
-    }
-
     return jsonResponse({
       success: true,
       projectId,
       requestId,
       workflowRunId,
       callbackUrl,
-      pdfCount: documentCount,
-      mode: isBase64Mode ? "base64" : "url",
+      pdfCount: pdfUploadIds.length,
       message: "Analysis started successfully",
     });
   } catch (error) {
