@@ -7,8 +7,11 @@ const ALLOWED_ORIGINS = [
   "http://localhost:3000",
 ];
 
-// Also allow Netlify deploy previews (pattern: https://deploy-preview-*--bidcompare.netlify.app)
-const NETLIFY_PREVIEW_PATTERN = /^https:\/\/deploy-preview-\d+--bidcompare\.netlify\.app$/;
+// Also allow Netlify deploy previews and staging deploys
+// Patterns: 
+// - https://deploy-preview-123--bidcompare.netlify.app
+// - https://6986568a6e66b600085be95a--bidcompare.netlify.app
+const NETLIFY_PREVIEW_PATTERN = /^https:\/\/[a-z0-9-]+--bidcompare\.netlify\.app$/;
 
 export function getCorsHeaders(origin?: string | null): Record<string, string> {
   let allowedOrigin = ALLOWED_ORIGINS[0];
