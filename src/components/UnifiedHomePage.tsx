@@ -5,7 +5,7 @@ import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
 import { AlphaBanner } from './AlphaBanner';
 import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject } from '../lib/database/bidsmartService';
-import { uploadPdfFile, startBatchAnalysis, pollBatchExtractionStatus, type BatchExtractionStatus } from '../lib/services/mindpalService';
+import { startBatchAnalysisWithBase64, pollBatchExtractionStatus, type BatchExtractionStatus } from '../lib/services/mindpalService';
 import SwitchLogo from '../assets/switchlogo.svg';
 
 const SESSION_ID_KEY = 'bidsmart_session_id';
@@ -223,33 +223,7 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
     }
 
     setUploadedPdfs(prev => [...prev, ...validFiles]);
-
-    const projectId = await ensureDraftProject();
-
-    for (const pdf of validFiles.filter(f => f.status === 'pending')) {
-      setUploadedPdfs(prev =>
-        prev.map(p => p.id === pdf.id ? { ...p, status: 'uploading', progress: 50 } : p)
-      );
-
-      try {
-        const result = await uploadPdfFile(projectId, pdf.file);
-
-        if (result.error || !result.pdfUploadId) {
-          setUploadedPdfs(prev =>
-            prev.map(p => p.id === pdf.id ? { ...p, status: 'error', error: result.error } : p)
-          );
-        } else {
-          setUploadedPdfs(prev =>
-            prev.map(p => p.id === pdf.id ? { ...p, status: 'uploaded', progress: 100, pdfUploadId: result.pdfUploadId } : p)
-          );
-        }
-      } catch (err) {
-        setUploadedPdfs(prev =>
-          prev.map(p => p.id === pdf.id ? { ...p, status: 'error', error: 'Upload failed' } : p)
-        );
-      }
-    }
-  }, [draftProjectId, user.id]);
+  }, []);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -335,23 +309,24 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
 
       await updateProject(projectId, { status: 'collecting_bids' });
 
-      const pdfUploadIds = uploadedPdfs
-        .filter(p => p.status === 'uploaded' && p.pdfUploadId)
-        .map(p => p.pdfUploadId!);
+      const files = uploadedPdfs.map(p => p.file);
 
-      if (pdfUploadIds.length < 2) {
-        setAnalysisError('Not enough PDFs uploaded successfully. Please try again.');
+      if (files.length < 2) {
+        setAnalysisError('Please upload at least 2 bid PDFs to compare.');
         return;
       }
 
       setAnalysisState('analyzing');
 
-      const analysisResult = await startBatchAnalysis(
+      const analysisResult = await startBatchAnalysisWithBase64(
         projectId,
-        pdfUploadIds,
+        files,
         priorities,
         user.email,
-        projectDetails
+        projectDetails,
+        (stage, current, total) => {
+          console.log(`Base64 progress: ${stage} - ${current}/${total}`);
+        }
       );
 
       if (!analysisResult.success) {
