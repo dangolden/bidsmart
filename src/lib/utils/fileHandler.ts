@@ -7,9 +7,9 @@
 
 export interface Base64Document {
   filename: string;
-  mimeType: string;
-  content: string; // Base64 encoded content
-  size: number;
+  mime_type: string;
+  base64_content: string;
+  size?: number;
 }
 
 /**
@@ -37,8 +37,8 @@ export async function fileToBase64Document(file: File): Promise<Base64Document> 
   const content = await fileToBase64(file);
   return {
     filename: file.name,
-    mimeType: file.type || 'application/pdf',
-    content,
+    mime_type: file.type || 'application/pdf',
+    base64_content: content,
     size: file.size,
   };
 }
@@ -69,11 +69,11 @@ export async function prepareDocumentsForUpload(
  * Returns error message if invalid, null if valid
  */
 export function validateFileForBase64(file: File): string | null {
-  // Max file size: 10MB (Base64 adds ~33% overhead, keeping within limits)
-  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+  // Max file size: 20MB (Base64 adds ~33% overhead, keeping within limits)
+  const MAX_FILE_SIZE = 20 * 1024 * 1024;
   
   if (file.size > MAX_FILE_SIZE) {
-    return `File "${file.name}" is too large. Maximum size is 10MB.`;
+    return `File "${file.name}" is too large. Maximum size is 20MB.`;
   }
   
   // Allowed file types
@@ -81,13 +81,16 @@ export function validateFileForBase64(file: File): string | null {
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
     'application/msword', // .doc
+    'image/jpeg',
+    'image/png',
+    'image/gif'
   ];
   
-  const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.doc'];
+  const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.doc', '.jpg', '.jpeg', '.png', '.gif'];
   const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
   
   if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(extension)) {
-    return `File "${file.name}" is not a supported format. Please upload PDF or Word documents.`;
+    return `File "${file.name}" is not a supported format. Please upload PDF, Word documents, or images (JPG, PNG, GIF).`;
   }
   
   return null;

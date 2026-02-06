@@ -2,7 +2,7 @@ import { supabase } from '../supabaseClient';
 import * as db from '../database/bidsmartService';
 import type { ConfidenceLevel, LineItemType, MindPalExtractionResponse } from '../types';
 import { getAuthHeaders as getParentAuthHeaders } from '../parentAuth';
-import { type Base64Document, prepareDocumentsForUpload, checkPayloadLimits, validateFileForBase64 } from '../utils/fileHandler';
+import { prepareDocumentsForUpload, checkPayloadLimits, validateFileForBase64 } from '../utils/fileHandler';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
