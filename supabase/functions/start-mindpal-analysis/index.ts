@@ -82,8 +82,8 @@ function constructMindPalPayload(
   callbackUrl: string
 ): MindPalPayload {
   return {
-    [DOCUMENTS_FIELD_ID]: JSON.stringify(documents),
-    [USER_PRIORITIES_FIELD_ID]: JSON.stringify(userPriorities),
+    [DOCUMENTS_FIELD_ID]: documents,
+    [USER_PRIORITIES_FIELD_ID]: userPriorities,
     [REQUEST_ID_FIELD_ID]: requestId,
     [CALLBACK_URL_FIELD_ID]: callbackUrl,
   };
