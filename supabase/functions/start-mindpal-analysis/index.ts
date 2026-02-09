@@ -3,21 +3,21 @@ import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
 import { verifyEmailAuth, verifyProjectOwnership } from "../_shared/auth.ts";
 
-const MINDPAL_API_BASE = Deno.env.get("MINDPAL_API_BASE") || "https://api.mindpal.io/v1";
+const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://app.mindpal.space/api/v2/workflow/run";
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 
-// MindPal v11 workflow configuration - set via environment variables
-// Workflow: BidSmart Analyzer v11 (69860fd696be27d5d9cb4252)
-const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "69860fd696be27d5d9cb4252";
+// MindPal v2 workflow configuration - set via environment variables
+// Workflow: BidSmart Analyzer v10 (697fc84945bf3484d9a860fb)
+const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "697fc84945bf3484d9a860fb";
 
-// Field IDs for v11 API
-const DOCUMENTS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENTS_FIELD_ID") || "69860fd696be27d5d9cb4258";
-const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "69860fd696be27d5d9cb4255";
-const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "69860fd696be27d5d9cb4257";
-const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "69860fd696be27d5d9cb4256";
+// Field IDs for v2 API
+const DOCUMENTS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENTS_FIELD_ID") || "documents";
+const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "697fc84945bf3484d9a86100";
+const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "697fc84945bf3484d9a86101";
+const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "697fc84945bf3484d9a860ff";
 
-// Base64 document structure (v11 format)
+// Base64 document structure (v2 format)
 interface Base64Document {
   filename: string;
   mime_type: string;
@@ -35,7 +35,9 @@ interface RequestBody {
 }
 
 interface MindPalPayload {
-  [key: string]: any;
+  data: {
+    [key: string]: any;
+  };
 }
 
 function generateUUID(): string {
@@ -82,10 +84,12 @@ function constructMindPalPayload(
   callbackUrl: string
 ): MindPalPayload {
   return {
-    [DOCUMENTS_FIELD_ID]: documents,
-    [USER_PRIORITIES_FIELD_ID]: userPriorities,
-    [REQUEST_ID_FIELD_ID]: requestId,
-    [CALLBACK_URL_FIELD_ID]: callbackUrl,
+    data: {
+      [DOCUMENTS_FIELD_ID]: documents,
+      [USER_PRIORITIES_FIELD_ID]: JSON.stringify(userPriorities),
+      [REQUEST_ID_FIELD_ID]: requestId,
+      [CALLBACK_URL_FIELD_ID]: callbackUrl,
+    }
   };
 }
 
@@ -99,7 +103,7 @@ async function callMindPalAPI(payload: MindPalPayload): Promise<{
     throw new Error("MindPal workflow configuration incomplete - check environment variables");
   }
 
-  const apiUrl = `${MINDPAL_API_BASE}/workflows/${WORKFLOW_ID}/run`;
+  const apiUrl = `${MINDPAL_API_ENDPOINT}?workflow_id=${WORKFLOW_ID}`;
   
   console.log("MindPal API Request:", {
     url: apiUrl,
@@ -112,7 +116,7 @@ async function callMindPalAPI(payload: MindPalPayload): Promise<{
   const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${MINDPAL_API_KEY}`,
+      "x-api-key": MINDPAL_API_KEY || "",
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
@@ -171,7 +175,7 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Missing projectId");
     }
 
-    // Validate we have documents (Base64 mode only for v11)
+    // Validate we have documents (Base64 mode only for v2)
     const isBase64Mode = documents && Array.isArray(documents) && documents.length > 0;
 
     if (!isBase64Mode) {
