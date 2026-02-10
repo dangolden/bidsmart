@@ -4,7 +4,8 @@ import type { UserExt } from '../lib/types';
 import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
 import { AlphaBanner } from './AlphaBanner';
-import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject } from '../lib/database/bidsmartService';
+import { AnalysisSuccessScreen } from './AnalysisSuccessScreen';
+import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject, getPublicDemoProjects } from '../lib/database/bidsmartService';
 import { startBatchAnalysisWithBase64, pollBatchExtractionStatus, type BatchExtractionStatus } from '../lib/services/mindpalService';
 import SwitchLogo from '../assets/switchlogo.svg';
 
@@ -90,7 +91,7 @@ interface UploadedPdf {
   error?: string;
 }
 
-type AnalysisState = 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error' | 'timeout';
+type AnalysisState = 'idle' | 'uploading' | 'analyzing' | 'submitted' | 'complete' | 'error' | 'timeout';
 
 interface UnifiedHomePageProps {
   user: UserExt;
@@ -123,6 +124,7 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
   const analysisTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
+  const [demoProjectId, setDemoProjectId] = useState<string | null>(null);
   const [showPriorities, setShowPriorities] = useState(true);
   const [showProjectDetails, setShowProjectDetails] = useState(true);
   const [isHeaderSticky, setIsHeaderSticky] = useState(false);
@@ -130,7 +132,19 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
 
   useEffect(() => {
     checkForDraftProject();
+    loadDemoProject();
   }, [user.id]);
+
+  const loadDemoProject = async () => {
+    try {
+      const demos = await getPublicDemoProjects();
+      if (demos.length > 0) {
+        setDemoProjectId(demos[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to load demo project:', err);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -335,27 +349,33 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
         return;
       }
 
-      const pollResult = await pollBatchExtractionStatus(projectId, {
-        intervalMs: 3000,
-        maxAttempts: 200,
-        onProgress: (status) => {
-          setAnalysisProgress(status);
-        },
-      });
-
-      if (!pollResult.allSuccessful && pollResult.processingPdfs > 0) {
-        setAnalysisState('timeout');
-        return;
-      }
-
-      setAnalysisState('complete');
-      onStartProject(projectId);
+      // Show success screen - analysis takes 20-30 minutes
+      setAnalysisState('submitted');
     } catch (err) {
       console.error('Failed to process:', err);
       setAnalysisState('error');
       setAnalysisError(err instanceof Error ? err.message : 'An unexpected error occurred');
     }
   };
+
+  if (analysisState === 'submitted') {
+    return (
+      <AnalysisSuccessScreen
+        email={notificationEmail}
+        projectId={draftProjectId!}
+        onViewDemo={() => {
+          if (demoProjectId) {
+            onSelectProject(demoProjectId);
+          }
+        }}
+        onReturnHome={() => {
+          setAnalysisState('idle');
+          setUploadedPdfs([]);
+          setDraftProjectId(null);
+        }}
+      />
+    );
+  }
 
   if (analysisState === 'analyzing' || analysisState === 'uploading') {
     return (
