@@ -2,6 +2,7 @@ import { supabase } from '../supabaseClient';
 import * as db from '../database/bidsmartService';
 import type { ConfidenceLevel, LineItemType, MindPalExtractionResponse } from '../types';
 import { getAuthHeaders as getParentAuthHeaders } from '../parentAuth';
+import { validateFileForBase64, prepareDocumentsForUpload, checkPayloadLimits, validateBase64Encoding, exportBase64ToClipboard } from '../utils/fileHandler';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -522,6 +523,153 @@ export async function startBatchAnalysis(
     };
   } catch (error) {
     console.error('Error starting batch analysis:', error);
+    return {
+      success: false,
+      projectId,
+      error: error instanceof Error ? error.message : 'Failed to start analysis',
+    };
+  }
+}
+
+/**
+ * Start batch analysis with Base64 encoded documents
+ * This bypasses URL fetching by embedding file content directly in the request
+ */
+export async function startBatchAnalysisWithBase64(
+  projectId: string,
+  files: File[],
+  userPriorities: UserPriorities,
+  userEmail: string,
+  projectDetails?: string,
+  onProgress?: (stage: string, current: number, total: number) => void
+): Promise<BatchAnalysisResult> {
+  try {
+    // Validate files
+    for (const file of files) {
+      const error = validateFileForBase64(file);
+      if (error) {
+        return { success: false, projectId, error };
+      }
+    }
+
+    // Check payload limits
+    const payloadCheck = checkPayloadLimits(files);
+    if (!payloadCheck.valid) {
+      return { success: false, projectId, error: payloadCheck.message };
+    }
+
+    onProgress?.('Converting files', 0, files.length);
+
+    // Convert files to Base64 with validation
+    const documents = await prepareDocumentsForUpload(files, (current, total, filename) => {
+      onProgress?.(`Converting ${filename}`, current, total);
+    });
+
+    // QA: Validate Base64 encoding for each file
+    console.group('📋 Base64 QA Validation');
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const validation = await validateBase64Encoding(file);
+      
+      if (!validation.success) {
+        console.error(`❌ Validation failed for ${file.name}:`, validation.error);
+      }
+      
+      // Log document structure being sent to API
+      console.log(`\n📄 Document ${i + 1}/${files.length}: ${documents[i].filename}`);
+      console.log('  - MIME type:', documents[i].mime_type);
+      console.log('  - Original size:', documents[i].size, 'bytes');
+      console.log('  - Base64 length:', documents[i].base64_content.length, 'chars');
+      console.log('  - First 100 chars:', documents[i].base64_content.substring(0, 100));
+      console.log('  - Last 100 chars:', documents[i].base64_content.substring(documents[i].base64_content.length - 100));
+    }
+    console.log('\n💡 TIP: To copy a file\'s Base64 to clipboard for LLM validation:');
+    console.log('   Run: exportBase64ToClipboard(yourFile)');
+    console.log('   The function is available in the global scope for testing.');
+    console.groupEnd();
+
+    // Make validation functions available globally for manual testing
+    (window as any).validateBase64Encoding = validateBase64Encoding;
+    (window as any).exportBase64ToClipboard = exportBase64ToClipboard;
+
+    onProgress?.('Uploading to server', files.length, files.length);
+
+    const headers = await getAuthHeaders(userEmail);
+
+    const prioritiesPayload = {
+      upfront_cost: userPriorities.price,
+      energy_efficiency: userPriorities.efficiency,
+      warranty_length: userPriorities.warranty,
+      contractor_reputation: userPriorities.reputation,
+      installation_timeline: userPriorities.timeline,
+      project_details: projectDetails || '',
+    };
+
+    const requestPayload = {
+      projectId,
+      documents, // Base64 documents instead of pdfUploadIds
+      userPriorities: prioritiesPayload,
+      useBase64: true, // Flag to indicate Base64 mode
+    };
+
+    console.log('🚀 Sending to Edge Function:', {
+      projectId,
+      documentsCount: documents.length,
+      documentsStructure: documents[0] ? Object.keys(documents[0]) : [],
+      firstDocumentSample: documents[0] ? {
+        filename: documents[0].filename,
+        mime_type: documents[0].mime_type,
+        base64_length: documents[0].base64_content?.length,
+        size: documents[0].size
+      } : null,
+      useBase64: true
+    });
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/start-mindpal-analysis`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestPayload),
+    });
+
+    console.log('📥 Edge Function Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+
+    const data = await response.json();
+    
+    console.log('📦 Edge Function Data:', data);
+
+    if (!response.ok) {
+      console.error('❌ Edge Function Error:', {
+        status: response.status,
+        error: data.error,
+        details: data
+      });
+      return {
+        success: false,
+        projectId,
+        error: data.error || `Request failed: ${response.status}`,
+      };
+    }
+
+    console.log('✅ MindPal Analysis Started:', {
+      requestId: data.requestId,
+      workflowRunId: data.workflowRunId,
+      pdfCount: documents.length
+    });
+
+    return {
+      success: true,
+      projectId,
+      requestId: data.requestId,
+      workflowRunId: data.workflowRunId,
+      pdfCount: documents.length,
+    };
+  } catch (error) {
+    console.error('Error starting batch analysis with Base64:', error);
     return {
       success: false,
       projectId,

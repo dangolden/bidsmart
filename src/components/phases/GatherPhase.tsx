@@ -3,7 +3,7 @@ import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, U
 import { usePhase } from '../../context/PhaseContext';
 import { useUser } from '../../hooks/useUser';
 import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject, validatePdfFile, updateProjectNotificationSettings } from '../../lib/database/bidsmartService';
-import { startBatchAnalysisWithBase64, pollBatchExtractionStatus, type BatchExtractionStatus } from '../../lib/services/mindpalService';
+import { uploadPdfFile, startBatchAnalysis, pollBatchExtractionStatus, type BatchExtractionStatus } from '../../lib/services/mindpalService';
 import { AnalysisSubmissionInterstitial } from '../AnalysisSubmissionInterstitial';
 import { useAnalysisNotification } from '../../hooks/useAnalysisNotification';
 import { NotificationToast } from '../NotificationToast';
@@ -233,18 +233,33 @@ export function GatherPhase() {
           return;
         }
 
+        setAnalysisState('uploading');
+
+        // Upload each PDF to Supabase Storage
+        const pdfUploadIds: string[] = [];
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          console.log(`Uploading ${file.name} (${i + 1}/${files.length})`);
+          
+          const uploadResult = await uploadPdfFile(activeProjectId, file);
+          if (uploadResult.error || !uploadResult.pdfUploadId) {
+            setAnalysisState('error');
+            setAnalysisError(uploadResult.error || `Failed to upload ${file.name}`);
+            return;
+          }
+          pdfUploadIds.push(uploadResult.pdfUploadId);
+        }
+
+        console.log('All PDFs uploaded, starting analysis with IDs:', pdfUploadIds);
         setAnalysisState('analyzing');
 
-        // Use Base64 mode - files are converted and sent directly without storage upload
-        const analysisResult = await startBatchAnalysisWithBase64(
+        // Start analysis with the uploaded PDF IDs
+        const analysisResult = await startBatchAnalysis(
           activeProjectId,
-          files,
+          pdfUploadIds,
           priorities,
           user.email,
-          projectDetails,
-          (stage, current, total) => {
-            console.log(`Base64 progress: ${stage} - ${current}/${total}`);
-          }
+          projectDetails
         );
 
         if (!analysisResult.success) {

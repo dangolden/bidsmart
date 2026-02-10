@@ -3,48 +3,34 @@ import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
 import { verifyEmailAuth, verifyProjectOwnership } from "../_shared/auth.ts";
 
-const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://app.mindpal.space/api/v2/workflow/run";
+// MindPal v3 API configuration
+const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://api-v3.mindpal.io/api/workflow-v3/execute";
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 
-// MindPal v2 workflow configuration - set via environment variables
-// Workflow: BidSmart Analyzer v10 (697fc84945bf3484d9a860fb)
+// Workflow ID for BidSmart Analyzer
 const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "697fc84945bf3484d9a860fb";
 
-// Field IDs for v2 API
-const DOCUMENTS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENTS_FIELD_ID") || "documents";
-const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "697fc84945bf3484d9a86100";
-const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "697fc84945bf3484d9a86101";
-const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "697fc84945bf3484d9a860ff";
-
-// Base64 document structure (v2 format)
-interface Base64Document {
-  filename: string;
-  mime_type: string;
-  base64_content: string;
-  size?: number;
-}
-
-// Request body - supports both URL-based and Base64 modes
+// Request body from frontend
 interface RequestBody {
   projectId: string;
-  pdfUploadIds?: string[]; // Legacy URL-based mode
-  documents?: Base64Document[]; // New Base64 mode
+  pdfUploadIds: string[];
   userPriorities: Record<string, number>;
-  useBase64?: boolean; // Flag to indicate Base64 mode
 }
 
-interface MindPalPayload {
-  data: {
-    [key: string]: any;
-  };
+// MindPal v3 simplified payload (no field IDs needed)
+interface MindPalV3Payload {
+  document_urls: string[];
+  user_priorities: Record<string, number>;
+  request_id: string;
+  callback_url: string;
 }
 
 function generateUUID(): string {
   return crypto.randomUUID();
 }
 
-async function uploadFilesToStorage(
+async function getPublicUrlsForPdfs(
   projectId: string,
   pdfUploadIds: string[]
 ): Promise<string[]> {
@@ -62,84 +48,75 @@ async function uploadFilesToStorage(
       throw new Error(`PDF upload ${pdfUploadId} not found`);
     }
 
-    const { data: publicUrlData, error: urlError } = await supabaseAdmin
+    // Generate public URL (1 hour expiry)
+    const { data: signedUrlData, error: urlError } = await supabaseAdmin
       .storage
       .from("bid-pdfs")
       .createSignedUrl(pdfUpload.file_path, 3600);
 
-    if (urlError || !publicUrlData?.signedUrl) {
+    if (urlError || !signedUrlData?.signedUrl) {
       throw new Error(`Failed to generate signed URL for ${pdfUploadId}`);
     }
 
-    pdfUrls.push(publicUrlData.signedUrl);
+    pdfUrls.push(signedUrlData.signedUrl);
   }
 
   return pdfUrls;
 }
 
-function constructMindPalPayload(
-  documents: Base64Document[],
-  userPriorities: Record<string, number>,
-  requestId: string,
-  callbackUrl: string
-): MindPalPayload {
-  return {
-    data: {
-      [DOCUMENTS_FIELD_ID]: documents,
-      [USER_PRIORITIES_FIELD_ID]: JSON.stringify(userPriorities),
-      [REQUEST_ID_FIELD_ID]: requestId,
-      [CALLBACK_URL_FIELD_ID]: callbackUrl,
-    }
-  };
-}
-
-async function callMindPalAPI(payload: MindPalPayload): Promise<{
-  workflow_run_id: string;
+async function callMindPalV3API(payload: MindPalV3Payload): Promise<{
+  workflowRunId: string;
 }> {
   if (!MINDPAL_API_KEY) {
     throw new Error("MindPal API key not configured");
   }
-  if (!WORKFLOW_ID || !DOCUMENTS_FIELD_ID || !USER_PRIORITIES_FIELD_ID || !REQUEST_ID_FIELD_ID || !CALLBACK_URL_FIELD_ID) {
-    throw new Error("MindPal workflow configuration incomplete - check environment variables");
+  if (!WORKFLOW_ID) {
+    throw new Error("MindPal workflow ID not configured");
   }
 
+  // v3 API uses query parameter for workflow_id
   const apiUrl = `${MINDPAL_API_ENDPOINT}?workflow_id=${WORKFLOW_ID}`;
   
-  console.log("MindPal API Request:", {
+  console.log("MindPal v3 API Request:", {
     url: apiUrl,
     workflow_id: WORKFLOW_ID,
-    payload: JSON.stringify(payload, null, 2),
-    api_key_present: !!MINDPAL_API_KEY,
-    api_key_length: MINDPAL_API_KEY?.length
+    document_count: payload.document_urls.length,
+    request_id: payload.request_id,
+    callback_url: payload.callback_url
   });
 
   const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
-      "x-api-key": MINDPAL_API_KEY || "",
+      "Authorization": `Bearer ${MINDPAL_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
   });
 
-  console.log("MindPal API Response:", {
+  console.log("MindPal v3 API Response:", {
     status: response.status,
-    statusText: response.statusText,
-    headers: Object.fromEntries(response.headers.entries())
+    statusText: response.statusText
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("MindPal API error:", errorText);
+    console.error("MindPal v3 API error:", errorText);
     throw new Error(`MindPal API failed: ${response.status} - ${errorText}`);
   }
 
   const result = await response.json();
-  console.log("✅ MindPal API Success:", {
-    workflow_run_id: result.workflow_run_id,
+  
+  // v3 response format: { "data": { "workflowRunId": "..." }, "status": "success" }
+  const workflowRunId = result.data?.workflowRunId || result.workflowRunId;
+  
+  console.log("✅ MindPal v3 API Success:", {
+    workflowRunId,
+    status: result.status,
     full_response: JSON.stringify(result, null, 2)
   });
-  return result;
+  
+  return { workflowRunId };
 }
 
 Deno.serve(async (req: Request) => {
@@ -159,36 +136,22 @@ Deno.serve(async (req: Request) => {
 
     const body: RequestBody = await req.json();
     
-    // DEBUG: Log the incoming request body
     console.log("Incoming request body:", JSON.stringify({
       projectId: body.projectId,
-      hasDocuments: !!body.documents,
-      documentsType: typeof body.documents,
-      documentsIsArray: Array.isArray(body.documents),
-      documentsLength: body.documents?.length,
-      hasPdfUploadIds: !!body.pdfUploadIds,
+      pdfUploadIdsCount: body.pdfUploadIds?.length,
       hasUserPriorities: !!body.userPriorities,
-      useBase64: body.useBase64,
       bodyKeys: Object.keys(body)
     }, null, 2));
     
-    const { projectId, pdfUploadIds, documents, userPriorities, useBase64 } = body;
+    const { projectId, pdfUploadIds, userPriorities } = body;
 
-    // Validate project ID
+    // Validate inputs
     if (!projectId) {
       return errorResponse("Missing projectId");
     }
 
-    // Validate we have documents (Base64 mode only for v2)
-    const isBase64Mode = documents && Array.isArray(documents) && documents.length > 0;
-
-    if (!isBase64Mode) {
-      console.error("Documents validation failed:", {
-        documents,
-        isArray: Array.isArray(documents),
-        length: documents?.length
-      });
-      return errorResponse("Missing or invalid documents array");
+    if (!pdfUploadIds || !Array.isArray(pdfUploadIds) || pdfUploadIds.length === 0) {
+      return errorResponse("Missing or invalid pdfUploadIds array");
     }
 
     if (!userPriorities || typeof userPriorities !== "object") {
@@ -200,18 +163,24 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Not authorized to access this project", 403);
     }
 
+    // Generate public URLs for the uploaded PDFs
+    console.log("Generating URLs for", pdfUploadIds.length, "PDFs");
+    const documentUrls = await getPublicUrlsForPdfs(projectId, pdfUploadIds);
+    console.log("Generated URLs:", documentUrls.length);
+
     const requestId = generateUUID();
     const callbackUrl = `${SUPABASE_URL}/functions/v1/mindpal-callback`;
 
-    console.log("Analysis mode: Base64");
-    console.log("Callback URL:", callbackUrl);
-    console.log("Processing Base64 documents:", documents!.length);
+    // Construct v3 payload with simplified field names
+    const payload: MindPalV3Payload = {
+      document_urls: documentUrls,
+      user_priorities: userPriorities,
+      request_id: requestId,
+      callback_url: callbackUrl
+    };
 
-    const payload = constructMindPalPayload(documents!, userPriorities, requestId, callbackUrl);
-    const documentCount = documents!.length;
-
-    const mindpalResult = await callMindPalAPI(payload);
-    const workflowRunId = mindpalResult.workflow_run_id;
+    console.log("Calling MindPal v3 API with", documentUrls.length, "documents");
+    const mindpalResult = await callMindPalV3API(payload);
 
     // Update project status
     await supabaseAdmin
@@ -222,17 +191,25 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", projectId);
 
-    // Note: In Base64 mode, we don't track individual PDF uploads in the database
-    // The documents are sent directly without storage
+    // Update PDF upload records with processing status
+    for (const pdfUploadId of pdfUploadIds) {
+      await supabaseAdmin
+        .from("pdf_uploads")
+        .update({
+          status: "processing",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", pdfUploadId);
+    }
 
     return jsonResponse({
       success: true,
       projectId,
       requestId,
-      workflowRunId,
+      workflowRunId: mindpalResult.workflowRunId,
       callbackUrl,
-      pdfCount: documentCount,
-      mode: "base64",
+      pdfCount: pdfUploadIds.length,
+      mode: "url",
       message: "Analysis started successfully",
     });
   } catch (error) {

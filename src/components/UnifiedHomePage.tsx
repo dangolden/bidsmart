@@ -5,7 +5,7 @@ import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
 import { AnalysisSuccessScreen } from './AnalysisSuccessScreen';
 import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject, getPublicDemoProjects } from '../lib/database/bidsmartService';
-import { startBatchAnalysisWithBase64 } from '../lib/services/mindpalService';
+import { uploadPdfFile, startBatchAnalysis } from '../lib/services/mindpalService';
 import SwitchLogo from '../assets/switchlogo.svg';
 
 const SESSION_ID_KEY = 'bidsmart_session_id';
@@ -327,17 +327,33 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
         return;
       }
 
+      setAnalysisState('uploading');
+
+      // Upload each PDF to Supabase Storage
+      const pdfUploadIds: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        console.log(`Uploading ${file.name} (${i + 1}/${files.length})`);
+        
+        const uploadResult = await uploadPdfFile(projectId, file);
+        if (uploadResult.error || !uploadResult.pdfUploadId) {
+          setAnalysisState('error');
+          setAnalysisError(uploadResult.error || `Failed to upload ${file.name}`);
+          return;
+        }
+        pdfUploadIds.push(uploadResult.pdfUploadId);
+      }
+
+      console.log('All PDFs uploaded, starting analysis with IDs:', pdfUploadIds);
       setAnalysisState('analyzing');
 
-      const analysisResult = await startBatchAnalysisWithBase64(
+      // Start analysis with the uploaded PDF IDs
+      const analysisResult = await startBatchAnalysis(
         projectId,
-        files,
+        pdfUploadIds,
         priorities,
         user.email,
-        projectDetails,
-        (stage, current, total) => {
-          console.log(`Base64 progress: ${stage} - ${current}/${total}`);
-        }
+        projectDetails
       );
 
       if (!analysisResult.success) {
