@@ -3,13 +3,19 @@ import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
 import { verifyEmailAuth, verifyProjectOwnership } from "../_shared/auth.ts";
 
-// MindPal v3 API configuration
-const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://api-v3.mindpal.io/api/workflow-v3/execute";
+// MindPal v2 API configuration
+const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://app.mindpal.space/api/v2/workflow/run";
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 
 // Workflow ID for BidSmart Analyzer
 const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "697fc84945bf3484d9a860fb";
+
+// MindPal v2 field IDs for the workflow inputs
+const DOCUMENT_URLS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENT_URLS_FIELD_ID") || "697fc84945bf3484d9a860fe";
+const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "697fc84945bf3484d9a86100";
+const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "697fc84945bf3484d9a86101";
+const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "697fc84945bf3484d9a860ff";
 
 // Request body from frontend
 interface RequestBody {
@@ -18,12 +24,9 @@ interface RequestBody {
   userPriorities: Record<string, number>;
 }
 
-// MindPal v3 simplified payload (no field IDs needed)
-interface MindPalV3Payload {
-  document_urls: string[];
-  user_priorities: Record<string, number>;
-  request_id: string;
-  callback_url: string;
+// MindPal v2 payload structure
+interface MindPalV2Payload {
+  data: Record<string, string>;
 }
 
 function generateUUID(): string {
@@ -77,7 +80,7 @@ async function getPublicUrlsForPdfs(
   return pdfUrls;
 }
 
-async function callMindPalV3API(payload: MindPalV3Payload): Promise<{
+async function callMindPalV2API(payload: MindPalV2Payload): Promise<{
   workflowRunId: string;
 }> {
   if (!MINDPAL_API_KEY) {
@@ -87,45 +90,43 @@ async function callMindPalV3API(payload: MindPalV3Payload): Promise<{
     throw new Error("MindPal workflow ID not configured");
   }
 
-  // v3 API uses query parameter for workflow_id
+  // v2 API uses query parameter for workflow_id and x-api-key header
   const apiUrl = `${MINDPAL_API_ENDPOINT}?workflow_id=${WORKFLOW_ID}`;
   
-  console.log("MindPal v3 API Request:", {
+  console.log("MindPal v2 API Request:", {
     url: apiUrl,
     workflow_id: WORKFLOW_ID,
-    document_count: payload.document_urls.length,
-    request_id: payload.request_id,
-    callback_url: payload.callback_url
+    payload: JSON.stringify(payload, null, 2)
   });
 
   const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${MINDPAL_API_KEY}`,
+      "accept": "application/json",
+      "x-api-key": MINDPAL_API_KEY,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
   });
 
-  console.log("MindPal v3 API Response:", {
+  console.log("MindPal v2 API Response:", {
     status: response.status,
     statusText: response.statusText
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("MindPal v3 API error:", errorText);
+    console.error("MindPal v2 API error:", errorText);
     throw new Error(`MindPal API failed: ${response.status} - ${errorText}`);
   }
 
   const result = await response.json();
   
-  // v3 response format: { "data": { "workflowRunId": "..." }, "status": "success" }
-  const workflowRunId = result.data?.workflowRunId || result.workflowRunId;
+  // v2 response format
+  const workflowRunId = result.workflow_run_id || result.data?.workflow_run_id || result.id;
   
-  console.log("✅ MindPal v3 API Success:", {
+  console.log("✅ MindPal v2 API Success:", {
     workflowRunId,
-    status: result.status,
     full_response: JSON.stringify(result, null, 2)
   });
   
@@ -190,20 +191,22 @@ Deno.serve(async (req: Request) => {
     const requestId = generateUUID();
     const callbackUrl = `${SUPABASE_URL}/functions/v1/mindpal-callback`;
 
-    // Construct v3 payload with simplified field names
-    const payload: MindPalV3Payload = {
-      document_urls: documentUrls,
-      user_priorities: userPriorities,
-      request_id: requestId,
-      callback_url: callbackUrl
+    // Construct v2 payload with field IDs
+    const payload: MindPalV2Payload = {
+      data: {
+        [DOCUMENT_URLS_FIELD_ID]: JSON.stringify(documentUrls),
+        [USER_PRIORITIES_FIELD_ID]: JSON.stringify(userPriorities),
+        [REQUEST_ID_FIELD_ID]: requestId,
+        [CALLBACK_URL_FIELD_ID]: callbackUrl
+      }
     };
 
-    console.log("Calling MindPal v3 API with", documentUrls.length, "documents");
+    console.log("Calling MindPal v2 API with", documentUrls.length, "documents");
     console.log("Full payload:", JSON.stringify(payload, null, 2));
     
     let mindpalResult: { workflowRunId: string };
     try {
-      mindpalResult = await callMindPalV3API(payload);
+      mindpalResult = await callMindPalV2API(payload);
     } catch (apiError) {
       console.error("MindPal API call failed:", apiError);
       return errorResponse(`MindPal API failed: ${apiError instanceof Error ? apiError.message : String(apiError)}`);
