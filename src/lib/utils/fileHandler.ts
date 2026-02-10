@@ -126,3 +126,87 @@ export function checkPayloadLimits(files: File[]): { valid: boolean; message?: s
   
   return { valid: true };
 }
+
+/**
+ * Validate Base64 encoding for QA testing
+ * Logs detailed information about the encoding and attempts to decode
+ * Returns validation results for inspection
+ */
+export async function validateBase64Encoding(file: File): Promise<{
+  success: boolean;
+  base64Length: number;
+  originalSize: number;
+  decodedSize?: number;
+  firstChars: string;
+  lastChars: string;
+  error?: string;
+}> {
+  try {
+    const base64 = await fileToBase64(file);
+    
+    console.group(`🔍 Base64 Validation: ${file.name}`);
+    console.log('📄 Original file size:', file.size, 'bytes');
+    console.log('📊 Base64 length:', base64.length, 'characters');
+    console.log('📈 Overhead:', ((base64.length / file.size - 1) * 100).toFixed(1) + '%');
+    console.log('🔤 First 50 chars:', base64.substring(0, 50));
+    console.log('🔤 Last 50 chars:', base64.substring(base64.length - 50));
+    
+    // Try to decode it
+    try {
+      const decoded = atob(base64);
+      console.log('✅ Decode successful!');
+      console.log('📦 Decoded size:', decoded.length, 'bytes');
+      console.log('🔍 First 100 chars of decoded:', decoded.substring(0, 100));
+      console.log('🔍 Last 100 chars of decoded:', decoded.substring(decoded.length - 100));
+      
+      // Check if it looks like a PDF
+      if (file.type === 'application/pdf') {
+        const isPDF = decoded.startsWith('%PDF');
+        console.log('📋 PDF header check:', isPDF ? '✅ Valid PDF header' : '❌ Missing PDF header');
+      }
+      
+      console.groupEnd();
+      
+      return {
+        success: true,
+        base64Length: base64.length,
+        originalSize: file.size,
+        decodedSize: decoded.length,
+        firstChars: base64.substring(0, 50),
+        lastChars: base64.substring(base64.length - 50),
+      };
+    } catch (decodeError) {
+      console.error('❌ Decode failed:', decodeError);
+      console.groupEnd();
+      
+      return {
+        success: false,
+        base64Length: base64.length,
+        originalSize: file.size,
+        firstChars: base64.substring(0, 50),
+        lastChars: base64.substring(base64.length - 50),
+        error: decodeError instanceof Error ? decodeError.message : 'Decode failed',
+      };
+    }
+  } catch (error) {
+    console.error('❌ Base64 encoding failed:', error);
+    return {
+      success: false,
+      base64Length: 0,
+      originalSize: file.size,
+      firstChars: '',
+      lastChars: '',
+      error: error instanceof Error ? error.message : 'Encoding failed',
+    };
+  }
+}
+
+/**
+ * Export Base64 content to clipboard for external validation
+ * Useful for pasting into LLMs to verify content extraction
+ */
+export async function exportBase64ToClipboard(file: File): Promise<void> {
+  const base64 = await fileToBase64(file);
+  await navigator.clipboard.writeText(base64);
+  console.log(`✅ Base64 for "${file.name}" copied to clipboard (${base64.length} chars)`);
+}

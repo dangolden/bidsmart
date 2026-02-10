@@ -2,7 +2,7 @@ import { supabase } from '../supabaseClient';
 import * as db from '../database/bidsmartService';
 import type { ConfidenceLevel, LineItemType, MindPalExtractionResponse } from '../types';
 import { getAuthHeaders as getParentAuthHeaders } from '../parentAuth';
-import { prepareDocumentsForUpload, checkPayloadLimits, validateFileForBase64 } from '../utils/fileHandler';
+import { validateFileForBase64, prepareDocumentsForUpload, checkPayloadLimits, validateBase64Encoding, exportBase64ToClipboard } from '../utils/fileHandler';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -560,10 +560,37 @@ export async function startBatchAnalysisWithBase64(
 
     onProgress?.('Converting files', 0, files.length);
 
-    // Convert files to Base64
+    // Convert files to Base64 with validation
     const documents = await prepareDocumentsForUpload(files, (current, total, filename) => {
       onProgress?.(`Converting ${filename}`, current, total);
     });
+
+    // QA: Validate Base64 encoding for each file
+    console.group('📋 Base64 QA Validation');
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const validation = await validateBase64Encoding(file);
+      
+      if (!validation.success) {
+        console.error(`❌ Validation failed for ${file.name}:`, validation.error);
+      }
+      
+      // Log document structure being sent to API
+      console.log(`\n📄 Document ${i + 1}/${files.length}: ${documents[i].filename}`);
+      console.log('  - MIME type:', documents[i].mime_type);
+      console.log('  - Original size:', documents[i].size, 'bytes');
+      console.log('  - Base64 length:', documents[i].base64_content.length, 'chars');
+      console.log('  - First 100 chars:', documents[i].base64_content.substring(0, 100));
+      console.log('  - Last 100 chars:', documents[i].base64_content.substring(documents[i].base64_content.length - 100));
+    }
+    console.log('\n💡 TIP: To copy a file\'s Base64 to clipboard for LLM validation:');
+    console.log('   Run: exportBase64ToClipboard(yourFile)');
+    console.log('   The function is available in the global scope for testing.');
+    console.groupEnd();
+
+    // Make validation functions available globally for manual testing
+    (window as any).validateBase64Encoding = validateBase64Encoding;
+    (window as any).exportBase64ToClipboard = exportBase64ToClipboard;
 
     onProgress?.('Uploading to server', files.length, files.length);
 
