@@ -3,14 +3,12 @@ import { AlphaBanner } from './AlphaBanner';
 
 interface AnalysisSuccessScreenProps {
   email: string;
-  projectId: string;
   onViewDemo: () => void;
   onReturnHome: () => void;
 }
 
 export function AnalysisSuccessScreen({
   email,
-  projectId,
   onViewDemo,
   onReturnHome
 }: AnalysisSuccessScreenProps) {

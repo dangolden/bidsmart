@@ -3,10 +3,9 @@ import { Upload, BarChart3, CheckCircle, ClipboardCheck, FileText, X, Clock, Che
 import type { UserExt } from '../lib/types';
 import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
-import { AlphaBanner } from './AlphaBanner';
 import { AnalysisSuccessScreen } from './AnalysisSuccessScreen';
 import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject, getPublicDemoProjects } from '../lib/database/bidsmartService';
-import { startBatchAnalysisWithBase64, pollBatchExtractionStatus, type BatchExtractionStatus } from '../lib/services/mindpalService';
+import { startBatchAnalysisWithBase64 } from '../lib/services/mindpalService';
 import SwitchLogo from '../assets/switchlogo.svg';
 
 const SESSION_ID_KEY = 'bidsmart_session_id';
@@ -96,10 +95,9 @@ type AnalysisState = 'idle' | 'uploading' | 'analyzing' | 'submitted' | 'complet
 interface UnifiedHomePageProps {
   user: UserExt;
   onSelectProject: (projectId: string) => void;
-  onStartProject: (projectId: string) => void;
 }
 
-export function UnifiedHomePage({ user, onSelectProject, onStartProject }: UnifiedHomePageProps) {
+export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps) {
   const [uploadedPdfs, setUploadedPdfs] = useState<UploadedPdf[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -118,7 +116,6 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
   const [notificationEmail, setNotificationEmail] = useState('');
 
   const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
-  const [analysisProgress, setAnalysisProgress] = useState<BatchExtractionStatus | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analysisElapsedSeconds, setAnalysisElapsedSeconds] = useState(0);
   const analysisTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -362,7 +359,6 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
     return (
       <AnalysisSuccessScreen
         email={notificationEmail}
-        projectId={draftProjectId!}
         onViewDemo={() => {
           if (demoProjectId) {
             onSelectProject(demoProjectId);
@@ -388,33 +384,15 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
 
             <div className="text-center space-y-2">
               <h2 className="text-xl font-semibold text-gray-900">
-                Analyzing Your Bids...
+                Uploading Your Bids...
               </h2>
               <p className="text-gray-600 max-w-md">
-                Our AI is extracting and comparing data from your bid documents. This usually takes 1-3 minutes.
+                Preparing your documents for analysis.
               </p>
               <p className="text-sm text-gray-500">
                 Elapsed: {formatElapsedTime(analysisElapsedSeconds)}
               </p>
             </div>
-
-            {analysisProgress && (
-              <div className="w-full max-w-md space-y-4">
-                <div className="bg-gray-100 rounded-full h-3 overflow-hidden">
-                  <div
-                    className="bg-switch-green-600 h-full transition-all duration-500"
-                    style={{
-                      width: `${analysisProgress.totalPdfs > 0
-                        ? ((analysisProgress.completedPdfs + analysisProgress.failedPdfs) / analysisProgress.totalPdfs) * 100
-                        : 0}%`
-                    }}
-                  />
-                </div>
-                <p className="text-sm text-center text-gray-600">
-                  {analysisProgress.completedPdfs} of {analysisProgress.totalPdfs} bids processed
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </div>

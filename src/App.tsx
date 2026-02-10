@@ -27,12 +27,6 @@ function App() {
     setShowHome(false);
   };
 
-  const handleStartProject = (projectId: string) => {
-    setActiveProjectId(projectId);
-    setStoredProjectId(projectId);
-    setShowHome(false);
-  };
-
   const handleNavigateHome = () => {
     setActiveProjectId(null);
     setStoredProjectId(null);
@@ -77,7 +71,6 @@ function App() {
       <UnifiedHomePage
         user={user}
         onSelectProject={handleSelectProject}
-        onStartProject={handleStartProject}
       />
     );
   }
