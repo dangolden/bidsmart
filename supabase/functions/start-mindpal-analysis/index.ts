@@ -165,8 +165,14 @@ Deno.serve(async (req: Request) => {
 
     // Generate public URLs for the uploaded PDFs
     console.log("Generating URLs for", pdfUploadIds.length, "PDFs");
-    const documentUrls = await getPublicUrlsForPdfs(projectId, pdfUploadIds);
-    console.log("Generated URLs:", documentUrls.length);
+    let documentUrls: string[];
+    try {
+      documentUrls = await getPublicUrlsForPdfs(projectId, pdfUploadIds);
+      console.log("Generated URLs:", documentUrls.length, documentUrls);
+    } catch (urlError) {
+      console.error("Failed to generate URLs:", urlError);
+      return errorResponse(`URL generation failed: ${urlError instanceof Error ? urlError.message : String(urlError)}`);
+    }
 
     const requestId = generateUUID();
     const callbackUrl = `${SUPABASE_URL}/functions/v1/mindpal-callback`;
@@ -180,7 +186,15 @@ Deno.serve(async (req: Request) => {
     };
 
     console.log("Calling MindPal v3 API with", documentUrls.length, "documents");
-    const mindpalResult = await callMindPalV3API(payload);
+    console.log("Full payload:", JSON.stringify(payload, null, 2));
+    
+    let mindpalResult: { workflowRunId: string };
+    try {
+      mindpalResult = await callMindPalV3API(payload);
+    } catch (apiError) {
+      console.error("MindPal API call failed:", apiError);
+      return errorResponse(`MindPal API failed: ${apiError instanceof Error ? apiError.message : String(apiError)}`);
+    }
 
     // Update project status
     await supabaseAdmin

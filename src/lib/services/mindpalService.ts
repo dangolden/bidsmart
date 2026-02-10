@@ -503,9 +503,27 @@ export async function startBatchAnalysis(
       }),
     });
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      const text = await response.text();
+      console.error('Failed to parse response as JSON:', text);
+      return {
+        success: false,
+        projectId,
+        error: `Server error: ${response.status} - ${text.substring(0, 200)}`,
+      };
+    }
+
+    console.log('📥 Edge Function Response:', {
+      status: response.status,
+      ok: response.ok,
+      data
+    });
 
     if (!response.ok) {
+      console.error('Edge Function error:', data);
       return {
         success: false,
         projectId,
