@@ -135,6 +135,10 @@ async function callMindPalAPI(payload: MindPalPayload): Promise<{
   }
 
   const result = await response.json();
+  console.log("✅ MindPal API Success:", {
+    workflow_run_id: result.workflow_run_id,
+    full_response: JSON.stringify(result, null, 2)
+  });
   return result;
 }
 

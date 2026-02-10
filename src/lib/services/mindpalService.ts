@@ -631,15 +631,35 @@ export async function startBatchAnalysisWithBase64(
       body: JSON.stringify(requestPayload),
     });
 
+    console.log('📥 Edge Function Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+
     const data = await response.json();
+    
+    console.log('📦 Edge Function Data:', data);
 
     if (!response.ok) {
+      console.error('❌ Edge Function Error:', {
+        status: response.status,
+        error: data.error,
+        details: data
+      });
       return {
         success: false,
         projectId,
         error: data.error || `Request failed: ${response.status}`,
       };
     }
+
+    console.log('✅ MindPal Analysis Started:', {
+      requestId: data.requestId,
+      workflowRunId: data.workflowRunId,
+      pdfCount: documents.length
+    });
 
     return {
       success: true,
