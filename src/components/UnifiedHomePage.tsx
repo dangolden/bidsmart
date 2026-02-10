@@ -380,7 +380,6 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
   if (analysisState === 'analyzing' || analysisState === 'uploading') {
     return (
       <div className="min-h-screen bg-gray-50">
-        <AlphaBanner />
         <div className="max-w-4xl mx-auto px-4 py-12">
           <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
             <div className="w-16 h-16 bg-switch-green-100 rounded-full flex items-center justify-center">
@@ -425,7 +424,6 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
   if (analysisState === 'timeout') {
     return (
       <div className="min-h-screen bg-gray-50">
-        <AlphaBanner />
         <div className="max-w-4xl mx-auto px-4 py-12">
           <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
             <div className="w-16 h-16 bg-switch-green-100 rounded-full flex items-center justify-center">
@@ -450,7 +448,6 @@ export function UnifiedHomePage({ user, onSelectProject, onStartProject }: Unifi
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <AlphaBanner />
 
       {!isHeaderSticky && (
         <div ref={heroSectionRef} className="max-w-4xl w-full mx-auto px-4 py-8">

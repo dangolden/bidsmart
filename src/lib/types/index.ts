@@ -931,6 +931,30 @@ export interface BidFaq {
   updated_at: string;
 }
 
+export interface OverallFaq {
+  id: string;
+  project_id: string;
+  faq_key: string;
+  question_text: string;
+  answer_text?: string | null;
+  answer_confidence?: ConfidenceLevel | null;
+  display_order?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BidFaqSet {
+  bid_id: string;
+  bid_index: number;
+  contractor_name: string;
+  faqs: BidFaq[];
+}
+
+export interface ProjectFaqData {
+  overall: OverallFaq[];
+  by_bid: BidFaqSet[];
+}
+
 // ============================================
 // CONTRACTOR COMPARISON TYPES
 // ============================================

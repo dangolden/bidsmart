@@ -169,7 +169,6 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
           phaseStatus[2] = 'active';
           phaseStatus[3] = 'active';
           phaseStatus[4] = 'active';
-          currentPhase = 2;
         }
 
         setState({
