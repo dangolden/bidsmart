@@ -36,16 +36,29 @@ async function getPublicUrlsForPdfs(
 ): Promise<string[]> {
   const pdfUrls: string[] = [];
 
+  console.log("Looking up PDFs:", { projectId, pdfUploadIds });
+
   for (const pdfUploadId of pdfUploadIds) {
+    console.log(`Querying pdf_uploads for id=${pdfUploadId}, project_id=${projectId}`);
+    
     const { data: pdfUpload, error: pdfError } = await supabaseAdmin
       .from("pdf_uploads")
-      .select("file_path")
+      .select("file_path, project_id, file_name")
       .eq("id", pdfUploadId)
-      .eq("project_id", projectId)
       .maybeSingle();
 
-    if (pdfError || !pdfUpload) {
-      throw new Error(`PDF upload ${pdfUploadId} not found`);
+    console.log("Query result:", { pdfUpload, pdfError });
+
+    if (pdfError) {
+      throw new Error(`PDF query error for ${pdfUploadId}: ${pdfError.message}`);
+    }
+    
+    if (!pdfUpload) {
+      throw new Error(`PDF upload ${pdfUploadId} not found in database`);
+    }
+    
+    if (pdfUpload.project_id !== projectId) {
+      throw new Error(`PDF ${pdfUploadId} belongs to project ${pdfUpload.project_id}, not ${projectId}`);
     }
 
     // Generate public URL (1 hour expiry)
