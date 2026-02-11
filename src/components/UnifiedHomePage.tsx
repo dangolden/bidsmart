@@ -219,7 +219,7 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
   }
 
   const validPendingCount = uploadedPdfs.filter(p => p.status === 'pending' || p.status === 'uploaded').length;
-  const canContinue = validPendingCount >= 2;
+  const canContinue = validPendingCount >= 1;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notificationEmail.trim());
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
