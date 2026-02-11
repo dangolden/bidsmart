@@ -140,7 +140,8 @@ export function GatherPhase() {
 
   const existingBidsCount = bids.filter(b => b.bid.total_bid_amount > 0 && b.bid.contractor_name).length;
   const validPendingCount = uploadedPdfs.filter(p => p.status === 'pending' || p.status === 'uploaded').length;
-  const canContinue = validPendingCount >= 2 || existingBidsCount >= 2;
+  const totalBidCount = validPendingCount + existingBidsCount;
+  const canContinue = totalBidCount >= 1;
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
