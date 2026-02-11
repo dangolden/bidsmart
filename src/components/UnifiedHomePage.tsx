@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, BarChart3, CheckCircle, ClipboardCheck, FileText, X, Clock, CheckCircle2, AlertCircle, ArrowRight, Users, Shield, Info, Mail, Loader2, ChevronRight } from 'lucide-react';
+import { Upload, BarChart3, CheckCircle, ClipboardCheck, FileText, X, Clock, CheckCircle2, AlertCircle, ArrowRight, Users, Shield, Info, Mail, Loader2, ChevronRight, Mic, MicOff } from 'lucide-react';
 import type { UserExt } from '../lib/types';
 import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
 import { AnalysisSuccessScreen } from './AnalysisSuccessScreen';
 import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject, getPublicDemoProjects } from '../lib/database/bidsmartService';
 import { uploadPdfFile, startBatchAnalysis } from '../lib/services/mindpalService';
+import { useSpeechToText } from '../hooks/useSpeechToText';
 import SwitchLogo from '../assets/switchlogo.svg';
 
 const SESSION_ID_KEY = 'bidsmart_session_id';
@@ -126,6 +127,18 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
   const [showProjectDetails, setShowProjectDetails] = useState(true);
   const [isHeaderSticky, setIsHeaderSticky] = useState(false);
   const heroSectionRef = useRef<HTMLDivElement>(null);
+
+  // Speech-to-text for project details
+  const { 
+    isListening, 
+    isSupported: isSpeechSupported, 
+    toggleListening,
+    error: speechError 
+  } = useSpeechToText({
+    onResult: (transcript) => {
+      setProjectDetails((prev) => prev + (prev ? ' ' : '') + transcript);
+    },
+  });
 
   useEffect(() => {
     checkForDraftProject();
@@ -362,6 +375,16 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
         return;
       }
 
+      // Save processing project info for banner display when viewing demo
+      try {
+        localStorage.setItem('bidsmart_processing_project', JSON.stringify({
+          id: projectId,
+          email: notificationEmail,
+        }));
+      } catch {
+        // Ignore localStorage errors
+      }
+
       // Show success screen - analysis takes 20-30 minutes
       setAnalysisState('submitted');
     } catch (err) {
@@ -540,7 +563,7 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
             Start a New Bid Comparison
           </h2>
           <p className="text-sm text-gray-600 mb-6">
-            Upload at least 2 contractor bid documents to compare (PDF, DOC, or DOCX).
+            Upload your contractor bid documents to compare (PDF, DOC, or DOCX).
           </p>
 
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
@@ -706,13 +729,38 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
 
             {showProjectDetails && (
               <div className="mt-4 px-1">
-                <textarea
-                  value={projectDetails}
-                  onChange={(e) => setProjectDetails(e.target.value)}
-                  placeholder="For example: My home is a 1950s ranch with poor insulation. I'm looking for a contractor who is patient with explaining technical details..."
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent text-sm resize-none"
-                />
+                <div className="relative">
+                  <textarea
+                    value={projectDetails}
+                    onChange={(e) => setProjectDetails(e.target.value)}
+                    placeholder="For example: My home is a 1950s ranch with poor insulation. I'm looking for a contractor who is patient with explaining technical details..."
+                    rows={4}
+                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent text-sm resize-none"
+                  />
+                  {isSpeechSupported && (
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      className={`absolute right-3 top-3 p-2 rounded-full transition-colors ${
+                        isListening 
+                          ? 'bg-red-100 text-red-600 animate-pulse' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      title={isListening ? 'Stop dictation' : 'Start dictation'}
+                    >
+                      {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                    </button>
+                  )}
+                </div>
+                {speechError && (
+                  <p className="text-xs text-red-600 mt-1">{speechError}</p>
+                )}
+                {isListening && (
+                  <p className="text-xs text-switch-green-600 mt-1 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    Listening... speak now
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -803,7 +851,7 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
             {(!canContinue || !isEmailValid) && (
               <p className="text-center text-sm text-gray-500 mt-3">
                 {!canContinue
-                  ? 'Upload at least 2 bids to continue'
+                  ? 'Upload at least 1 bid to continue'
                   : 'Enter a valid email address to continue'}
               </p>
             )}
