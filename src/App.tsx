@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser } from './hooks/useUser';
 import { UnifiedHomePage } from './components/UnifiedHomePage';
 import { BidSmartFlow } from './components/BidSmartFlow';
+import { AdminDashboard } from './components/AdminDashboard';
+import { AdminLogin, getStoredAdminSession, clearAdminSession, type AdminUser } from './components/AdminLogin';
+import { supabase } from './lib/supabaseClient';
 
 const ACTIVE_PROJECT_KEY = 'bidsmart_active_project';
+const PROCESSING_PROJECT_KEY = 'bidsmart_processing_project';
 
 function setStoredProjectId(projectId: string | null): void {
   try {
@@ -16,10 +20,55 @@ function setStoredProjectId(projectId: string | null): void {
   }
 }
 
+interface ProcessingProject {
+  id: string;
+  email?: string;
+}
+
 function App() {
   const { user, loading, error } = useUser();
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [showHome, setShowHome] = useState(true);
+  const [processingProject, setProcessingProject] = useState<ProcessingProject | null>(null);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(() => getStoredAdminSession());
+  
+  // Initialize state based on URL path
+  const initialPath = window.location.pathname;
+  const [showAdmin, setShowAdmin] = useState(initialPath === '/admin');
+  const [showHome, setShowHome] = useState(initialPath !== '/admin');
+
+  // Check for processing project in localStorage and verify it's still processing
+  useEffect(() => {
+    const checkProcessingProject = async () => {
+      try {
+        const stored = localStorage.getItem(PROCESSING_PROJECT_KEY);
+        if (!stored) return;
+
+        const parsed = JSON.parse(stored) as ProcessingProject;
+        
+        // Verify the project is still in analyzing status
+        const { data: project } = await supabase
+          .from('projects')
+          .select('id, status, notification_email')
+          .eq('id', parsed.id)
+          .single();
+
+        if (project && (project.status === 'analyzing' || project.status === 'uploading')) {
+          setProcessingProject({
+            id: project.id,
+            email: project.notification_email,
+          });
+        } else {
+          // Project is no longer processing, clear it
+          localStorage.removeItem(PROCESSING_PROJECT_KEY);
+          setProcessingProject(null);
+        }
+      } catch {
+        // Ignore errors
+      }
+    };
+
+    checkProcessingProject();
+  }, []);
 
   const handleSelectProject = (projectId: string) => {
     setActiveProjectId(projectId);
@@ -31,6 +80,8 @@ function App() {
     setActiveProjectId(null);
     setStoredProjectId(null);
     setShowHome(true);
+    setShowAdmin(false);
+    window.history.pushState({}, '', '/');
   };
 
   if (loading) {
@@ -66,6 +117,23 @@ function App() {
     );
   }
 
+  // Admin dashboard (accessible via /admin with login)
+  if (showAdmin) {
+    if (!adminUser) {
+      return <AdminLogin onLoginSuccess={(admin) => setAdminUser(admin)} />;
+    }
+    return (
+      <AdminDashboard 
+        onBack={() => {
+          clearAdminSession();
+          setAdminUser(null);
+          handleNavigateHome();
+        }} 
+        userEmail={adminUser.email} 
+      />
+    );
+  }
+
   if (showHome || !activeProjectId) {
     return (
       <UnifiedHomePage
@@ -75,7 +143,7 @@ function App() {
     );
   }
 
-  return <BidSmartFlow user={user} projectId={activeProjectId} onNavigateHome={handleNavigateHome} />;
+  return <BidSmartFlow user={user} projectId={activeProjectId} onNavigateHome={handleNavigateHome} processingProject={processingProject} />;
 }
 
 export default App;

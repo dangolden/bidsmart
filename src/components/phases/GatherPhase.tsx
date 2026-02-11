@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Upload, FileText, CheckCircle2, Clock, AlertCircle, ArrowRight, Users, Shield, X, Loader2, Info, Mail, FlaskConical, Save } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Clock, AlertCircle, ArrowRight, Users, Shield, X, Loader2, Info, Mail, FlaskConical, Save, Mic, MicOff } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { useUser } from '../../hooks/useUser';
 import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject, validatePdfFile, updateProjectNotificationSettings } from '../../lib/database/bidsmartService';
@@ -7,6 +7,7 @@ import { uploadPdfFile, startBatchAnalysis, pollBatchExtractionStatus, type Batc
 import { AnalysisSubmissionInterstitial } from '../AnalysisSubmissionInterstitial';
 import { useAnalysisNotification } from '../../hooks/useAnalysisNotification';
 import { NotificationToast } from '../NotificationToast';
+import { useSpeechToText } from '../../hooks/useSpeechToText';
 
 interface PrioritySliderProps {
   label: string;
@@ -76,6 +77,18 @@ export function GatherPhase() {
   const [enableSound, setEnableSound] = useState(true);
   const [showCompletionToast, setShowCompletionToast] = useState(false);
   const { notify, requestPermission, permission, toggleSound } = useAnalysisNotification();
+
+  // Speech-to-text for project details
+  const { 
+    isListening, 
+    isSupported: isSpeechSupported, 
+    toggleListening,
+    error: speechError 
+  } = useSpeechToText({
+    onResult: (transcript) => {
+      setProjectDetails((prev) => prev + (prev ? ' ' : '') + transcript);
+    },
+  });
 
   useEffect(() => {
     if (requirements) {
@@ -598,7 +611,7 @@ export function GatherPhase() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Gather Your Bids</h1>
         <p className="text-gray-600 mt-1">
-          Upload at least 2 contractor bids to compare, then tell us what matters most to you.
+          Upload your contractor bids to compare, then tell us what matters most to you.
         </p>
       </div>
 
@@ -783,13 +796,38 @@ export function GatherPhase() {
         <p className="text-sm text-gray-600 mb-4">
           Share any details about your home, priorities, or what you care about in a contractor. This is optional but helps us provide better guidance.
         </p>
-        <textarea
-          value={projectDetails}
-          onChange={(e) => setProjectDetails(e.target.value)}
-          placeholder="For example: My home is a 1950s ranch with poor insulation. I'm looking for a contractor who is patient with explaining technical details and has experience with older homes. Budget is somewhat flexible but I want to prioritize long-term savings over upfront cost..."
-          rows={6}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent text-sm resize-none"
-        />
+        <div className="relative">
+          <textarea
+            value={projectDetails}
+            onChange={(e) => setProjectDetails(e.target.value)}
+            placeholder="For example: My home is a 1950s ranch with poor insulation. I'm looking for a contractor who is patient with explaining technical details and has experience with older homes. Budget is somewhat flexible but I want to prioritize long-term savings over upfront cost..."
+            rows={6}
+            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent text-sm resize-none"
+          />
+          {isSpeechSupported && (
+            <button
+              type="button"
+              onClick={toggleListening}
+              className={`absolute right-3 top-3 p-2 rounded-full transition-colors ${
+                isListening 
+                  ? 'bg-red-100 text-red-600 animate-pulse' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title={isListening ? 'Stop dictation' : 'Start dictation'}
+            >
+              {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+          )}
+        </div>
+        {speechError && (
+          <p className="text-xs text-red-600 mt-1">{speechError}</p>
+        )}
+        {isListening && (
+          <p className="text-xs text-switch-green-600 mt-1 flex items-center gap-1">
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+            Listening... speak now
+          </p>
+        )}
         <p className="text-xs text-gray-500 mt-2">
           This information helps us understand your unique needs and provide more personalized recommendations.
         </p>
@@ -936,7 +974,7 @@ export function GatherPhase() {
 
       {!canContinue && (
         <p className="text-center text-sm text-gray-500">
-          Upload at least 2 bids to continue
+          Upload at least 1 bid to continue
         </p>
       )}
 

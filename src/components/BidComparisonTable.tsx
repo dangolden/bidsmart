@@ -128,7 +128,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
       <div className="text-center py-12">
         <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Need More Bids</h3>
-        <p className="text-gray-600">Upload at least 2 bids to see a comparison.</p>
+        <p className="text-gray-600">Upload at least 1 bid to see a comparison.</p>
       </div>
     );
   }
