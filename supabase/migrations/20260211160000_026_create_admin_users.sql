@@ -41,13 +41,13 @@ CREATE POLICY "Service role can manage admin_sessions"
     WITH CHECK (true);
 
 -- Function to hash passwords using pgcrypto
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- Function to verify admin password
 CREATE OR REPLACE FUNCTION verify_admin_password(stored_hash TEXT, input_password TEXT)
 RETURNS BOOLEAN AS $$
 BEGIN
-    RETURN stored_hash = crypt(input_password, stored_hash);
+    RETURN stored_hash = extensions.crypt(input_password, stored_hash);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -69,7 +69,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 INSERT INTO admin_users (email, password_hash, name, is_super_admin)
 VALUES (
     'dan@theswitchison.org',
-    crypt('bidsmart2026', gen_salt('bf')),
+    extensions.crypt('bidsmart2026', extensions.gen_salt('bf')),
     'Dan Golden',
     TRUE
 )

@@ -5,32 +5,28 @@
 -- ============================================
 
 -- Add electrical fields to contractor_bids table
-ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS
-  electrical_panel_assessment_included BOOLEAN,
-  electrical_panel_upgrade_included BOOLEAN,
-  electrical_panel_upgrade_cost NUMERIC(10,2),
-  electrical_existing_panel_amps INTEGER,
-  electrical_proposed_panel_amps INTEGER,
-  electrical_breaker_size_required INTEGER,
-  electrical_dedicated_circuit_included BOOLEAN,
-  electrical_permit_included BOOLEAN,
-  electrical_load_calculation_included BOOLEAN,
-  electrical_notes TEXT;
+ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS electrical_panel_assessment_included BOOLEAN;
+ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS electrical_panel_upgrade_included BOOLEAN;
+ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS electrical_panel_upgrade_cost NUMERIC(10,2);
+ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS electrical_existing_panel_amps INTEGER;
+ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS electrical_proposed_panel_amps INTEGER;
+ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS electrical_breaker_size_required INTEGER;
+ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS electrical_dedicated_circuit_included BOOLEAN;
+ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS electrical_permit_included BOOLEAN;
+ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS electrical_load_calculation_included BOOLEAN;
+ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS electrical_notes TEXT;
 
 -- Add red flags and positive indicators to contractor_bids
-ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS
-  red_flags JSONB DEFAULT '[]'::jsonb,
-  positive_indicators JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS red_flags JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE contractor_bids ADD COLUMN IF NOT EXISTS positive_indicators JSONB DEFAULT '[]'::jsonb;
 
 -- Add FAQ and clarification questions to bid_analysis
-ALTER TABLE bid_analysis ADD COLUMN IF NOT EXISTS
-  faqs JSONB,
-  clarification_questions JSONB;
+ALTER TABLE bid_analysis ADD COLUMN IF NOT EXISTS faqs JSONB;
+ALTER TABLE bid_analysis ADD COLUMN IF NOT EXISTS clarification_questions JSONB;
 
 -- Add amperage fields to bid_equipment
-ALTER TABLE bid_equipment ADD COLUMN IF NOT EXISTS
-  amperage_draw INTEGER,
-  minimum_circuit_amperage INTEGER;
+ALTER TABLE bid_equipment ADD COLUMN IF NOT EXISTS amperage_draw INTEGER;
+ALTER TABLE bid_equipment ADD COLUMN IF NOT EXISTS minimum_circuit_amperage INTEGER;
 
 -- Create indexes for new JSONB columns
 CREATE INDEX IF NOT EXISTS idx_contractor_bids_red_flags ON contractor_bids USING GIN (red_flags);
