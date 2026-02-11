@@ -3,7 +3,7 @@ import { useUser } from './hooks/useUser';
 import { UnifiedHomePage } from './components/UnifiedHomePage';
 import { BidSmartFlow } from './components/BidSmartFlow';
 import { AdminDashboard } from './components/AdminDashboard';
-import { isAdminEmail } from './lib/services/adminService';
+import { AdminLogin, getStoredAdminSession, clearAdminSession, type AdminUser } from './components/AdminLogin';
 import { supabase } from './lib/supabaseClient';
 
 const ACTIVE_PROJECT_KEY = 'bidsmart_active_project';
@@ -29,6 +29,7 @@ function App() {
   const { user, loading, error } = useUser();
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [processingProject, setProcessingProject] = useState<ProcessingProject | null>(null);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(() => getStoredAdminSession());
   
   // Initialize state based on URL path
   const initialPath = window.location.pathname;
@@ -116,9 +117,21 @@ function App() {
     );
   }
 
-  // Admin dashboard (accessible via /admin for admin emails)
-  if (showAdmin && user && isAdminEmail(user.email)) {
-    return <AdminDashboard onBack={handleNavigateHome} userEmail={user.email} />;
+  // Admin dashboard (accessible via /admin with login)
+  if (showAdmin) {
+    if (!adminUser) {
+      return <AdminLogin onLoginSuccess={(admin) => setAdminUser(admin)} />;
+    }
+    return (
+      <AdminDashboard 
+        onBack={() => {
+          clearAdminSession();
+          setAdminUser(null);
+          handleNavigateHome();
+        }} 
+        userEmail={adminUser.email} 
+      />
+    );
   }
 
   if (showHome || !activeProjectId) {
