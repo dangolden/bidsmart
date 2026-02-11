@@ -227,9 +227,9 @@ export function GatherPhase() {
         // Get all files from uploadedPdfs
         const files = uploadedPdfs.map(p => p.file);
 
-        if (files.length < 2) {
+        if (files.length < 1) {
           setAnalysisState('error');
-          setAnalysisError('Please upload at least 2 bid PDFs to compare.');
+          setAnalysisError('Please upload at least 1 bid PDF to analyze.');
           return;
         }
 

@@ -96,6 +96,12 @@ async function callMindPalV2API(payload: MindPalV2Payload): Promise<{
   console.log("MindPal v2 API Request:", {
     url: apiUrl,
     workflow_id: WORKFLOW_ID,
+    field_ids: {
+      document_urls: DOCUMENT_URLS_FIELD_ID,
+      user_priorities: USER_PRIORITIES_FIELD_ID,
+      request_id: REQUEST_ID_FIELD_ID,
+      callback_url: CALLBACK_URL_FIELD_ID
+    },
     payload: JSON.stringify(payload, null, 2)
   });
 

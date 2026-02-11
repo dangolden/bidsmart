@@ -322,8 +322,8 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
 
       const files = uploadedPdfs.map(p => p.file);
 
-      if (files.length < 2) {
-        setAnalysisError('Please upload at least 2 bid PDFs to compare.');
+      if (files.length < 1) {
+        setAnalysisError('Please upload at least 1 bid PDF to analyze.');
         return;
       }
 
