@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Upload, FileText, CheckCircle2, Clock, AlertCircle, Plus, ArrowRight, Users, Shield, X, Loader2, Info, Mail, FlaskConical, Save } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Clock, AlertCircle, ArrowRight, Users, Shield, X, Loader2, Info, Mail, FlaskConical, Save } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { useUser } from '../../hooks/useUser';
 import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject, validatePdfFile, updateProjectNotificationSettings } from '../../lib/database/bidsmartService';
@@ -127,7 +127,6 @@ export function GatherPhase() {
 
   const existingBidsCount = bids.filter(b => b.bid.total_bid_amount > 0 && b.bid.contractor_name).length;
   const validPendingCount = uploadedPdfs.filter(p => p.status === 'pending' || p.status === 'uploaded').length;
-  const totalReadyBids = existingBidsCount + validPendingCount;
   const canContinue = validPendingCount >= 2 || existingBidsCount >= 2;
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
@@ -733,27 +732,6 @@ export function GatherPhase() {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="btn btn-secondary w-full mt-4 flex items-center justify-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Another Bid
-        </button>
-
-        {totalReadyBids < 2 && (
-          <div className="mt-4 flex items-start gap-2 text-amber-600 bg-amber-50 rounded-lg p-3">
-            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <p className="text-sm">
-              {(() => {
-                const needed = Math.max(0, 2 - totalReadyBids);
-                if (totalReadyBids === 0) return 'Upload your first bid to get started.';
-                return `Upload ${needed} more bid${needed > 1 ? 's' : ''} to continue.`;
-              })()}
-            </p>
-          </div>
-        )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">

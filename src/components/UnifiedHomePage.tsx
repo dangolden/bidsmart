@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, BarChart3, CheckCircle, ClipboardCheck, FileText, X, Clock, CheckCircle2, AlertCircle, Plus, ArrowRight, Users, Shield, Info, Mail, Loader2, ChevronRight } from 'lucide-react';
+import { Upload, BarChart3, CheckCircle, ClipboardCheck, FileText, X, Clock, CheckCircle2, AlertCircle, ArrowRight, Users, Shield, Info, Mail, Loader2, ChevronRight } from 'lucide-react';
 import type { UserExt } from '../lib/types';
 import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
@@ -375,6 +375,7 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
     return (
       <AnalysisSuccessScreen
         email={notificationEmail}
+        projectId={draftProjectId || ''}
         onViewDemo={() => {
           if (demoProjectId) {
             onSelectProject(demoProjectId);
@@ -384,6 +385,11 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
           setAnalysisState('idle');
           setUploadedPdfs([]);
           setDraftProjectId(null);
+        }}
+        onViewResults={() => {
+          if (draftProjectId) {
+            onSelectProject(draftProjectId);
+          }
         }}
       />
     );
@@ -629,26 +635,6 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="btn btn-secondary w-full mt-4 flex items-center justify-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Another Bid
-          </button>
-
-          {uploadedPdfs.filter(p => p.status !== 'error').length < 2 && (
-            <div className="mt-4 flex items-start gap-2 text-amber-600 bg-amber-50 rounded-lg p-3">
-              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-              <p className="text-sm">
-                {uploadedPdfs.length === 0
-                  ? 'Upload your first bid to get started.'
-                  : `Upload ${Math.max(0, 2 - uploadedPdfs.filter(p => p.status !== 'error').length)} more bid${2 - uploadedPdfs.filter(p => p.status !== 'error').length > 1 ? 's' : ''} to continue.`}
-              </p>
             </div>
           )}
 
