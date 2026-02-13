@@ -11,11 +11,13 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 // Workflow ID for BidSmart Analyzer
 const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "697fc84945bf3484d9a860fb";
 
-// MindPal v2 field IDs for the workflow inputs
+// MindPal v2 field IDs for the workflow inputs (VERIFIED 2026-02-12)
 const DOCUMENT_URLS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENT_URLS_FIELD_ID") || "697fc84945bf3484d9a860fe";
 const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "697fc84945bf3484d9a86100";
-const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "697fc84945bf3484d9a86101";
+const USER_NOTES_FIELD_ID = Deno.env.get("MINDPAL_USER_NOTES_FIELD_ID") || "697fc84945bf3484d9a86101";
+const PROJECT_ID_FIELD_ID = Deno.env.get("MINDPAL_PROJECT_ID_FIELD_ID") || "698e9588cdcbe0dd8790b287";
 const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "697fc84945bf3484d9a860ff";
+const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "698e9588ff3f2d1fa1486189";
 
 // Request body from frontend
 interface RequestBody {
@@ -99,8 +101,10 @@ async function callMindPalV2API(payload: MindPalV2Payload): Promise<{
     field_ids: {
       document_urls: DOCUMENT_URLS_FIELD_ID,
       user_priorities: USER_PRIORITIES_FIELD_ID,
-      request_id: REQUEST_ID_FIELD_ID,
-      callback_url: CALLBACK_URL_FIELD_ID
+      user_notes: USER_NOTES_FIELD_ID,
+      project_id: PROJECT_ID_FIELD_ID,
+      callback_url: CALLBACK_URL_FIELD_ID,
+      request_id: REQUEST_ID_FIELD_ID
     },
     payload: JSON.stringify(payload, null, 2)
   });
@@ -197,13 +201,18 @@ Deno.serve(async (req: Request) => {
     const requestId = generateUUID();
     const callbackUrl = `${SUPABASE_URL}/functions/v1/mindpal-callback`;
 
+    // Extract user_notes from userPriorities.project_details if present
+    const userNotes = String(userPriorities.project_details || '');
+    
     // Construct v2 payload with field IDs
     const payload: MindPalV2Payload = {
       data: {
         [DOCUMENT_URLS_FIELD_ID]: JSON.stringify(documentUrls),
         [USER_PRIORITIES_FIELD_ID]: JSON.stringify(userPriorities),
-        [REQUEST_ID_FIELD_ID]: requestId,
-        [CALLBACK_URL_FIELD_ID]: callbackUrl
+        [USER_NOTES_FIELD_ID]: userNotes,
+        [PROJECT_ID_FIELD_ID]: projectId,
+        [CALLBACK_URL_FIELD_ID]: callbackUrl,
+        [REQUEST_ID_FIELD_ID]: requestId
       }
     };
 
