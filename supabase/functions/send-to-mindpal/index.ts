@@ -99,27 +99,33 @@ Deno.serve(async (req: Request) => {
 
     const callbackUrl = `${SUPABASE_URL}/functions/v1/mindpal-callback`;
 
+    // Flat structure matching MindPal's expected API input fields
     const mindpalRequest: MindPalTriggerRequest = {
-      pdf_url: signedUrlData.signedUrl,
+      // Core fields matching MindPal API Input names
+      document_urls: JSON.stringify([signedUrlData.signedUrl]),
+      project_id: projectId,
+      user_priorities: JSON.stringify(requirements ? {
+        price: requirements.priority_price,
+        warranty: requirements.priority_warranty,
+        efficiency: requirements.priority_efficiency,
+        timeline: requirements.priority_timeline,
+        reputation: requirements.priority_reputation,
+      } : {}),
+      user_notes: requirements?.specific_concerns || '',
       callback_url: callbackUrl,
       request_id: pdfUploadId,
+      
+      // Security/tracking fields
       signature,
       timestamp,
+      
+      // Additional context (kept for backward compatibility)
       project_context: {
-        project_id: projectId,
         heat_pump_type: project.heat_pump_type,
         system_size_tons: project.system_size_tons,
         property_state: project.users_ext?.property_state,
         property_zip: project.users_ext?.property_zip,
         square_footage: project.users_ext?.square_footage,
-        priorities: requirements ? {
-          price: requirements.priority_price,
-          warranty: requirements.priority_warranty,
-          efficiency: requirements.priority_efficiency,
-          timeline: requirements.priority_timeline,
-          reputation: requirements.priority_reputation,
-        } : undefined,
-        concerns: requirements?.specific_concerns,
         must_have_features: requirements?.must_have_features,
       },
     };
