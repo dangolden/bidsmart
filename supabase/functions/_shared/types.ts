@@ -1,24 +1,20 @@
 export interface MindPalTriggerRequest {
-  pdf_url: string;
+  // Flat fields matching MindPal API Input names
+  document_urls: string; // JSON stringified array of URLs
+  project_id: string;
+  user_priorities: string; // JSON stringified priorities object
+  user_notes: string;
   callback_url: string;
   request_id: string;
   signature: string;
   timestamp: string;
-  project_context: {
-    project_id: string;
+  // Additional context (optional, for backward compatibility)
+  project_context?: {
     heat_pump_type?: string | null;
     system_size_tons?: number | null;
     property_state?: string | null;
     property_zip?: string | null;
     square_footage?: number | null;
-    priorities?: {
-      price: number;
-      warranty: number;
-      efficiency: number;
-      timeline: number;
-      reputation: number;
-    };
-    concerns?: string[];
     must_have_features?: string[];
   };
 }
