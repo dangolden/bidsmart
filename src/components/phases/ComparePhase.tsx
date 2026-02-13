@@ -119,6 +119,17 @@ export function ComparePhase() {
       email: b.bid.contractor_email,
       website: b.bid.contractor_website,
       totalInstalls: b.bid.contractor_total_installs,
+      // New MindPal extraction fields
+      yelpRating: b.bid.contractor_yelp_rating,
+      yelpReviewCount: b.bid.contractor_yelp_review_count,
+      bbbRating: b.bid.contractor_bbb_rating,
+      bbbAccredited: b.bid.contractor_bbb_accredited,
+      bbbComplaints: b.bid.contractor_bbb_complaints_3yr,
+      bonded: b.bid.contractor_bonded,
+      contactName: b.bid.contractor_contact_name,
+      address: b.bid.contractor_address,
+      redFlags: b.bid.red_flags || [],
+      positiveIndicators: b.bid.positive_indicators || [],
     }));
   };
 
@@ -800,6 +811,79 @@ export function ComparePhase() {
                         {contractorData.map((c, idx) => (
                           <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
                             {c.totalInstalls ? c.totalInstalls.toLocaleString() : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Yelp Rating</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.yelpRating ? (
+                              <span className="flex items-center gap-1">
+                                <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                                <span className="font-semibold">{c.yelpRating.toFixed(1)}</span>
+                                {c.yelpReviewCount && <span className="text-gray-400">({c.yelpReviewCount.toLocaleString()} reviews)</span>}
+                              </span>
+                            ) : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">BBB Rating</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.bbbRating ? (
+                              <span className="flex items-center gap-2">
+                                <span className="font-semibold">{c.bbbRating}</span>
+                                {c.bbbAccredited && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                                    <CheckCircle className="w-3 h-3" /> Accredited
+                                  </span>
+                                )}
+                              </span>
+                            ) : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">BBB Complaints (3yr)</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.bbbComplaints != null ? (
+                              <span className={c.bbbComplaints > 0 ? 'text-amber-600 font-medium' : 'text-green-600'}>
+                                {c.bbbComplaints === 0 ? 'None' : `${c.bbbComplaints} complaint${c.bbbComplaints !== 1 ? 's' : ''}`}
+                              </span>
+                            ) : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Bonded</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.bonded ? (
+                              <span className="inline-flex items-center gap-1 text-switch-green-700">
+                                <CheckCircle className="w-4 h-4" /> Yes
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-gray-200 bg-gray-50/50">
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Contact Name</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.contactName || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-500 bg-gray-50 border-r border-gray-200">Address</td>
+                        {contractorData.map((c, idx) => (
+                          <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-600 ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                            {c.address || '-'}
                           </td>
                         ))}
                       </tr>

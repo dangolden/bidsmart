@@ -168,6 +168,18 @@ export interface Project {
   updated_at: string;
 }
 
+// Red flags and positive indicators for MindPal extraction
+export interface MindPalRedFlag {
+  issue: string;
+  source?: string;
+  severity?: 'high' | 'medium' | 'low';
+}
+
+export interface MindPalPositiveIndicator {
+  indicator: string;
+  source?: string;
+}
+
 export interface ContractorBid {
   id: string;
   project_id: string;
@@ -191,6 +203,16 @@ export interface ContractorBid {
   contractor_google_review_count?: number | null;
   contractor_certifications?: string[] | null;
   contractor_is_switch_preferred?: boolean;
+  
+  // Additional contractor ratings (from MindPal extraction)
+  contractor_yelp_rating?: number | null;
+  contractor_yelp_review_count?: number | null;
+  contractor_bbb_rating?: string | null;
+  contractor_bbb_accredited?: boolean | null;
+  contractor_bbb_complaints_3yr?: number | null;
+  contractor_bonded?: boolean | null;
+  contractor_contact_name?: string | null;
+  contractor_address?: string | null;
   
   // Bid totals
   total_bid_amount: number;
@@ -285,6 +307,11 @@ export interface ContractorBid {
   // User notes
   user_notes?: string | null;
   is_favorite: boolean;
+  
+  // Additional bid metadata (from MindPal extraction)
+  rebates_mentioned?: string[] | null;
+  red_flags?: MindPalRedFlag[] | null;
+  positive_indicators?: MindPalPositiveIndicator[] | null;
   
   created_at: string;
   updated_at: string;

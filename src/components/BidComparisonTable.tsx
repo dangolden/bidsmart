@@ -451,6 +451,73 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                       </td>
                     ))}
                   </tr>
+
+                  {/* Yelp Rating */}
+                  <tr>
+                    <td className="sticky left-0 bg-white font-medium">Yelp Rating</td>
+                    {sortedBids.map((bid) => (
+                      <td key={bid.id}>
+                        {bid.contractor_yelp_rating ? (
+                          <span className={bid.contractor_yelp_rating >= 4.5 ? 'text-green-600 font-medium' : ''}>
+                            {bid.contractor_yelp_rating.toFixed(1)} ⭐
+                            {bid.contractor_yelp_review_count && (
+                              <span className="text-gray-400 text-sm ml-1">
+                                ({bid.contractor_yelp_review_count})
+                              </span>
+                            )}
+                          </span>
+                        ) : '—'}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* BBB Rating */}
+                  <tr>
+                    <td className="sticky left-0 bg-white font-medium">BBB Rating</td>
+                    {sortedBids.map((bid) => (
+                      <td key={bid.id}>
+                        {bid.contractor_bbb_rating ? (
+                          <span className="flex items-center gap-1">
+                            <span className="font-medium">{bid.contractor_bbb_rating}</span>
+                            {bid.contractor_bbb_accredited && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Accredited</span>
+                            )}
+                          </span>
+                        ) : '—'}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Bonded */}
+                  <tr>
+                    <td className="sticky left-0 bg-white font-medium">Bonded</td>
+                    {sortedBids.map((bid) => (
+                      <td key={bid.id}>
+                        {bid.contractor_bonded ? (
+                          <Check className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <span className="text-gray-400">Unknown</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Red Flags */}
+                  <tr>
+                    <td className="sticky left-0 bg-white font-medium">Issues Identified</td>
+                    {sortedBids.map((bid) => (
+                      <td key={bid.id}>
+                        {bid.red_flags && bid.red_flags.length > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                            <AlertTriangle className="w-4 h-4" />
+                            {bid.red_flags.length} issue{bid.red_flags.length !== 1 ? 's' : ''}
+                          </span>
+                        ) : (
+                          <span className="text-green-600">None</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
                 </>
               )}
 

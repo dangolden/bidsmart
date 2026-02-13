@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, BookOpen, Award, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock, FlaskConical, Download, FileCheck2 } from 'lucide-react';
+import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, BookOpen, Award, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock, FlaskConical, Download, FileCheck2, AlertTriangle } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { supabase } from '../../lib/supabaseClient';
 import { IncentivesTable } from '../IncentivesTable';
@@ -247,6 +247,60 @@ export function DecidePhase() {
           <span className="font-medium">Alpha:</span> Rebate eligibility and amounts are estimates. Always verify with the program administrator before making decisions.
         </p>
       </div>
+
+      {/* Red Flags Alert */}
+      {bids.some(b => b.bid.red_flags && b.bid.red_flags.length > 0) && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-medium text-red-900 mb-2">Potential Issues Identified</h3>
+              <div className="space-y-2">
+                {bids.filter(b => b.bid.red_flags && b.bid.red_flags.length > 0).map(b => (
+                  <div key={b.bid.id} className="text-sm">
+                    <span className="font-medium text-red-800">{b.bid.contractor_name}:</span>
+                    <ul className="list-disc ml-5 mt-1 text-red-700">
+                      {b.bid.red_flags?.slice(0, 3).map((flag, i) => (
+                        <li key={i}>{flag.issue}</li>
+                      ))}
+                      {b.bid.red_flags && b.bid.red_flags.length > 3 && (
+                        <li className="text-red-500">+{b.bid.red_flags.length - 3} more issues</li>
+                      )}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Positive Indicators */}
+      {bids.some(b => b.bid.positive_indicators && b.bid.positive_indicators.length > 0) && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-medium text-green-900 mb-2">Positive Indicators</h3>
+              <div className="space-y-2">
+                {bids.filter(b => b.bid.positive_indicators && b.bid.positive_indicators.length > 0).map(b => (
+                  <div key={b.bid.id} className="text-sm">
+                    <span className="font-medium text-green-800">{b.bid.contractor_name}:</span>
+                    <ul className="list-disc ml-5 mt-1 text-green-700">
+                      {b.bid.positive_indicators?.slice(0, 3).map((indicator, i) => (
+                        <li key={i}>{indicator.indicator}</li>
+                      ))}
+                      {b.bid.positive_indicators && b.bid.positive_indicators.length > 3 && (
+                        <li className="text-green-500">+{b.bid.positive_indicators.length - 3} more</li>
+                      )}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         {tabs.map((tab, index) => (
