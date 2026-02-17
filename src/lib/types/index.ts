@@ -180,6 +180,14 @@ export interface MindPalPositiveIndicator {
   source?: string;
 }
 
+export interface ContractorCertificationsDetailed {
+  nate_certified?: boolean;
+  epa_608_certified?: boolean;
+  bpi_certified?: boolean;
+  manufacturer_authorized?: string[];
+  other_certifications?: string[];
+}
+
 export interface ContractorBid {
   id: string;
   project_id: string;
@@ -213,6 +221,9 @@ export interface ContractorBid {
   contractor_bonded?: boolean | null;
   contractor_contact_name?: string | null;
   contractor_address?: string | null;
+  contractor_employee_count?: string | null;
+  contractor_service_area?: string | null;
+  contractor_certifications_detailed?: ContractorCertificationsDetailed | null;
   
   // Bid totals
   total_bid_amount: number;
@@ -220,6 +231,8 @@ export interface ContractorBid {
   equipment_cost?: number | null;
   materials_cost?: number | null;
   permit_cost?: number | null;
+  disposal_cost?: number | null;
+  electrical_cost?: number | null;
   
   // Pre-rebate vs post-rebate
   total_before_rebates?: number | null;
@@ -233,10 +246,12 @@ export interface ContractorBid {
   // Warranty
   labor_warranty_years?: number | null;
   equipment_warranty_years?: number | null;
+  compressor_warranty_years?: number | null;
   additional_warranty_details?: string | null;
   
   // Payment terms
   deposit_required?: number | null;
+  deposit_required_flag?: boolean | null;
   deposit_percentage?: number | null;
   payment_schedule?: string | null;
   financing_offered: boolean;
@@ -289,6 +304,7 @@ export interface ContractorBid {
 
   // Source tracking
   bid_date?: string | null;
+  quote_date?: string | null;
   valid_until?: string | null;
   pdf_upload_id?: string | null;
   
@@ -368,6 +384,8 @@ export interface BidEquipment {
   refrigerant_type?: string | null;
   sound_level_db?: number | null;
   voltage?: number | null;
+  amperage_draw?: number | null;
+  minimum_circuit_amperage?: number | null;
   
   // Energy Star
   energy_star_certified?: boolean | null;
