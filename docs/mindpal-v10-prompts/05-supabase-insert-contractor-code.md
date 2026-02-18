@@ -38,6 +38,9 @@ insert_report = {
     "bids_inserted": 0,
     "equipment_inserted": 0,
     "line_items_inserted": 0,
+    "bid_faqs_inserted": 0,
+    "questions_inserted": 0,
+    "overall_faqs_inserted": 0,
     "errors": [],
     "warnings": []
 }
@@ -284,6 +287,12 @@ def build_contractor_bid_record(bid, project_id):
         "red_flags": safe_get(bid, 'red_flags') or [],
         "positive_indicators": safe_get(bid, 'positive_indicators') or [],
         
+        # Scores (v10: flattened from Scoring Engine via JSON Assembler)
+        "overall_score": safe_float(safe_get(bid, 'overall_score')),
+        "value_score": safe_float(safe_get(bid, 'value_score')),
+        "quality_score": safe_float(safe_get(bid, 'quality_score')),
+        "completeness_score": safe_float(safe_get(bid, 'completeness_score')),
+        
         # Extraction metadata
         "extraction_notes": safe_str(safe_get(bid, 'extraction_notes')),
     }
@@ -371,6 +380,34 @@ def build_overall_faq_record(faq, project_id):
         "category": safe_str(safe_get(faq, 'category')),
     }
 
+def build_question_record(question, bid_id, display_order):
+    """
+    Build bid_questions table record.
+    Questions come from Question Generator via JSON Assembler.
+    """
+    # Handle both string and dict question formats
+    if isinstance(question, str):
+        return {
+            "bid_id": bid_id,
+            "question_text": question,
+            "question_category": None,
+            "priority": "medium",
+            "is_answered": False,
+            "auto_generated": True,
+            "display_order": display_order,
+        }
+    
+    return {
+        "bid_id": bid_id,
+        "question_text": safe_str(safe_get(question, 'question_text')) or safe_str(safe_get(question, 'question')) or "Unknown question",
+        "question_category": safe_str(safe_get(question, 'category')) or safe_str(safe_get(question, 'question_category')),
+        "priority": safe_str(safe_get(question, 'priority')) or "medium",
+        "is_answered": False,
+        "auto_generated": True,
+        "missing_field": safe_str(safe_get(question, 'missing_field')),
+        "display_order": display_order,
+    }
+
 # ═══════════════════════════════════════════════════════════════════════════
 # MAIN INSERT LOOP
 # ═══════════════════════════════════════════════════════════════════════════
@@ -418,15 +455,27 @@ try:
                 except Exception as e:
                     insert_report['warnings'].append(f"Bid {bid_idx} line item {line_idx}: {str(e)}")
             
-            # 4. Insert bid FAQs if present
-            bid_faqs = safe_list(safe_get(bid, 'faqs'))
+            # 4. Insert bid FAQs if present (v10: field is 'bid_faqs' not 'faqs')
+            bid_faqs = safe_list(safe_get(bid, 'bid_faqs')) or safe_list(safe_get(bid, 'faqs'))
             for faq in bid_faqs:
                 try:
                     faq_record = build_bid_faq_record(faq, bid_id)
                     cleaned_faq = clean_record(faq_record)
                     supabase.table('bid_faqs').insert(cleaned_faq).execute()
+                    insert_report['bid_faqs_inserted'] += 1
                 except Exception as e:
                     insert_report['warnings'].append(f"Bid {bid_idx} FAQ: {str(e)}")
+            
+            # 5. Insert questions if present (v10: from Question Generator)
+            questions = safe_list(safe_get(bid, 'questions'))
+            for q_idx, question in enumerate(questions):
+                try:
+                    q_record = build_question_record(question, bid_id, q_idx)
+                    cleaned_q = clean_record(q_record)
+                    supabase.table('bid_questions').insert(cleaned_q).execute()
+                    insert_report['questions_inserted'] += 1
+                except Exception as e:
+                    insert_report['warnings'].append(f"Bid {bid_idx} question {q_idx}: {str(e)}")
         
         except Exception as e:
             insert_report['errors'].append(f"Bid {bid_idx}: {str(e)}")
@@ -438,6 +487,7 @@ try:
             faq_record = build_overall_faq_record(faq, project_id)
             cleaned_faq = clean_record(faq_record)
             supabase.table('overall_faqs').insert(cleaned_faq).execute()
+            insert_report['overall_faqs_inserted'] += 1
         except Exception as e:
             insert_report['warnings'].append(f"Overall FAQ: {str(e)}")
 
@@ -474,10 +524,11 @@ This CODE node expects these input variables:
 | Table | Records | Source |
 |-------|---------|--------|
 | `projects` | 1 update | customer_info from first bid |
-| `contractor_bids` | N inserts | Each bid in bids array |
+| `contractor_bids` | N inserts | Each bid in bids array (includes scores) |
 | `bid_equipment` | M inserts | equipment array per bid |
 | `bid_line_items` | L inserts | line_items array per bid |
-| `bid_faqs` | K inserts | faqs array per bid (if present) |
+| `bid_faqs` | K inserts | bid_faqs array per bid (from Per-Bid FAQ Generator) |
+| `bid_questions` | Q inserts | questions array per bid (from Question Generator) |
 | `overall_faqs` | J inserts | analysis.overall_faqs array |
 
 ---
@@ -493,3 +544,6 @@ This CODE node expects these input variables:
 | Positive indicators | Not present | `positive_indicators` JSONB array |
 | Confidence | Numeric 0-100 | Enum "high"/"medium"/"low" |
 | Scope booleans | 13 extracted | 4 critical extracted, 9 null |
+| Scores | Not in contractor_bids | Flattened: overall_score, value_score, quality_score, completeness_score |
+| Per-bid FAQs | Field: `faqs` | Field: `bid_faqs` |
+| Questions | Not handled | Now inserted to `bid_questions` table |

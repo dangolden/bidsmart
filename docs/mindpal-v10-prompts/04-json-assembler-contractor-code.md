@@ -11,6 +11,17 @@ import re
 # ═══════════════════════════════════════════════════════════════════════════
 # JSON ASSEMBLER v10 - FLAT STRUCTURE
 # ═══════════════════════════════════════════════════════════════════════════
+#
+# REQUIRED INPUT PARAMETERS (configure these in MindPal CODE node settings):
+#   - project_id_input: From @[API Input - project_id]
+#   - equipment_output: From @[Equipment Researcher] (contains bids + equipment)
+#   - contractor_research_output: From @[Contractor Researcher] (ratings, license, red_flags)
+#   - scoring_output: From @[Scoring Engine] (scores per bid)
+#   - overall_faq_output: From @[Overall FAQ Generator] (project-level FAQs)
+#   - question_output: From @[Question Generator] (questions per bid) - OPTIONAL
+#   - per_bid_faq_output: From @[Per-Bid FAQ Generator] (FAQs per bid) - OPTIONAL
+#
+# ═══════════════════════════════════════════════════════════════════════════
 
 validation_report = {"status": "success", "bids_processed": 0, "errors": [], "warnings": []}
 project_id = project_id_input
@@ -168,10 +179,42 @@ scoring_data = parse_json_output(scoring_output)
 contractor_research_data = parse_json_output(contractor_research_output)
 overall_faq_data = parse_json_output(overall_faq_output)
 
+# OPTIONAL inputs - handle gracefully if not provided
+try:
+    question_data = parse_json_output(question_output) if 'question_output' in dir() else {}
+except:
+    question_data = {}
+
+try:
+    per_bid_faq_data = parse_json_output(per_bid_faq_output) if 'per_bid_faq_output' in dir() else {}
+except:
+    per_bid_faq_data = {}
+
+# Unwrap scoring list
 if isinstance(scoring_data, list):
     scoring_list = scoring_data
+elif isinstance(scoring_data, dict) and 'scores' in scoring_data:
+    scoring_list = safe_list(scoring_data.get('scores', []))
+elif isinstance(scoring_data, dict) and 'bids' in scoring_data:
+    scoring_list = safe_list(scoring_data.get('bids', []))
 else:
     scoring_list = [scoring_data] if scoring_data else []
+
+# Unwrap questions list
+if isinstance(question_data, list):
+    question_list = question_data
+elif isinstance(question_data, dict) and 'questions' in question_data:
+    question_list = safe_list(question_data.get('questions', []))
+else:
+    question_list = [question_data] if question_data else []
+
+# Unwrap per-bid FAQs list
+if isinstance(per_bid_faq_data, list):
+    per_bid_faq_list = per_bid_faq_data
+elif isinstance(per_bid_faq_data, dict) and 'faqs' in per_bid_faq_data:
+    per_bid_faq_list = safe_list(per_bid_faq_data.get('faqs', []))
+else:
+    per_bid_faq_list = [per_bid_faq_data] if per_bid_faq_data else []
 
 if isinstance(contractor_research_data, list):
     contractor_research_list = contractor_research_data
@@ -330,26 +373,61 @@ if bids_array_raw:
                             break
             
             # ═══════════════════════════════════════════════════════════════
-            # MERGE SCORING DATA
+            # MERGE SCORING DATA (flatten to bid fields)
             # ═══════════════════════════════════════════════════════════════
             
-            if isinstance(scoring_list, list) and len(scoring_list) > bid_idx:
-                score_item = scoring_list[bid_idx]
-                if isinstance(score_item, dict):
-                    bid_record['scoring'] = score_item
-                elif isinstance(score_item, str):
-                    try:
-                        bid_record['scoring'] = json.loads(score_item)
-                    except:
-                        bid_record['scoring'] = {}
+            score_item = None
             
-            if 'scoring' not in bid_record and isinstance(scoring_list, list):
-                for score_item in scoring_list:
-                    if isinstance(score_item, dict):
-                        score_name = safe_str(safe_get(score_item, 'contractor_name'))
+            # First try: match by index
+            if isinstance(scoring_list, list) and len(scoring_list) > bid_idx:
+                candidate = scoring_list[bid_idx]
+                if isinstance(candidate, dict):
+                    score_item = candidate
+                elif isinstance(candidate, str):
+                    try:
+                        score_item = json.loads(candidate)
+                    except:
+                        pass
+            
+            # Fallback: match by contractor_name
+            if not score_item and isinstance(scoring_list, list):
+                for candidate in scoring_list:
+                    if isinstance(candidate, dict):
+                        score_name = safe_str(safe_get(candidate, 'contractor_name'))
                         if score_name and score_name.lower() == contractor_name.lower():
-                            bid_record['scoring'] = score_item
+                            score_item = candidate
                             break
+            
+            # Flatten scores into bid record (not nested)
+            if score_item and isinstance(score_item, dict):
+                bid_record['overall_score'] = safe_float(safe_get(score_item, 'overall_score'))
+                bid_record['value_score'] = safe_float(safe_get(score_item, 'value_score'))
+                bid_record['quality_score'] = safe_float(safe_get(score_item, 'quality_score'))
+                bid_record['completeness_score'] = safe_float(safe_get(score_item, 'completeness_score'))
+                # Keep full scoring object for additional fields
+                bid_record['scoring'] = score_item
+            
+            # ═══════════════════════════════════════════════════════════════
+            # MERGE QUESTIONS (per-bid)
+            # ═══════════════════════════════════════════════════════════════
+            
+            if isinstance(question_list, list) and len(question_list) > bid_idx:
+                q_item = question_list[bid_idx]
+                if isinstance(q_item, dict):
+                    bid_record['questions'] = safe_list(safe_get(q_item, 'questions', []))
+                elif isinstance(q_item, list):
+                    bid_record['questions'] = q_item
+            
+            # ═══════════════════════════════════════════════════════════════
+            # MERGE PER-BID FAQs
+            # ═══════════════════════════════════════════════════════════════
+            
+            if isinstance(per_bid_faq_list, list) and len(per_bid_faq_list) > bid_idx:
+                faq_item = per_bid_faq_list[bid_idx]
+                if isinstance(faq_item, dict):
+                    bid_record['bid_faqs'] = safe_list(safe_get(faq_item, 'faqs', []))
+                elif isinstance(faq_item, list):
+                    bid_record['bid_faqs'] = faq_item
             
             bids_array.append(bid_record)
             validation_report['bids_processed'] += 1
@@ -363,12 +441,24 @@ else:
 # FINAL OUTPUT
 # ═══════════════════════════════════════════════════════════════════════════
 
+# Extract overall FAQs (try multiple paths)
+overall_faqs = []
+if isinstance(overall_faq_data, dict):
+    # Try common paths for FAQ data
+    overall_faqs = (
+        safe_list(safe_get(overall_faq_data, 'faqs', [])) or
+        safe_list(safe_get(overall_faq_data, 'overall_faqs', [])) or
+        safe_list(safe_get(safe_get(overall_faq_data, 'overall_faq_output', {}), 'faqs', []))
+    )
+elif isinstance(overall_faq_data, list):
+    overall_faqs = overall_faq_data
+
 final_output = {
     'schema_version': 'bidsmart.v10',
     'project_id': project_id,
     'bids': bids_array,
     'analysis': {
-        'overall_faqs': safe_list(safe_get(overall_faq_data, 'faqs', [])) or safe_list(safe_get(overall_faq_data, 'overall_faq_output', {}).get('faqs', []))
+        'overall_faqs': overall_faqs
     }
 }
 
