@@ -1,13 +1,13 @@
 # Make.com Webhook Integration Guide
 
-This document describes the Make.com webhook integration for MindPal v8 responses.
+This document describes the Make.com webhook integration for MindPal v8/v10 responses.
 
 ---
 
 ## Architecture Overview
 
 ```
-MindPal v8 Workflow
+MindPal v10 Workflow
     ↓ (sends results)
 Make.com Scenario
     ↓ (transforms/validates)
@@ -15,6 +15,16 @@ Supabase Edge Function (make-webhook)
     ↓ (stores in database)
 BidSmart Frontend
 ```
+
+## v10 Schema Changes
+
+**Major Changes from v8:**
+- Flat contractor fields (contractor_name, contractor_phone, etc.) instead of nested contractor_info
+- Confidence values are enums ("high", "medium", "low") instead of numbers (0-100)
+- Added customer_info extraction (maps to projects table)
+- Added disposal_cost, electrical_cost, quote_date fields
+- Auto-calculates deposit_required_flag from deposit_required amount
+- Backwards compatible with v8 nested structure
 
 ---
 

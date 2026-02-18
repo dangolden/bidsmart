@@ -1,6 +1,13 @@
 /**
- * MindPal v8 Response Mapper
- * Shared mapping logic for converting v8 responses to database schema
+ * MindPal v8/v10 Response Mapper
+ * Shared mapping logic for converting v8/v10 responses to database schema
+ * 
+ * v10 Changes:
+ * - Supports flat contractor fields (contractor_name, contractor_phone, etc.) at top level
+ * - Backwards compatible with v8 nested contractor_info structure
+ * - Adds disposal_cost, electrical_cost, quote_date
+ * - Auto-calculates deposit_required_flag
+ * - Handles enum confidence values (high/medium/low) in addition to numeric (0-100)
  */
 
 import type { BidSmartV8Response, V8Bid, V8Equipment } from "./v8Types.ts";
@@ -30,33 +37,56 @@ export function mapV8BidToDatabase(
 ): Record<string, any> {
   const confidenceLevel = mapConfidenceToLevel(v8Bid.extraction_confidence || overallConfidence);
 
+  // v10: Support flat structure (contractor_name at top level) OR v8 nested structure (contractor_info.company_name)
+  const contractorName = (v8Bid as any).contractor_name || v8Bid.contractor_info?.company_name || "Unknown Contractor";
+  const contractorCompany = (v8Bid as any).contractor_company || v8Bid.contractor_info?.company_name;
+  const contractorPhone = (v8Bid as any).contractor_phone || v8Bid.contractor_info?.phone;
+  const contractorEmail = (v8Bid as any).contractor_email || v8Bid.contractor_info?.email;
+  const contractorLicense = (v8Bid as any).contractor_license || v8Bid.contractor_info?.license_number;
+  const contractorLicenseState = (v8Bid as any).contractor_license_state || v8Bid.contractor_info?.license_state;
+  const contractorWebsite = (v8Bid as any).contractor_website || v8Bid.contractor_info?.website;
+  const contractorYearsInBusiness = (v8Bid as any).contractor_years_in_business || v8Bid.contractor_info?.years_in_business;
+  const contractorCertifications = (v8Bid as any).contractor_certifications || v8Bid.contractor_info?.certifications || [];
+  const contractorContactName = (v8Bid as any).contractor_contact_name || v8Bid.contractor_info?.contact_name;
+  const contractorAddress = (v8Bid as any).contractor_address || v8Bid.contractor_info?.address;
+
+  // Contractor research fields (from Contractor Researcher node)
+  const contractorGoogleRating = (v8Bid as any).contractor_google_rating || v8Bid.contractor_info?.google_rating;
+  const contractorGoogleReviewCount = (v8Bid as any).contractor_google_review_count || v8Bid.contractor_info?.google_review_count;
+  const contractorInsuranceVerified = (v8Bid as any).contractor_insurance_verified || v8Bid.contractor_info?.license_verified;
+
   return {
     project_id: projectId,
-    contractor_name: v8Bid.contractor_info?.company_name || "Unknown Contractor",
-    contractor_company: v8Bid.contractor_info?.company_name,
-    contractor_phone: v8Bid.contractor_info?.phone,
-    contractor_email: v8Bid.contractor_info?.email,
-    contractor_license: v8Bid.contractor_info?.license_number,
-    contractor_license_state: v8Bid.contractor_info?.license_state,
-    contractor_insurance_verified: v8Bid.contractor_info?.license_verified,
-    contractor_website: v8Bid.contractor_info?.website,
-    contractor_years_in_business: v8Bid.contractor_info?.years_in_business,
-    contractor_google_rating: v8Bid.contractor_info?.google_rating,
-    contractor_google_review_count: v8Bid.contractor_info?.google_review_count,
-    contractor_certifications: v8Bid.contractor_info?.certifications || [],
+    contractor_name: contractorName,
+    contractor_company: contractorCompany,
+    contractor_phone: contractorPhone,
+    contractor_email: contractorEmail,
+    contractor_license: contractorLicense,
+    contractor_license_state: contractorLicenseState,
+    contractor_insurance_verified: contractorInsuranceVerified,
+    contractor_website: contractorWebsite,
+    contractor_years_in_business: contractorYearsInBusiness,
+    contractor_contact_name: contractorContactName,
+    contractor_address: contractorAddress,
+    contractor_google_rating: contractorGoogleRating,
+    contractor_google_review_count: contractorGoogleReviewCount,
+    contractor_certifications: contractorCertifications,
 
-    // Pricing
-    total_bid_amount: v8Bid.pricing?.total_amount || 0,
-    labor_cost: v8Bid.pricing?.labor_cost,
-    equipment_cost: v8Bid.pricing?.equipment_cost,
-    materials_cost: v8Bid.pricing?.materials_cost,
-    permit_cost: v8Bid.pricing?.permit_cost,
-    total_before_rebates: v8Bid.pricing?.price_before_rebates,
-    estimated_rebates: v8Bid.pricing?.rebates_mentioned?.reduce(
+    // Pricing (v10: support flat pricing fields OR nested pricing object)
+    total_bid_amount: (v8Bid as any).total_bid_amount || v8Bid.pricing?.total_amount || 0,
+    labor_cost: (v8Bid as any).labor_cost || v8Bid.pricing?.labor_cost,
+    equipment_cost: (v8Bid as any).equipment_cost || v8Bid.pricing?.equipment_cost,
+    materials_cost: (v8Bid as any).materials_cost || v8Bid.pricing?.materials_cost,
+    permit_cost: (v8Bid as any).permit_cost || v8Bid.pricing?.permit_cost,
+    disposal_cost: (v8Bid as any).disposal_cost || v8Bid.pricing?.disposal_cost,
+    electrical_cost: (v8Bid as any).electrical_cost || v8Bid.pricing?.electrical_cost,
+    total_before_rebates: (v8Bid as any).total_before_rebates || v8Bid.pricing?.price_before_rebates,
+    estimated_rebates: (v8Bid as any).estimated_rebates || v8Bid.pricing?.rebates_mentioned?.reduce(
       (sum: number, r: any) => sum + (r.amount || 0),
       0
     ),
-    total_after_rebates: v8Bid.pricing?.price_after_rebates,
+    total_after_rebates: (v8Bid as any).total_after_rebates || v8Bid.pricing?.price_after_rebates,
+    rebates_mentioned: (v8Bid as any).rebates_mentioned || v8Bid.pricing?.rebates_mentioned || [],
 
     // Timeline
     estimated_days: v8Bid.timeline?.estimated_days,
@@ -67,48 +97,50 @@ export function mapV8BidToDatabase(
     equipment_warranty_years: v8Bid.warranty?.equipment_warranty_years,
     additional_warranty_details: v8Bid.warranty?.warranty_details,
 
-    // Payment terms
-    deposit_required: v8Bid.payment_terms?.deposit_amount,
-    deposit_percentage: v8Bid.payment_terms?.deposit_percentage,
-    payment_schedule: v8Bid.payment_terms?.payment_schedule,
-    financing_offered: v8Bid.payment_terms?.financing_offered || false,
-    financing_terms: v8Bid.payment_terms?.financing_terms,
+    // Payment terms (v10: support flat fields OR nested payment_terms object)
+    deposit_required: (v8Bid as any).deposit_required || v8Bid.payment_terms?.deposit_amount,
+    deposit_required_flag: ((v8Bid as any).deposit_required || v8Bid.payment_terms?.deposit_amount) > 0,
+    deposit_percentage: (v8Bid as any).deposit_percentage || v8Bid.payment_terms?.deposit_percentage,
+    payment_schedule: (v8Bid as any).payment_schedule || v8Bid.payment_terms?.payment_schedule,
+    financing_offered: (v8Bid as any).financing_offered ?? v8Bid.payment_terms?.financing_offered ?? false,
+    financing_terms: (v8Bid as any).financing_terms || v8Bid.payment_terms?.financing_terms,
 
-    // Scope of work
-    scope_summary: v8Bid.scope_of_work?.summary,
-    inclusions: v8Bid.scope_of_work?.inclusions,
-    exclusions: v8Bid.scope_of_work?.exclusions,
-    scope_permit_included: v8Bid.scope_of_work?.permit_included,
-    scope_disposal_included: v8Bid.scope_of_work?.disposal_included,
-    scope_electrical_included: v8Bid.scope_of_work?.electrical_work_included,
-    scope_ductwork_included: v8Bid.scope_of_work?.ductwork_included,
-    scope_thermostat_included: v8Bid.scope_of_work?.thermostat_included,
-    scope_manual_j_included: v8Bid.scope_of_work?.manual_j_included,
-    scope_commissioning_included: v8Bid.scope_of_work?.commissioning_included,
-    scope_air_handler_included: v8Bid.scope_of_work?.air_handler_included,
-    scope_line_set_included: v8Bid.scope_of_work?.line_set_included,
-    scope_disconnect_included: v8Bid.scope_of_work?.disconnect_included,
-    scope_pad_included: v8Bid.scope_of_work?.pad_included,
-    scope_drain_line_included: v8Bid.scope_of_work?.drain_line_included,
+    // Scope of work (v10: support flat scope fields OR nested scope_of_work object)
+    scope_summary: (v8Bid as any).scope_summary || v8Bid.scope_of_work?.summary,
+    inclusions: (v8Bid as any).inclusions || v8Bid.scope_of_work?.inclusions,
+    exclusions: (v8Bid as any).exclusions || v8Bid.scope_of_work?.exclusions,
+    scope_permit_included: (v8Bid as any).scope_permit_included ?? v8Bid.scope_of_work?.permit_included,
+    scope_disposal_included: (v8Bid as any).scope_disposal_included ?? v8Bid.scope_of_work?.disposal_included,
+    scope_electrical_included: (v8Bid as any).scope_electrical_included ?? v8Bid.scope_of_work?.electrical_work_included,
+    scope_ductwork_included: (v8Bid as any).scope_ductwork_included ?? v8Bid.scope_of_work?.ductwork_included,
+    scope_thermostat_included: (v8Bid as any).scope_thermostat_included ?? v8Bid.scope_of_work?.thermostat_included,
+    scope_manual_j_included: (v8Bid as any).scope_manual_j_included ?? v8Bid.scope_of_work?.manual_j_included,
+    scope_commissioning_included: (v8Bid as any).scope_commissioning_included ?? v8Bid.scope_of_work?.commissioning_included,
+    scope_air_handler_included: (v8Bid as any).scope_air_handler_included ?? v8Bid.scope_of_work?.air_handler_included,
+    scope_line_set_included: (v8Bid as any).scope_line_set_included ?? v8Bid.scope_of_work?.line_set_included,
+    scope_disconnect_included: (v8Bid as any).scope_disconnect_included ?? v8Bid.scope_of_work?.disconnect_included,
+    scope_pad_included: (v8Bid as any).scope_pad_included ?? v8Bid.scope_of_work?.pad_included,
+    scope_drain_line_included: (v8Bid as any).scope_drain_line_included ?? v8Bid.scope_of_work?.drain_line_included,
 
-    // Electrical (v8 new fields)
-    electrical_panel_assessment_included: v8Bid.electrical?.panel_assessment_included,
-    electrical_panel_upgrade_included: v8Bid.electrical?.panel_upgrade_included,
-    electrical_panel_upgrade_cost: v8Bid.electrical?.panel_upgrade_cost,
-    electrical_existing_panel_amps: v8Bid.electrical?.existing_panel_amps,
-    electrical_proposed_panel_amps: v8Bid.electrical?.proposed_panel_amps,
-    electrical_breaker_size_required: v8Bid.electrical?.breaker_size_required,
-    electrical_dedicated_circuit_included: v8Bid.electrical?.dedicated_circuit_included,
-    electrical_permit_included: v8Bid.electrical?.electrical_permit_included,
-    electrical_load_calculation_included: v8Bid.electrical?.load_calculation_included,
-    electrical_notes: v8Bid.electrical?.electrical_notes,
+    // Electrical (v10: support flat electrical fields OR nested electrical object)
+    electrical_panel_assessment_included: (v8Bid as any).electrical_panel_assessment_included ?? v8Bid.electrical?.panel_assessment_included,
+    electrical_panel_upgrade_included: (v8Bid as any).electrical_panel_upgrade_included ?? v8Bid.electrical?.panel_upgrade_included,
+    electrical_panel_upgrade_cost: (v8Bid as any).electrical_panel_upgrade_cost || v8Bid.electrical?.panel_upgrade_cost,
+    electrical_existing_panel_amps: (v8Bid as any).electrical_existing_panel_amps || v8Bid.electrical?.existing_panel_amps,
+    electrical_proposed_panel_amps: (v8Bid as any).electrical_proposed_panel_amps || v8Bid.electrical?.proposed_panel_amps,
+    electrical_breaker_size_required: (v8Bid as any).electrical_breaker_size_required || v8Bid.electrical?.breaker_size_required,
+    electrical_dedicated_circuit_included: (v8Bid as any).electrical_dedicated_circuit_included ?? v8Bid.electrical?.dedicated_circuit_included,
+    electrical_permit_included: (v8Bid as any).electrical_permit_included ?? v8Bid.electrical?.electrical_permit_included,
+    electrical_load_calculation_included: (v8Bid as any).electrical_load_calculation_included ?? v8Bid.electrical?.load_calculation_included,
+    electrical_notes: (v8Bid as any).electrical_notes || v8Bid.electrical?.electrical_notes,
 
     // Red flags and positive indicators (v8 new fields)
     red_flags: v8Bid.red_flags || [],
     positive_indicators: v8Bid.positive_indicators || [],
 
-    // Dates
-    bid_date: v8Bid.dates?.bid_date || v8Bid.dates?.quote_date,
+    // Dates (v10: support flat date fields OR nested dates object)
+    bid_date: (v8Bid as any).bid_date || v8Bid.dates?.bid_date,
+    quote_date: (v8Bid as any).quote_date || v8Bid.dates?.quote_date,
     valid_until: v8Bid.timeline?.bid_valid_until,
 
     // Metadata
@@ -196,11 +228,24 @@ export function mapV8AnalysisToDatabase(
 }
 
 /**
- * Map confidence number to level
+ * Map confidence number or enum to level
+ * v10: Supports both numeric (0-100 or 0-1) and enum ("high"|"medium"|"low") confidence
  */
-function mapConfidenceToLevel(confidence?: number): string {
+function mapConfidenceToLevel(confidence?: number | string): string {
   if (!confidence) return "manual";
-  if (confidence >= 0.8) return "high";
-  if (confidence >= 0.5) return "medium";
+  
+  // v10: Handle enum strings
+  if (typeof confidence === 'string') {
+    const lower = confidence.toLowerCase();
+    if (lower === 'high' || lower === 'medium' || lower === 'low') {
+      return lower;
+    }
+    return "manual";
+  }
+  
+  // Handle numeric confidence (0-1 or 0-100)
+  const normalized = confidence > 1 ? confidence / 100 : confidence;
+  if (normalized >= 0.8) return "high";
+  if (normalized >= 0.5) return "medium";
   return "low";
 }

@@ -80,6 +80,32 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ success: true, status: "failed", message: "Extraction failed" });
     }
 
+    // v10: Extract customer_info from first bid (if present) and update projects table
+    if (bids.length > 0 && bids[0].customer_info) {
+      const customerInfo = bids[0].customer_info;
+      const updateData: Record<string, any> = {};
+      
+      if (customerInfo.property_address) updateData.property_address = customerInfo.property_address;
+      if (customerInfo.property_city) updateData.property_city = customerInfo.property_city;
+      if (customerInfo.property_state) updateData.property_state = customerInfo.property_state;
+      if (customerInfo.property_zip) updateData.property_zip = customerInfo.property_zip;
+      
+      if (Object.keys(updateData).length > 0) {
+        updateData.updated_at = new Date().toISOString();
+        
+        const { error: projectUpdateError } = await supabaseAdmin
+          .from("projects")
+          .update(updateData)
+          .eq("id", projectId);
+        
+        if (projectUpdateError) {
+          console.error(`[Make.com] Failed to update project with customer_info:`, projectUpdateError);
+        } else {
+          console.log(`[Make.com] Updated project ${projectId} with customer_info`);
+        }
+      }
+    }
+
     // Process each bid
     const createdBidIds: string[] = [];
 
@@ -87,7 +113,9 @@ Deno.serve(async (req: Request) => {
       const v8Bid = bids[i];
       const pdfUploadId = pdfUploads[i]?.id || pdfUploads[0].id; // Match by index or use first
 
-      console.log(`[Make.com] Processing bid ${i + 1}/${bids.length}: ${v8Bid.contractor_info?.company_name}`);
+      // v10: Support flat contractor_name OR nested contractor_info.company_name
+      const contractorName = (v8Bid as any).contractor_name || v8Bid.contractor_info?.company_name || "Unknown";
+      console.log(`[Make.com] Processing bid ${i + 1}/${bids.length}: ${contractorName}`);
 
       // Map v8 bid to database structure
       const bidData = mapV8BidToDatabase(v8Bid, projectId, pdfUploadId, payload.overall_confidence);
