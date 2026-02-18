@@ -87,21 +87,25 @@ EXTRACT INTO THIS JSON STRUCTURE:
   "estimated_days": "number or null",
   "start_date_available": "YYYY-MM-DD or null",
   
-  "scope_summary": "string or null",
-  "inclusions": ["array of strings"],
-  "exclusions": ["array of strings"],
-  "scope_permit_included": "boolean or null",
-  "scope_disposal_included": "boolean or null",
-  "scope_electrical_included": "boolean or null",
-  "scope_ductwork_included": "boolean or null",
-  "scope_thermostat_included": "boolean or null",
-  "scope_manual_j_included": "boolean or null",
-  "scope_commissioning_included": "boolean or null",
-  "scope_air_handler_included": "boolean or null",
-  "scope_line_set_included": "boolean or null",
-  "scope_disconnect_included": "boolean or null",
-  "scope_pad_included": "boolean or null",
-  "scope_drain_line_included": "boolean or null",
+  "scope_summary": "string or null (brief summary of work scope)",
+  "inclusions": ["array of strings - PRESERVE EXACT WORDING from bid, e.g., 'Permits', 'Manual J calculation', 'Thermostat installation'"],
+  "exclusions": ["array of strings - PRESERVE EXACT WORDING from bid, e.g., 'Ductwork modifications', 'Electrical panel upgrade'"],
+  
+  // CRITICAL 4 BOOLEANS - Extract only if CLEARLY STATED in bid
+  "scope_permit_included": "boolean or null (true if 'permit' in inclusions, false if in exclusions, null if not mentioned)",
+  "scope_electrical_included": "boolean or null (true if 'electrical work' in inclusions, false if in exclusions, null if not mentioned)",
+  "scope_disposal_included": "boolean or null (true if 'disposal' or 'haul away' or 'remove old' in inclusions, false if in exclusions, null if not mentioned)",
+  "scope_thermostat_included": "boolean or null (true if 'thermostat' in inclusions, false if in exclusions, null if not mentioned)",
+  
+  // REMAINING 9 - Always set to null (do NOT attempt to extract)
+  "scope_ductwork_included": null,
+  "scope_manual_j_included": null,
+  "scope_commissioning_included": null,
+  "scope_air_handler_included": null,
+  "scope_line_set_included": null,
+  "scope_disconnect_included": null,
+  "scope_pad_included": null,
+  "scope_drain_line_included": null,
   
   "electrical_panel_assessment_included": "boolean or null",
   "electrical_panel_upgrade_included": "boolean or null",
@@ -126,6 +130,14 @@ EXTRACT INTO THIS JSON STRUCTURE:
   "extraction_confidence": "high|medium|low (REQUIRED)",
   "extraction_notes": "string or null (explain any issues or special notes)"
 }
+
+SCOPE BOOLEAN EXTRACTION RULES:
+- ONLY extract the 4 critical booleans: scope_permit_included, scope_electrical_included, scope_disposal_included, scope_thermostat_included
+- Set boolean to TRUE if the item is clearly listed in inclusions (e.g., "Permits included")
+- Set boolean to FALSE if the item is clearly listed in exclusions (e.g., "Permits not included")
+- Set boolean to NULL if the item is not mentioned at all
+- ALWAYS set the remaining 9 scope booleans to null (do NOT attempt to extract them)
+- PRESERVE the raw inclusions and exclusions arrays with EXACT wording from the bid document
 
 CRITICAL LINE ITEMS EXTRACTION RULES:
 - Look for itemized pricing tables, breakdowns, or line-by-line cost sections
