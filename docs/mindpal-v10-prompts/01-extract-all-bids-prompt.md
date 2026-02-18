@@ -40,7 +40,7 @@ EXTRACT INTO THIS JSON STRUCTURE:
     "property_zip": "string or null"
   },
   
-  "total_bid_amount": "number (REQUIRED)",
+  "total_bid_amount": "number (REQUIRED - final quoted price, typically BEFORE rebates)",
   "labor_cost": "number or null",
   "equipment_cost": "number or null",
   "materials_cost": "number or null",
@@ -118,7 +118,7 @@ EXTRACT INTO THIS JSON STRUCTURE:
   "electrical_load_calculation_included": "boolean or null",
   "electrical_notes": "string or null",
   
-  "deposit_required": "number or null (dollar amount)",
+  "deposit_amount": "number or null (dollar amount of deposit, e.g., 1000 for '$1,000 deposit')",
   "deposit_percentage": "number or null",
   "payment_schedule": "string or null",
   "financing_offered": "boolean or null",
@@ -163,3 +163,4 @@ IMPORTANT NOTES:
 - All dates must be YYYY-MM-DD format
 - All booleans must be true/false (not "yes"/"no")
 - contractor_name is REQUIRED and must match the bid document exactly (case-sensitive)
+- CRITICAL: confidence fields must be EXACTLY "high", "medium", or "low" (lowercase only, no variations like "HIGH" or "high confidence")

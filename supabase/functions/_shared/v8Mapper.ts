@@ -98,8 +98,9 @@ export function mapV8BidToDatabase(
     additional_warranty_details: v8Bid.warranty?.warranty_details,
 
     // Payment terms (v10: support flat fields OR nested payment_terms object)
-    deposit_required: (v8Bid as any).deposit_required || v8Bid.payment_terms?.deposit_amount,
-    deposit_required_flag: ((v8Bid as any).deposit_required || v8Bid.payment_terms?.deposit_amount) > 0,
+    // v10.1: deposit_amount is preferred field name, deposit_required is backwards compatible
+    deposit_required: (v8Bid as any).deposit_amount || (v8Bid as any).deposit_required || v8Bid.payment_terms?.deposit_amount,
+    deposit_required_flag: ((v8Bid as any).deposit_amount || (v8Bid as any).deposit_required || v8Bid.payment_terms?.deposit_amount) > 0,
     deposit_percentage: (v8Bid as any).deposit_percentage || v8Bid.payment_terms?.deposit_percentage,
     payment_schedule: (v8Bid as any).payment_schedule || v8Bid.payment_terms?.payment_schedule,
     financing_offered: (v8Bid as any).financing_offered ?? v8Bid.payment_terms?.financing_offered ?? false,
