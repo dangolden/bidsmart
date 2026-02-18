@@ -85,6 +85,44 @@ This means you can update nodes incrementally without breaking the system.
 
 ---
 
+---
+
+### 4. JSON Assembler - Contractor Handler (CODE Node)
+**File:** `04-json-assembler-contractor-code.md`
+
+**Changes from v24:**
+- Handle FLAT contractor research structure (no nested verification/reputation objects)
+- New fields: `red_flags`, `positive_indicators` arrays
+- Field rename: `bonding_status` → `bonded`
+
+**Critical:** Replace the contractor research merging section with v10 compatible code
+
+---
+
+### 5. Supabase Direct Insert - Contractor Fields (CODE Node)
+**File:** `05-supabase-insert-contractor-code.md`
+
+**Changes from v24:**
+- All contractor fields now flat at top level with `contractor_` prefix
+- New fields: `red_flags`, `positive_indicators` JSONB arrays
+- `deposit_amount` (v10.1) maps to `deposit_required` column
+- Auto-calculate `deposit_required_flag` from deposit amount
+
+**Critical:** Update field mapping to use flat paths instead of nested
+
+---
+
+## Implementation Sequence
+
+1. ✅ **Extract All Bids** - Update prompt (ready)
+2. ✅ **Equipment Researcher** - Update prompt (ready)
+3. ✅ **Contractor Researcher** - Update prompt (ready)
+4. ⏳ **JSON Assembler** - Update CODE node (template provided)
+5. ⏳ **Supabase Direct Insert** - Update CODE node (template provided)
+6. 🧪 **Test** - Run with sample PDF
+
+---
+
 ## Need Help?
 
 If you encounter issues:
@@ -92,3 +130,4 @@ If you encounter issues:
 2. Verify Equipment Researcher isn't re-extracting (should only enhance equipment)
 3. Confirm Contractor Researcher output has exact contractor_name match
 4. Test with MindPal's JSON validator before saving workflow
+5. For CODE nodes: Check that flat field paths are used (not nested)
