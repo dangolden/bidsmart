@@ -12,8 +12,15 @@ from supabase import create_client
 # ═══════════════════════════════════════════════════════════════════════════
 # SUPABASE DIRECT INSERT v10 - FLAT STRUCTURE
 # ═══════════════════════════════════════════════════════════════════════════
+# 
+# REQUIRED INPUT PARAMETERS (configure these in MindPal CODE node settings):
+#   - assembled_json: Output from JSON Assembler v10 (string or dict)
+#   - supabase_url: Your Supabase project URL (e.g., "https://xxxx.supabase.co")
+#   - supabase_key: Your Supabase SERVICE ROLE key (not anon/public key)
+#
+# ═══════════════════════════════════════════════════════════════════════════
 
-# Initialize Supabase client
+# Initialize Supabase client (uses input parameters from MindPal)
 supabase = create_client(supabase_url, supabase_key)
 
 # Parse input from JSON Assembler
@@ -114,6 +121,20 @@ def clean_record(record):
     """Remove None values to avoid Supabase issues."""
     return {k: v for k, v in record.items() if v is not None}
 
+def safe_text_array(val):
+    """
+    Convert value to TEXT[] compatible format for PostgreSQL.
+    Supabase contractor_certifications is TEXT[] not JSONB.
+    """
+    if val is None:
+        return None
+    if isinstance(val, list):
+        # Filter out None/empty strings and convert all to strings
+        return [str(item).strip() for item in val if item is not None and str(item).strip()]
+    if isinstance(val, str):
+        return [val.strip()] if val.strip() else None
+    return None
+
 # ═══════════════════════════════════════════════════════════════════════════
 # UPDATE PROJECTS TABLE WITH CUSTOMER INFO (v10)
 # ═══════════════════════════════════════════════════════════════════════════
@@ -194,8 +215,8 @@ def build_contractor_bid_record(bid, project_id):
         "contractor_employee_count": safe_str(safe_get(bid, 'contractor_employee_count')),
         "contractor_service_area": safe_str(safe_get(bid, 'contractor_service_area')),
         
-        # Certifications (v10: array at top level)
-        "contractor_certifications": safe_get(bid, 'contractor_certifications') or [],
+        # Certifications (v10: array at top level, column is TEXT[] not JSONB)
+        "contractor_certifications": safe_text_array(safe_get(bid, 'contractor_certifications')),
         
         # Pricing (v10: flat at top level)
         "labor_cost": safe_float(safe_get(bid, 'labor_cost')),
@@ -207,7 +228,7 @@ def build_contractor_bid_record(bid, project_id):
         "total_before_rebates": safe_float(safe_get(bid, 'total_before_rebates')),
         "estimated_rebates": safe_float(safe_get(bid, 'estimated_rebates')),
         "total_after_rebates": safe_float(safe_get(bid, 'total_after_rebates')),
-        "rebates_mentioned": safe_get(bid, 'rebates_mentioned') or [],
+        "rebates_mentioned": safe_text_array(safe_get(bid, 'rebates_mentioned')),
         
         # Timeline & Warranty (v10: flat)
         "estimated_days": safe_int(safe_get(bid, 'estimated_days')),
@@ -226,8 +247,8 @@ def build_contractor_bid_record(bid, project_id):
         
         # Scope of work (v10: flat, only 4 critical booleans extracted)
         "scope_summary": safe_str(safe_get(bid, 'scope_summary')),
-        "inclusions": safe_get(bid, 'inclusions') or [],
-        "exclusions": safe_get(bid, 'exclusions') or [],
+        "inclusions": safe_text_array(safe_get(bid, 'inclusions')),
+        "exclusions": safe_text_array(safe_get(bid, 'exclusions')),
         "scope_permit_included": safe_bool(safe_get(bid, 'scope_permit_included')),
         "scope_disposal_included": safe_bool(safe_get(bid, 'scope_disposal_included')),
         "scope_electrical_included": safe_bool(safe_get(bid, 'scope_electrical_included')),
