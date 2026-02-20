@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Lightbulb, CheckCircle, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, Lightbulb } from 'lucide-react';
 import type { OverallFaq } from '../lib/types';
 
 interface OverallFaqsCardProps {
@@ -17,27 +17,6 @@ export function OverallFaqsCard({ faqs }: OverallFaqsCardProps) {
       newExpanded.add(faqId);
     }
     setExpandedFaqs(newExpanded);
-  };
-
-  const getConfidenceBadge = (confidence?: string | null) => {
-    if (!confidence) return null;
-
-    const badgeConfig = {
-      high: { color: 'bg-switch-green-100 text-switch-green-700', icon: CheckCircle },
-      medium: { color: 'bg-amber-100 text-amber-700', icon: AlertCircle },
-      low: { color: 'bg-gray-100 text-gray-600', icon: AlertCircle },
-    };
-
-    const config = badgeConfig[confidence as keyof typeof badgeConfig];
-    if (!config) return null;
-
-    const Icon = config.icon;
-
-    return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-        <Icon className="w-3 h-3" />
-      </span>
-    );
   };
 
   if (faqs.length === 0) {
@@ -59,7 +38,7 @@ export function OverallFaqsCard({ faqs }: OverallFaqsCardProps) {
       <div className="divide-y divide-gray-200">
         {faqs.map((faq) => {
           const isExpanded = expandedFaqs.has(faq.id);
-          const hasAnswer = faq.answer_text;
+          const hasAnswer = faq.answer;
 
           return (
             <div key={faq.id} className={hasAnswer ? '' : 'bg-gray-50'}>
@@ -77,8 +56,8 @@ export function OverallFaqsCard({ faqs }: OverallFaqsCardProps) {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="font-medium text-gray-900 pr-4">{faq.question_text}</p>
-                    {hasAnswer && getConfidenceBadge(faq.answer_confidence)}
+                    <p className="font-medium text-gray-900 pr-4">{faq.question}</p>
+                    {/* answer_confidence not available for overall FAQs */}
                   </div>
 
                   {!hasAnswer && !isExpanded && (
@@ -93,7 +72,7 @@ export function OverallFaqsCard({ faqs }: OverallFaqsCardProps) {
                 <div className="px-5 pb-5 pl-14">
                   {hasAnswer ? (
                     <div className="prose prose-sm max-w-none">
-                      <p className="text-gray-700 whitespace-pre-wrap">{faq.answer_text}</p>
+                      <p className="text-gray-700 whitespace-pre-wrap">{faq.answer}</p>
                     </div>
                   ) : (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">

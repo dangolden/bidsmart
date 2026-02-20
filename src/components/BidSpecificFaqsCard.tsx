@@ -100,7 +100,7 @@ export function BidSpecificFaqsCard({ bidFaqSets, switchPreferredBids = new Set(
         ) : (
           activeBidFaqSet.faqs.map((faq) => {
             const isExpanded = expandedFaqs.has(faq.id);
-            const hasAnswer = faq.is_answered && faq.answer_text;
+            const hasAnswer = !!faq.answer;
 
             return (
               <div key={faq.id} className={hasAnswer ? '' : 'bg-gray-50'}>
@@ -118,7 +118,7 @@ export function BidSpecificFaqsCard({ bidFaqSets, switchPreferredBids = new Set(
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="font-medium text-gray-900 pr-4">{faq.question_text}</p>
+                      <p className="font-medium text-gray-900 pr-4">{faq.question}</p>
                       {hasAnswer && getConfidenceBadge(faq.answer_confidence)}
                     </div>
 
@@ -134,7 +134,7 @@ export function BidSpecificFaqsCard({ bidFaqSets, switchPreferredBids = new Set(
                   <div className="px-5 pb-5 pl-14">
                     {hasAnswer ? (
                       <div className="prose prose-sm max-w-none">
-                        <p className="text-gray-700 whitespace-pre-wrap">{faq.answer_text}</p>
+                        <p className="text-gray-700 whitespace-pre-wrap">{faq.answer}</p>
                       </div>
                     ) : (
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">

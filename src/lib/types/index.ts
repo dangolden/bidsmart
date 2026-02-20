@@ -953,6 +953,7 @@ export interface BidQuestion {
   bid_id: string;
   question_text: string;
   question_category?: QuestionCategory | null;
+  category?: QuestionCategory | null;
   priority: QuestionPriority;
   is_answered: boolean;
   answer_text?: string | null;
@@ -960,32 +961,47 @@ export interface BidQuestion {
   auto_generated: boolean;
   missing_field?: string | null;
   display_order?: number | null;
+  generation_notes?: string | null;
+  context?: string | null;
+  triggered_by?: string | null;
+  good_answer_looks_like?: string | null;
+  concerning_answer_looks_like?: string | null;
   created_at: string;
 }
+
+export type FaqCategory = 
+  | 'equipment'
+  | 'warranty'
+  | 'scope'
+  | 'pricing'
+  | 'timeline'
+  | 'incentives'
+  | 'comparison'
+  | 'decision'
+  | 'general';
 
 export interface BidFaq {
   id: string;
   bid_id: string;
-  faq_key: string;
-  question_text: string;
-  answer_text?: string | null;
+  question: string;
+  answer: string;
+  category?: FaqCategory | null;
   answer_confidence?: ConfidenceLevel | null;
-  is_answered: boolean;
+  sources?: string[] | null;
   display_order?: number | null;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface OverallFaq {
   id: string;
   project_id: string;
-  faq_key: string;
-  question_text: string;
-  answer_text?: string | null;
-  answer_confidence?: ConfidenceLevel | null;
+  question: string;
+  answer: string;
+  category?: FaqCategory | null;
+  sources?: string[] | null;
   display_order?: number | null;
   created_at: string;
-  updated_at: string;
 }
 
 export interface BidFaqSet {

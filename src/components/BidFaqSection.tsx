@@ -42,17 +42,23 @@ export function BidFaqSection({ faqs, contractorName }: BidFaqSectionProps) {
   };
 
   const groupedFaqs = {
-    pricing: faqs.filter(faq => ['FAQ_01', 'FAQ_02', 'FAQ_03', 'FAQ_04'].includes(faq.faq_key)),
-    risk: faqs.filter(faq => ['FAQ_05', 'FAQ_06', 'FAQ_07'].includes(faq.faq_key)),
-    technical: faqs.filter(faq => ['FAQ_08', 'FAQ_09', 'FAQ_10'].includes(faq.faq_key)),
-    decision: faqs.filter(faq => ['FAQ_11', 'FAQ_12', 'FAQ_13', 'FAQ_14', 'FAQ_15'].includes(faq.faq_key)),
+    pricing: faqs.filter(faq => faq.category === 'pricing'),
+    equipment: faqs.filter(faq => faq.category === 'equipment'),
+    warranty: faqs.filter(faq => faq.category === 'warranty'),
+    scope: faqs.filter(faq => faq.category === 'scope'),
+    timeline: faqs.filter(faq => faq.category === 'timeline'),
+    incentives: faqs.filter(faq => faq.category === 'incentives'),
+    other: faqs.filter(faq => !faq.category || !['pricing', 'equipment', 'warranty', 'scope', 'timeline', 'incentives'].includes(faq.category)),
   };
 
   const groupTitles = {
     pricing: 'Pricing & Value',
-    risk: 'Risk Assessment',
-    technical: 'Technical Appropriateness',
-    decision: 'Decision Guidance',
+    equipment: 'Equipment Details',
+    warranty: 'Warranty Coverage',
+    scope: 'Scope of Work',
+    timeline: 'Timeline & Scheduling',
+    incentives: 'Incentives & Rebates',
+    other: 'Other Questions',
   };
 
   if (faqs.length === 0) {
@@ -83,7 +89,7 @@ export function BidFaqSection({ faqs, contractorName }: BidFaqSectionProps) {
             <div className="divide-y divide-gray-200">
               {groupFaqs.map((faq) => {
                 const isExpanded = expandedFaqs.has(faq.id);
-                const hasAnswer = faq.is_answered && faq.answer_text;
+                const hasAnswer = !!faq.answer;
 
                 return (
                   <div key={faq.id} className={hasAnswer ? '' : 'bg-gray-50'}>
@@ -101,7 +107,7 @@ export function BidFaqSection({ faqs, contractorName }: BidFaqSectionProps) {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3">
-                          <p className="font-medium text-gray-900 pr-4">{faq.question_text}</p>
+                          <p className="font-medium text-gray-900 pr-4">{faq.question}</p>
                           {hasAnswer && getConfidenceBadge(faq.answer_confidence)}
                         </div>
 
@@ -117,7 +123,7 @@ export function BidFaqSection({ faqs, contractorName }: BidFaqSectionProps) {
                       <div className="px-5 pb-5 pl-14">
                         {hasAnswer ? (
                           <div className="prose prose-sm max-w-none">
-                            <p className="text-gray-700 whitespace-pre-wrap">{faq.answer_text}</p>
+                            <p className="text-gray-700 whitespace-pre-wrap">{faq.answer}</p>
                           </div>
                         ) : (
                           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
