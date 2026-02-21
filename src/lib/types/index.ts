@@ -225,6 +225,13 @@ export interface ContractorBid {
   contractor_service_area?: string | null;
   contractor_certifications_detailed?: ContractorCertificationsDetailed | null;
   
+  // Contractor researcher metadata (from MindPal Contractor Researcher)
+  contractor_license_status?: string | null;
+  contractor_license_expiration_date?: string | null;
+  contractor_research_confidence?: number | null;
+  contractor_verification_date?: string | null;
+  contractor_research_notes?: string | null;
+  
   // Bid totals
   total_bid_amount: number;
   labor_cost?: number | null;
