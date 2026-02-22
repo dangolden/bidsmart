@@ -1,1 +1,2685 @@
-{"types":"export type Json =\n  | string\n  | number\n  | boolean\n  | null\n  | { [key: string]: Json | undefined }\n  | Json[]\n\nexport type Database = {\n  // Allows to automatically instantiate createClient with right options\n  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)\n  __InternalSupabase: {\n    PostgrestVersion: \"14.1\"\n  }\n  public: {\n    Tables: {\n      admin_sessions: {\n        Row: {\n          admin_user_id: string\n          created_at: string\n          expires_at: string\n          id: string\n          session_token: string\n        }\n        Insert: {\n          admin_user_id: string\n          created_at?: string\n          expires_at: string\n          id?: string\n          session_token: string\n        }\n        Update: {\n          admin_user_id?: string\n          created_at?: string\n          expires_at?: string\n          id?: string\n          session_token?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"admin_sessions_admin_user_id_fkey\"\n            columns: [\"admin_user_id\"]\n            isOneToOne: false\n            referencedRelation: \"admin_users\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      admin_users: {\n        Row: {\n          created_at: string\n          email: string\n          id: string\n          is_super_admin: boolean | null\n          last_login_at: string | null\n          name: string | null\n          password_hash: string\n          updated_at: string\n        }\n        Insert: {\n          created_at?: string\n          email: string\n          id?: string\n          is_super_admin?: boolean | null\n          last_login_at?: string | null\n          name?: string | null\n          password_hash: string\n          updated_at?: string\n        }\n        Update: {\n          created_at?: string\n          email?: string\n          id?: string\n          is_super_admin?: boolean | null\n          last_login_at?: string | null\n          name?: string | null\n          password_hash?: string\n          updated_at?: string\n        }\n        Relationships: []\n      }\n      analytics_events: {\n        Row: {\n          client_timestamp: string | null\n          created_at: string\n          event_category: string | null\n          event_data: Json | null\n          event_name: string\n          event_type: string\n          id: string\n          page_url: string | null\n          project_id: string | null\n          referrer: string | null\n          session_id: string | null\n          user_agent: string | null\n          user_email: string | null\n        }\n        Insert: {\n          client_timestamp?: string | null\n          created_at?: string\n          event_category?: string | null\n          event_data?: Json | null\n          event_name: string\n          event_type: string\n          id?: string\n          page_url?: string | null\n          project_id?: string | null\n          referrer?: string | null\n          session_id?: string | null\n          user_agent?: string | null\n          user_email?: string | null\n        }\n        Update: {\n          client_timestamp?: string | null\n          created_at?: string\n          event_category?: string | null\n          event_data?: Json | null\n          event_name?: string\n          event_type?: string\n          id?: string\n          page_url?: string | null\n          project_id?: string | null\n          referrer?: string | null\n          session_id?: string | null\n          user_agent?: string | null\n          user_email?: string | null\n        }\n        Relationships: []\n      }\n      bid_contractors: {\n        Row: {\n          address: string | null\n          bbb_accredited: boolean | null\n          bbb_complaints_3yr: number | null\n          bbb_rating: string | null\n          bid_id: string\n          bonded: boolean | null\n          certifications: string[] | null\n          company: string | null\n          contact_name: string | null\n          created_at: string\n          email: string | null\n          employee_count: number | null\n          google_rating: number | null\n          google_review_count: number | null\n          id: string\n          insurance_verified: boolean | null\n          license: string | null\n          license_expiration_date: string | null\n          license_state: string | null\n          license_status: string | null\n          name: string\n          phone: string | null\n          research_confidence: number | null\n          research_notes: string | null\n          service_area: string | null\n          total_installs: number | null\n          updated_at: string\n          verification_date: string | null\n          website: string | null\n          year_established: number | null\n          years_in_business: number | null\n          yelp_rating: number | null\n          yelp_review_count: number | null\n        }\n        Insert: {\n          address?: string | null\n          bbb_accredited?: boolean | null\n          bbb_complaints_3yr?: number | null\n          bbb_rating?: string | null\n          bid_id: string\n          bonded?: boolean | null\n          certifications?: string[] | null\n          company?: string | null\n          contact_name?: string | null\n          created_at?: string\n          email?: string | null\n          employee_count?: number | null\n          google_rating?: number | null\n          google_review_count?: number | null\n          id?: string\n          insurance_verified?: boolean | null\n          license?: string | null\n          license_expiration_date?: string | null\n          license_state?: string | null\n          license_status?: string | null\n          name: string\n          phone?: string | null\n          research_confidence?: number | null\n          research_notes?: string | null\n          service_area?: string | null\n          total_installs?: number | null\n          updated_at?: string\n          verification_date?: string | null\n          website?: string | null\n          year_established?: number | null\n          years_in_business?: number | null\n          yelp_rating?: number | null\n          yelp_review_count?: number | null\n        }\n        Update: {\n          address?: string | null\n          bbb_accredited?: boolean | null\n          bbb_complaints_3yr?: number | null\n          bbb_rating?: string | null\n          bid_id?: string\n          bonded?: boolean | null\n          certifications?: string[] | null\n          company?: string | null\n          contact_name?: string | null\n          created_at?: string\n          email?: string | null\n          employee_count?: number | null\n          google_rating?: number | null\n          google_review_count?: number | null\n          id?: string\n          insurance_verified?: boolean | null\n          license?: string | null\n          license_expiration_date?: string | null\n          license_state?: string | null\n          license_status?: string | null\n          name?: string\n          phone?: string | null\n          research_confidence?: number | null\n          research_notes?: string | null\n          service_area?: string | null\n          total_installs?: number | null\n          updated_at?: string\n          verification_date?: string | null\n          website?: string | null\n          year_established?: number | null\n          years_in_business?: number | null\n          yelp_rating?: number | null\n          yelp_review_count?: number | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"bid_contractors_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"bids\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"bid_contractors_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_compare_contractors\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_contractors_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_compare_equipment\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_contractors_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_compare_scope\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_contractors_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_full\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"bid_contractors_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_summary\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      bid_equipment: {\n        Row: {\n          afue_rating: number | null\n          amperage_draw: number | null\n          bid_id: string\n          brand: string\n          capacity_btu: number | null\n          capacity_tons: number | null\n          compressor_warranty_years: number | null\n          confidence: Database[\"public\"][\"Enums\"][\"confidence_level\"] | null\n          cop: number | null\n          created_at: string\n          eer_rating: number | null\n          energy_star_certified: boolean | null\n          energy_star_most_efficient: boolean | null\n          equipment_cost: number | null\n          equipment_type: string\n          fuel_type: string | null\n          hspf_rating: number | null\n          hspf2_rating: number | null\n          id: string\n          minimum_circuit_amperage: number | null\n          model_name: string | null\n          model_number: string | null\n          refrigerant_type: string | null\n          seer_rating: number | null\n          seer2_rating: number | null\n          sound_level_db: number | null\n          stages: number | null\n          system_role: string | null\n          variable_speed: boolean | null\n          voltage: number | null\n          warranty_years: number | null\n        }\n        Insert: {\n          afue_rating?: number | null\n          amperage_draw?: number | null\n          bid_id: string\n          brand: string\n          capacity_btu?: number | null\n          capacity_tons?: number | null\n          compressor_warranty_years?: number | null\n          confidence?: Database[\"public\"][\"Enums\"][\"confidence_level\"] | null\n          cop?: number | null\n          created_at?: string\n          eer_rating?: number | null\n          energy_star_certified?: boolean | null\n          energy_star_most_efficient?: boolean | null\n          equipment_cost?: number | null\n          equipment_type: string\n          fuel_type?: string | null\n          hspf_rating?: number | null\n          hspf2_rating?: number | null\n          id?: string\n          minimum_circuit_amperage?: number | null\n          model_name?: string | null\n          model_number?: string | null\n          refrigerant_type?: string | null\n          seer_rating?: number | null\n          seer2_rating?: number | null\n          sound_level_db?: number | null\n          stages?: number | null\n          system_role?: string | null\n          variable_speed?: boolean | null\n          voltage?: number | null\n          warranty_years?: number | null\n        }\n        Update: {\n          afue_rating?: number | null\n          amperage_draw?: number | null\n          bid_id?: string\n          brand?: string\n          capacity_btu?: number | null\n          capacity_tons?: number | null\n          compressor_warranty_years?: number | null\n          confidence?: Database[\"public\"][\"Enums\"][\"confidence_level\"] | null\n          cop?: number | null\n          created_at?: string\n          eer_rating?: number | null\n          energy_star_certified?: boolean | null\n          energy_star_most_efficient?: boolean | null\n          equipment_cost?: number | null\n          equipment_type?: string\n          fuel_type?: string | null\n          hspf_rating?: number | null\n          hspf2_rating?: number | null\n          id?: string\n          minimum_circuit_amperage?: number | null\n          model_name?: string | null\n          model_number?: string | null\n          refrigerant_type?: string | null\n          seer_rating?: number | null\n          seer2_rating?: number | null\n          sound_level_db?: number | null\n          stages?: number | null\n          system_role?: string | null\n          variable_speed?: boolean | null\n          voltage?: number | null\n          warranty_years?: number | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"bid_equipment_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"bids\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"bid_equipment_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_contractors\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_equipment_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_equipment\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_equipment_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_scope\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_equipment_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_full\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"bid_equipment_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_summary\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      bid_faqs: {\n        Row: {\n          answer: string\n          answer_confidence: string | null\n          bid_id: string\n          created_at: string\n          display_order: number | null\n          faq_category: string | null\n          id: string\n          question: string\n          updated_at: string\n        }\n        Insert: {\n          answer: string\n          answer_confidence?: string | null\n          bid_id: string\n          created_at?: string\n          display_order?: number | null\n          faq_category?: string | null\n          id?: string\n          question: string\n          updated_at?: string\n        }\n        Update: {\n          answer?: string\n          answer_confidence?: string | null\n          bid_id?: string\n          created_at?: string\n          display_order?: number | null\n          faq_category?: string | null\n          id?: string\n          question?: string\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"bid_faqs_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"bids\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"bid_faqs_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_contractors\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_faqs_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_equipment\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_faqs_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_scope\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_faqs_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_full\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"bid_faqs_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_summary\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      bid_scope: {\n        Row: {\n          accessories: Json | null\n          air_handler_detail: string | null\n          air_handler_included: boolean | null\n          bid_id: string\n          breaker_size_required: number | null\n          commissioning_detail: string | null\n          commissioning_included: boolean | null\n          created_at: string\n          dedicated_circuit_included: boolean | null\n          disconnect_detail: string | null\n          disconnect_included: boolean | null\n          disposal_detail: string | null\n          disposal_included: boolean | null\n          drain_line_detail: string | null\n          drain_line_included: boolean | null\n          ductwork_detail: string | null\n          ductwork_included: boolean | null\n          electrical_detail: string | null\n          electrical_included: boolean | null\n          electrical_notes: string | null\n          electrical_permit_included: boolean | null\n          exclusions: string[] | null\n          existing_panel_amps: number | null\n          id: string\n          inclusions: string[] | null\n          line_items: Json | null\n          line_set_detail: string | null\n          line_set_included: boolean | null\n          load_calculation_included: boolean | null\n          manual_j_detail: string | null\n          manual_j_included: boolean | null\n          pad_detail: string | null\n          pad_included: boolean | null\n          panel_assessment_included: boolean | null\n          panel_upgrade_cost: number | null\n          panel_upgrade_included: boolean | null\n          permit_detail: string | null\n          permit_included: boolean | null\n          proposed_panel_amps: number | null\n          summary: string | null\n          thermostat_detail: string | null\n          thermostat_included: boolean | null\n          updated_at: string\n        }\n        Insert: {\n          accessories?: Json | null\n          air_handler_detail?: string | null\n          air_handler_included?: boolean | null\n          bid_id: string\n          breaker_size_required?: number | null\n          commissioning_detail?: string | null\n          commissioning_included?: boolean | null\n          created_at?: string\n          dedicated_circuit_included?: boolean | null\n          disconnect_detail?: string | null\n          disconnect_included?: boolean | null\n          disposal_detail?: string | null\n          disposal_included?: boolean | null\n          drain_line_detail?: string | null\n          drain_line_included?: boolean | null\n          ductwork_detail?: string | null\n          ductwork_included?: boolean | null\n          electrical_detail?: string | null\n          electrical_included?: boolean | null\n          electrical_notes?: string | null\n          electrical_permit_included?: boolean | null\n          exclusions?: string[] | null\n          existing_panel_amps?: number | null\n          id?: string\n          inclusions?: string[] | null\n          line_items?: Json | null\n          line_set_detail?: string | null\n          line_set_included?: boolean | null\n          load_calculation_included?: boolean | null\n          manual_j_detail?: string | null\n          manual_j_included?: boolean | null\n          pad_detail?: string | null\n          pad_included?: boolean | null\n          panel_assessment_included?: boolean | null\n          panel_upgrade_cost?: number | null\n          panel_upgrade_included?: boolean | null\n          permit_detail?: string | null\n          permit_included?: boolean | null\n          proposed_panel_amps?: number | null\n          summary?: string | null\n          thermostat_detail?: string | null\n          thermostat_included?: boolean | null\n          updated_at?: string\n        }\n        Update: {\n          accessories?: Json | null\n          air_handler_detail?: string | null\n          air_handler_included?: boolean | null\n          bid_id?: string\n          breaker_size_required?: number | null\n          commissioning_detail?: string | null\n          commissioning_included?: boolean | null\n          created_at?: string\n          dedicated_circuit_included?: boolean | null\n          disconnect_detail?: string | null\n          disconnect_included?: boolean | null\n          disposal_detail?: string | null\n          disposal_included?: boolean | null\n          drain_line_detail?: string | null\n          drain_line_included?: boolean | null\n          ductwork_detail?: string | null\n          ductwork_included?: boolean | null\n          electrical_detail?: string | null\n          electrical_included?: boolean | null\n          electrical_notes?: string | null\n          electrical_permit_included?: boolean | null\n          exclusions?: string[] | null\n          existing_panel_amps?: number | null\n          id?: string\n          inclusions?: string[] | null\n          line_items?: Json | null\n          line_set_detail?: string | null\n          line_set_included?: boolean | null\n          load_calculation_included?: boolean | null\n          manual_j_detail?: string | null\n          manual_j_included?: boolean | null\n          pad_detail?: string | null\n          pad_included?: boolean | null\n          panel_assessment_included?: boolean | null\n          panel_upgrade_cost?: number | null\n          panel_upgrade_included?: boolean | null\n          permit_detail?: string | null\n          permit_included?: boolean | null\n          proposed_panel_amps?: number | null\n          summary?: string | null\n          thermostat_detail?: string | null\n          thermostat_included?: boolean | null\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"bid_scope_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"bids\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"bid_scope_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_compare_contractors\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_scope_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_compare_equipment\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_scope_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_compare_scope\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_scope_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_full\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"bid_scope_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_summary\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      bid_scores: {\n        Row: {\n          bid_id: string\n          completeness_score: number | null\n          created_at: string\n          id: string\n          overall_score: number | null\n          positive_indicators: Json | null\n          quality_score: number | null\n          ranking_recommendation: string | null\n          red_flags: Json | null\n          score_confidence: number | null\n          scoring_notes: string | null\n          updated_at: string\n          value_score: number | null\n        }\n        Insert: {\n          bid_id: string\n          completeness_score?: number | null\n          created_at?: string\n          id?: string\n          overall_score?: number | null\n          positive_indicators?: Json | null\n          quality_score?: number | null\n          ranking_recommendation?: string | null\n          red_flags?: Json | null\n          score_confidence?: number | null\n          scoring_notes?: string | null\n          updated_at?: string\n          value_score?: number | null\n        }\n        Update: {\n          bid_id?: string\n          completeness_score?: number | null\n          created_at?: string\n          id?: string\n          overall_score?: number | null\n          positive_indicators?: Json | null\n          quality_score?: number | null\n          ranking_recommendation?: string | null\n          red_flags?: Json | null\n          score_confidence?: number | null\n          scoring_notes?: string | null\n          updated_at?: string\n          value_score?: number | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"bid_scores_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"bids\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"bid_scores_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_compare_contractors\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_scores_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_compare_equipment\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_scores_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_compare_scope\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"bid_scores_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_full\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"bid_scores_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_summary\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      bids: {\n        Row: {\n          additional_warranty_details: string | null\n          bid_date: string | null\n          bid_index: number | null\n          compressor_warranty_years: number | null\n          contractor_name: string\n          created_at: string\n          deposit_percentage: number | null\n          deposit_required: number | null\n          disposal_cost: number | null\n          electrical_cost: number | null\n          equipment_cost: number | null\n          equipment_warranty_years: number | null\n          estimated_days: number | null\n          estimated_rebates: number | null\n          extraction_confidence:\n            | Database[\"public\"][\"Enums\"][\"confidence_level\"]\n            | null\n          extraction_notes: string | null\n          financing_offered: boolean | null\n          financing_terms: string | null\n          id: string\n          is_favorite: boolean | null\n          labor_cost: number | null\n          labor_warranty_years: number | null\n          materials_cost: number | null\n          payment_schedule: string | null\n          pdf_upload_id: string | null\n          permit_cost: number | null\n          project_id: string\n          start_date_available: string | null\n          system_type: string | null\n          total_after_rebates: number | null\n          total_before_rebates: number | null\n          total_bid_amount: number\n          updated_at: string\n          user_notes: string | null\n          valid_until: string | null\n          verified_at: string | null\n          verified_by_user: boolean | null\n        }\n        Insert: {\n          additional_warranty_details?: string | null\n          bid_date?: string | null\n          bid_index?: number | null\n          compressor_warranty_years?: number | null\n          contractor_name: string\n          created_at?: string\n          deposit_percentage?: number | null\n          deposit_required?: number | null\n          disposal_cost?: number | null\n          electrical_cost?: number | null\n          equipment_cost?: number | null\n          equipment_warranty_years?: number | null\n          estimated_days?: number | null\n          estimated_rebates?: number | null\n          extraction_confidence?:\n            | Database[\"public\"][\"Enums\"][\"confidence_level\"]\n            | null\n          extraction_notes?: string | null\n          financing_offered?: boolean | null\n          financing_terms?: string | null\n          id?: string\n          is_favorite?: boolean | null\n          labor_cost?: number | null\n          labor_warranty_years?: number | null\n          materials_cost?: number | null\n          payment_schedule?: string | null\n          pdf_upload_id?: string | null\n          permit_cost?: number | null\n          project_id: string\n          start_date_available?: string | null\n          system_type?: string | null\n          total_after_rebates?: number | null\n          total_before_rebates?: number | null\n          total_bid_amount: number\n          updated_at?: string\n          user_notes?: string | null\n          valid_until?: string | null\n          verified_at?: string | null\n          verified_by_user?: boolean | null\n        }\n        Update: {\n          additional_warranty_details?: string | null\n          bid_date?: string | null\n          bid_index?: number | null\n          compressor_warranty_years?: number | null\n          contractor_name?: string\n          created_at?: string\n          deposit_percentage?: number | null\n          deposit_required?: number | null\n          disposal_cost?: number | null\n          electrical_cost?: number | null\n          equipment_cost?: number | null\n          equipment_warranty_years?: number | null\n          estimated_days?: number | null\n          estimated_rebates?: number | null\n          extraction_confidence?:\n            | Database[\"public\"][\"Enums\"][\"confidence_level\"]\n            | null\n          extraction_notes?: string | null\n          financing_offered?: boolean | null\n          financing_terms?: string | null\n          id?: string\n          is_favorite?: boolean | null\n          labor_cost?: number | null\n          labor_warranty_years?: number | null\n          materials_cost?: number | null\n          payment_schedule?: string | null\n          pdf_upload_id?: string | null\n          permit_cost?: number | null\n          project_id?: string\n          start_date_available?: string | null\n          system_type?: string | null\n          total_after_rebates?: number | null\n          total_before_rebates?: number | null\n          total_bid_amount?: number\n          updated_at?: string\n          user_notes?: string | null\n          valid_until?: string | null\n          verified_at?: string | null\n          verified_by_user?: boolean | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"bids_pdf_upload_id_fkey\"\n            columns: [\"pdf_upload_id\"]\n            isOneToOne: false\n            referencedRelation: \"pdf_uploads\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"bids_project_id_fkey\"\n            columns: [\"project_id\"]\n            isOneToOne: false\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      community_bids: {\n        Row: {\n          bid_date: string | null\n          community_contractor_id: string | null\n          created_at: string\n          equipment_cost: number | null\n          equipment_type: string | null\n          estimated_days: number | null\n          id: string\n          includes_ductwork: boolean | null\n          includes_electrical: boolean | null\n          includes_permit: boolean | null\n          labor_cost: number | null\n          labor_warranty_years: number | null\n          primary_capacity_tons: number | null\n          primary_seer_rating: number | null\n          source_bid_id: string | null\n          state: string | null\n          total_bid_amount: number | null\n          zip_code_area: string | null\n        }\n        Insert: {\n          bid_date?: string | null\n          community_contractor_id?: string | null\n          created_at?: string\n          equipment_cost?: number | null\n          equipment_type?: string | null\n          estimated_days?: number | null\n          id?: string\n          includes_ductwork?: boolean | null\n          includes_electrical?: boolean | null\n          includes_permit?: boolean | null\n          labor_cost?: number | null\n          labor_warranty_years?: number | null\n          primary_capacity_tons?: number | null\n          primary_seer_rating?: number | null\n          source_bid_id?: string | null\n          state?: string | null\n          total_bid_amount?: number | null\n          zip_code_area?: string | null\n        }\n        Update: {\n          bid_date?: string | null\n          community_contractor_id?: string | null\n          created_at?: string\n          equipment_cost?: number | null\n          equipment_type?: string | null\n          estimated_days?: number | null\n          id?: string\n          includes_ductwork?: boolean | null\n          includes_electrical?: boolean | null\n          includes_permit?: boolean | null\n          labor_cost?: number | null\n          labor_warranty_years?: number | null\n          primary_capacity_tons?: number | null\n          primary_seer_rating?: number | null\n          source_bid_id?: string | null\n          state?: string | null\n          total_bid_amount?: number | null\n          zip_code_area?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"community_bids_community_contractor_id_fkey\"\n            columns: [\"community_contractor_id\"]\n            isOneToOne: false\n            referencedRelation: \"community_contractors\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"community_bids_source_bid_id_fkey\"\n            columns: [\"source_bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"bids\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"community_bids_source_bid_id_fkey\"\n            columns: [\"source_bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_compare_contractors\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"community_bids_source_bid_id_fkey\"\n            columns: [\"source_bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_compare_equipment\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"community_bids_source_bid_id_fkey\"\n            columns: [\"source_bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_compare_scope\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"community_bids_source_bid_id_fkey\"\n            columns: [\"source_bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_full\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"community_bids_source_bid_id_fkey\"\n            columns: [\"source_bid_id\"]\n            isOneToOne: true\n            referencedRelation: \"v_bid_summary\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      community_contractors: {\n        Row: {\n          bbb_accredited: boolean | null\n          bbb_rating: string | null\n          bidsmart_completed_on_time: boolean | null\n          bidsmart_overall_rating: number | null\n          bidsmart_would_recommend: boolean | null\n          certifications: string[] | null\n          created_at: string\n          employee_count: number | null\n          google_rating: number | null\n          id: string\n          service_area: string | null\n          source_project_id: string | null\n          state: string | null\n          updated_at: string\n          years_in_business: number | null\n          yelp_rating: number | null\n          zip_code_area: string | null\n        }\n        Insert: {\n          bbb_accredited?: boolean | null\n          bbb_rating?: string | null\n          bidsmart_completed_on_time?: boolean | null\n          bidsmart_overall_rating?: number | null\n          bidsmart_would_recommend?: boolean | null\n          certifications?: string[] | null\n          created_at?: string\n          employee_count?: number | null\n          google_rating?: number | null\n          id?: string\n          service_area?: string | null\n          source_project_id?: string | null\n          state?: string | null\n          updated_at?: string\n          years_in_business?: number | null\n          yelp_rating?: number | null\n          zip_code_area?: string | null\n        }\n        Update: {\n          bbb_accredited?: boolean | null\n          bbb_rating?: string | null\n          bidsmart_completed_on_time?: boolean | null\n          bidsmart_overall_rating?: number | null\n          bidsmart_would_recommend?: boolean | null\n          certifications?: string[] | null\n          created_at?: string\n          employee_count?: number | null\n          google_rating?: number | null\n          id?: string\n          service_area?: string | null\n          source_project_id?: string | null\n          state?: string | null\n          updated_at?: string\n          years_in_business?: number | null\n          yelp_rating?: number | null\n          zip_code_area?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"community_contractors_source_project_id_fkey\"\n            columns: [\"source_project_id\"]\n            isOneToOne: false\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      contractor_installation_reviews: {\n        Row: {\n          bid_id: string\n          checklist_completeness_rating: number | null\n          communication_rating: number\n          completed_on_time: boolean\n          created_at: string\n          critical_items_verified: boolean\n          id: string\n          improvement_suggestions: string | null\n          issues_encountered: string[] | null\n          overall_rating: number\n          photo_documentation_provided: boolean\n          positive_comments: string | null\n          professionalism_rating: number\n          project_id: string\n          quality_of_work_rating: number\n          stayed_within_budget: boolean\n          timeliness_rating: number\n          updated_at: string\n          used_checklist: boolean\n          user_id: string\n          would_recommend: boolean\n        }\n        Insert: {\n          bid_id: string\n          checklist_completeness_rating?: number | null\n          communication_rating: number\n          completed_on_time: boolean\n          created_at?: string\n          critical_items_verified: boolean\n          id?: string\n          improvement_suggestions?: string | null\n          issues_encountered?: string[] | null\n          overall_rating: number\n          photo_documentation_provided: boolean\n          positive_comments?: string | null\n          professionalism_rating: number\n          project_id: string\n          quality_of_work_rating: number\n          stayed_within_budget: boolean\n          timeliness_rating: number\n          updated_at?: string\n          used_checklist?: boolean\n          user_id: string\n          would_recommend: boolean\n        }\n        Update: {\n          bid_id?: string\n          checklist_completeness_rating?: number | null\n          communication_rating?: number\n          completed_on_time?: boolean\n          created_at?: string\n          critical_items_verified?: boolean\n          id?: string\n          improvement_suggestions?: string | null\n          issues_encountered?: string[] | null\n          overall_rating?: number\n          photo_documentation_provided?: boolean\n          positive_comments?: string | null\n          professionalism_rating?: number\n          project_id?: string\n          quality_of_work_rating?: number\n          stayed_within_budget?: boolean\n          timeliness_rating?: number\n          updated_at?: string\n          used_checklist?: boolean\n          user_id?: string\n          would_recommend?: boolean\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"contractor_installation_reviews_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"bids\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"contractor_installation_reviews_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_contractors\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"contractor_installation_reviews_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_equipment\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"contractor_installation_reviews_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_scope\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"contractor_installation_reviews_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_full\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"contractor_installation_reviews_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_summary\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"contractor_installation_reviews_project_id_fkey\"\n            columns: [\"project_id\"]\n            isOneToOne: true\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"contractor_installation_reviews_user_id_fkey\"\n            columns: [\"user_id\"]\n            isOneToOne: false\n            referencedRelation: \"users_ext\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      contractor_questions: {\n        Row: {\n          answer_text: string | null\n          answered_at: string | null\n          auto_generated: boolean | null\n          bid_id: string\n          category: string | null\n          concerning_answer_looks_like: string | null\n          context: string | null\n          created_at: string\n          display_order: number | null\n          generation_notes: string | null\n          good_answer_looks_like: string | null\n          id: string\n          is_answered: boolean | null\n          missing_field: string | null\n          priority: string | null\n          question_category: string | null\n          question_text: string\n          triggered_by: string | null\n        }\n        Insert: {\n          answer_text?: string | null\n          answered_at?: string | null\n          auto_generated?: boolean | null\n          bid_id: string\n          category?: string | null\n          concerning_answer_looks_like?: string | null\n          context?: string | null\n          created_at?: string\n          display_order?: number | null\n          generation_notes?: string | null\n          good_answer_looks_like?: string | null\n          id?: string\n          is_answered?: boolean | null\n          missing_field?: string | null\n          priority?: string | null\n          question_category?: string | null\n          question_text: string\n          triggered_by?: string | null\n        }\n        Update: {\n          answer_text?: string | null\n          answered_at?: string | null\n          auto_generated?: boolean | null\n          bid_id?: string\n          category?: string | null\n          concerning_answer_looks_like?: string | null\n          context?: string | null\n          created_at?: string\n          display_order?: number | null\n          generation_notes?: string | null\n          good_answer_looks_like?: string | null\n          id?: string\n          is_answered?: boolean | null\n          missing_field?: string | null\n          priority?: string | null\n          question_category?: string | null\n          question_text?: string\n          triggered_by?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"contractor_questions_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"bids\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"contractor_questions_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_contractors\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"contractor_questions_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_equipment\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"contractor_questions_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_scope\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"contractor_questions_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_full\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"contractor_questions_bid_id_fkey\"\n            columns: [\"bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_summary\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      email_verifications: {\n        Row: {\n          code: string\n          created_at: string\n          email: string\n          expires_at: string\n          id: string\n          ip_address: string | null\n          user_agent: string | null\n          verified: boolean | null\n          verified_at: string | null\n        }\n        Insert: {\n          code: string\n          created_at?: string\n          email: string\n          expires_at: string\n          id?: string\n          ip_address?: string | null\n          user_agent?: string | null\n          verified?: boolean | null\n          verified_at?: string | null\n        }\n        Update: {\n          code?: string\n          created_at?: string\n          email?: string\n          expires_at?: string\n          id?: string\n          ip_address?: string | null\n          user_agent?: string | null\n          verified?: boolean | null\n          verified_at?: string | null\n        }\n        Relationships: []\n      }\n      incentive_program_database: {\n        Row: {\n          application_process: string | null\n          application_url: string | null\n          available_nationwide: boolean | null\n          available_states: string[] | null\n          available_utilities: string[] | null\n          available_zip_codes: string[] | null\n          cannot_stack_with: string[] | null\n          created_at: string\n          description: string | null\n          discovered_by: string | null\n          discovery_source_url: string | null\n          id: string\n          income_limits: Json | null\n          income_qualified: boolean | null\n          is_active: boolean | null\n          last_verified: string | null\n          max_rebate: number | null\n          program_code: string | null\n          program_name: string\n          program_type: string | null\n          rebate_amount: number | null\n          rebate_percentage: number | null\n          requirements: Json | null\n          stackable: boolean | null\n          typical_processing_days: number | null\n          updated_at: string\n          valid_from: string | null\n          valid_until: string | null\n        }\n        Insert: {\n          application_process?: string | null\n          application_url?: string | null\n          available_nationwide?: boolean | null\n          available_states?: string[] | null\n          available_utilities?: string[] | null\n          available_zip_codes?: string[] | null\n          cannot_stack_with?: string[] | null\n          created_at?: string\n          description?: string | null\n          discovered_by?: string | null\n          discovery_source_url?: string | null\n          id?: string\n          income_limits?: Json | null\n          income_qualified?: boolean | null\n          is_active?: boolean | null\n          last_verified?: string | null\n          max_rebate?: number | null\n          program_code?: string | null\n          program_name: string\n          program_type?: string | null\n          rebate_amount?: number | null\n          rebate_percentage?: number | null\n          requirements?: Json | null\n          stackable?: boolean | null\n          typical_processing_days?: number | null\n          updated_at?: string\n          valid_from?: string | null\n          valid_until?: string | null\n        }\n        Update: {\n          application_process?: string | null\n          application_url?: string | null\n          available_nationwide?: boolean | null\n          available_states?: string[] | null\n          available_utilities?: string[] | null\n          available_zip_codes?: string[] | null\n          cannot_stack_with?: string[] | null\n          created_at?: string\n          description?: string | null\n          discovered_by?: string | null\n          discovery_source_url?: string | null\n          id?: string\n          income_limits?: Json | null\n          income_qualified?: boolean | null\n          is_active?: boolean | null\n          last_verified?: string | null\n          max_rebate?: number | null\n          program_code?: string | null\n          program_name?: string\n          program_type?: string | null\n          rebate_amount?: number | null\n          rebate_percentage?: number | null\n          requirements?: Json | null\n          stackable?: boolean | null\n          typical_processing_days?: number | null\n          updated_at?: string\n          valid_from?: string | null\n          valid_until?: string | null\n        }\n        Relationships: []\n      }\n      pdf_uploads: {\n        Row: {\n          created_at: string\n          error_message: string | null\n          extracted_bid_id: string | null\n          extraction_confidence: number | null\n          file_hash: string | null\n          file_name: string\n          file_path: string\n          file_size_bytes: number | null\n          id: string\n          mindpal_job_id: string | null\n          mindpal_run_id: string | null\n          mindpal_status: string | null\n          mindpal_workflow_id: string | null\n          project_id: string\n          retry_count: number | null\n          status: Database[\"public\"][\"Enums\"][\"pdf_status\"] | null\n          updated_at: string\n        }\n        Insert: {\n          created_at?: string\n          error_message?: string | null\n          extracted_bid_id?: string | null\n          extraction_confidence?: number | null\n          file_hash?: string | null\n          file_name: string\n          file_path: string\n          file_size_bytes?: number | null\n          id?: string\n          mindpal_job_id?: string | null\n          mindpal_run_id?: string | null\n          mindpal_status?: string | null\n          mindpal_workflow_id?: string | null\n          project_id: string\n          retry_count?: number | null\n          status?: Database[\"public\"][\"Enums\"][\"pdf_status\"] | null\n          updated_at?: string\n        }\n        Update: {\n          created_at?: string\n          error_message?: string | null\n          extracted_bid_id?: string | null\n          extraction_confidence?: number | null\n          file_hash?: string | null\n          file_name?: string\n          file_path?: string\n          file_size_bytes?: number | null\n          id?: string\n          mindpal_job_id?: string | null\n          mindpal_run_id?: string | null\n          mindpal_status?: string | null\n          mindpal_workflow_id?: string | null\n          project_id?: string\n          retry_count?: number | null\n          status?: Database[\"public\"][\"Enums\"][\"pdf_status\"] | null\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"fk_pdf_uploads_extracted_bid\"\n            columns: [\"extracted_bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"bids\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"fk_pdf_uploads_extracted_bid\"\n            columns: [\"extracted_bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_contractors\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"fk_pdf_uploads_extracted_bid\"\n            columns: [\"extracted_bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_equipment\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"fk_pdf_uploads_extracted_bid\"\n            columns: [\"extracted_bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_scope\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"fk_pdf_uploads_extracted_bid\"\n            columns: [\"extracted_bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_full\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"fk_pdf_uploads_extracted_bid\"\n            columns: [\"extracted_bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_summary\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"pdf_uploads_project_id_fkey\"\n            columns: [\"project_id\"]\n            isOneToOne: false\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      project_faqs: {\n        Row: {\n          answer: string\n          created_at: string\n          display_order: number | null\n          faq_category: string | null\n          id: string\n          project_id: string\n          question: string\n          sources: string[] | null\n        }\n        Insert: {\n          answer: string\n          created_at?: string\n          display_order?: number | null\n          faq_category?: string | null\n          id?: string\n          project_id: string\n          question: string\n          sources?: string[] | null\n        }\n        Update: {\n          answer?: string\n          created_at?: string\n          display_order?: number | null\n          faq_category?: string | null\n          id?: string\n          project_id?: string\n          question?: string\n          sources?: string[] | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"project_faqs_project_id_fkey\"\n            columns: [\"project_id\"]\n            isOneToOne: false\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      project_incentives: {\n        Row: {\n          amount_description: string | null\n          amount_max: number | null\n          amount_min: number | null\n          application_process: string | null\n          application_status: string | null\n          application_url: string | null\n          applied_amount: number | null\n          can_stack: boolean | null\n          confidence: string | null\n          created_at: string\n          eligibility_requirements: string | null\n          equipment_types_eligible: string[] | null\n          id: string\n          incentive_database_id: string | null\n          income_limits: string | null\n          income_qualified: boolean | null\n          program_name: string\n          program_type: string\n          project_id: string\n          source: string\n          stacking_notes: string | null\n          still_active: boolean | null\n          updated_at: string\n          user_plans_to_apply: boolean | null\n          verification_source: string | null\n        }\n        Insert: {\n          amount_description?: string | null\n          amount_max?: number | null\n          amount_min?: number | null\n          application_process?: string | null\n          application_status?: string | null\n          application_url?: string | null\n          applied_amount?: number | null\n          can_stack?: boolean | null\n          confidence?: string | null\n          created_at?: string\n          eligibility_requirements?: string | null\n          equipment_types_eligible?: string[] | null\n          id?: string\n          incentive_database_id?: string | null\n          income_limits?: string | null\n          income_qualified?: boolean | null\n          program_name: string\n          program_type: string\n          project_id: string\n          source: string\n          stacking_notes?: string | null\n          still_active?: boolean | null\n          updated_at?: string\n          user_plans_to_apply?: boolean | null\n          verification_source?: string | null\n        }\n        Update: {\n          amount_description?: string | null\n          amount_max?: number | null\n          amount_min?: number | null\n          application_process?: string | null\n          application_status?: string | null\n          application_url?: string | null\n          applied_amount?: number | null\n          can_stack?: boolean | null\n          confidence?: string | null\n          created_at?: string\n          eligibility_requirements?: string | null\n          equipment_types_eligible?: string[] | null\n          id?: string\n          incentive_database_id?: string | null\n          income_limits?: string | null\n          income_qualified?: boolean | null\n          program_name?: string\n          program_type?: string\n          project_id?: string\n          source?: string\n          stacking_notes?: string | null\n          still_active?: boolean | null\n          updated_at?: string\n          user_plans_to_apply?: boolean | null\n          verification_source?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"project_incentives_incentive_database_id_fkey\"\n            columns: [\"incentive_database_id\"]\n            isOneToOne: false\n            referencedRelation: \"incentive_program_database\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"project_incentives_project_id_fkey\"\n            columns: [\"project_id\"]\n            isOneToOne: false\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      project_qii_checklist: {\n        Row: {\n          checklist_item_key: string\n          created_at: string\n          id: string\n          is_verified: boolean | null\n          notes: string | null\n          photo_url: string | null\n          project_id: string\n          updated_at: string\n          verified_at: string | null\n          verified_by: string | null\n        }\n        Insert: {\n          checklist_item_key: string\n          created_at?: string\n          id?: string\n          is_verified?: boolean | null\n          notes?: string | null\n          photo_url?: string | null\n          project_id: string\n          updated_at?: string\n          verified_at?: string | null\n          verified_by?: string | null\n        }\n        Update: {\n          checklist_item_key?: string\n          created_at?: string\n          id?: string\n          is_verified?: boolean | null\n          notes?: string | null\n          photo_url?: string | null\n          project_id?: string\n          updated_at?: string\n          verified_at?: string | null\n          verified_by?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"project_qii_checklist_project_id_fkey\"\n            columns: [\"project_id\"]\n            isOneToOne: false\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      project_requirements: {\n        Row: {\n          additional_notes: string | null\n          budget_range: string | null\n          completed_at: string | null\n          created_at: string\n          id: string\n          must_have_features: string[] | null\n          nice_to_have_features: string[] | null\n          priority_efficiency: number | null\n          priority_price: number | null\n          priority_reputation: number | null\n          priority_timeline: number | null\n          priority_warranty: number | null\n          project_id: string\n          specific_concerns: string[] | null\n          timeline_urgency: string | null\n          updated_at: string\n        }\n        Insert: {\n          additional_notes?: string | null\n          budget_range?: string | null\n          completed_at?: string | null\n          created_at?: string\n          id?: string\n          must_have_features?: string[] | null\n          nice_to_have_features?: string[] | null\n          priority_efficiency?: number | null\n          priority_price?: number | null\n          priority_reputation?: number | null\n          priority_timeline?: number | null\n          priority_warranty?: number | null\n          project_id: string\n          specific_concerns?: string[] | null\n          timeline_urgency?: string | null\n          updated_at?: string\n        }\n        Update: {\n          additional_notes?: string | null\n          budget_range?: string | null\n          completed_at?: string | null\n          created_at?: string\n          id?: string\n          must_have_features?: string[] | null\n          nice_to_have_features?: string[] | null\n          priority_efficiency?: number | null\n          priority_price?: number | null\n          priority_reputation?: number | null\n          priority_timeline?: number | null\n          priority_warranty?: number | null\n          project_id?: string\n          specific_concerns?: string[] | null\n          timeline_urgency?: string | null\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"project_requirements_project_id_fkey\"\n            columns: [\"project_id\"]\n            isOneToOne: true\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      projects: {\n        Row: {\n          add_zones: number | null\n          analysis_queued_at: string | null\n          cooling_load_calculated: number | null\n          created_at: string\n          data_sharing_consent: boolean\n          data_sharing_consented_at: string | null\n          decision_date: string | null\n          decision_notes: string | null\n          demo_description: string | null\n          desired_hspf: number | null\n          desired_seer: number | null\n          desired_start_date: string | null\n          electrical_panel_amps: number | null\n          financing_interested: boolean | null\n          flexibility: string | null\n          heat_pump_type: Database[\"public\"][\"Enums\"][\"heat_pump_type\"] | null\n          heating_load_calculated: number | null\n          id: string\n          min_seer_requirement: number | null\n          must_have_features: string[] | null\n          notification_email: string | null\n          notification_sent_at: string | null\n          notify_on_completion: boolean\n          project_name: string\n          replace_air_handler: boolean | null\n          replace_ductwork: boolean | null\n          requires_electrical_upgrade: boolean | null\n          rerun_count: number\n          selected_bid_id: string | null\n          session_id: string | null\n          status: Database[\"public\"][\"Enums\"][\"project_status\"] | null\n          system_size_btu: number | null\n          system_size_tons: number | null\n          updated_at: string\n          user_id: string\n        }\n        Insert: {\n          add_zones?: number | null\n          analysis_queued_at?: string | null\n          cooling_load_calculated?: number | null\n          created_at?: string\n          data_sharing_consent?: boolean\n          data_sharing_consented_at?: string | null\n          decision_date?: string | null\n          decision_notes?: string | null\n          demo_description?: string | null\n          desired_hspf?: number | null\n          desired_seer?: number | null\n          desired_start_date?: string | null\n          electrical_panel_amps?: number | null\n          financing_interested?: boolean | null\n          flexibility?: string | null\n          heat_pump_type?: Database[\"public\"][\"Enums\"][\"heat_pump_type\"] | null\n          heating_load_calculated?: number | null\n          id?: string\n          min_seer_requirement?: number | null\n          must_have_features?: string[] | null\n          notification_email?: string | null\n          notification_sent_at?: string | null\n          notify_on_completion?: boolean\n          project_name?: string\n          replace_air_handler?: boolean | null\n          replace_ductwork?: boolean | null\n          requires_electrical_upgrade?: boolean | null\n          rerun_count?: number\n          selected_bid_id?: string | null\n          session_id?: string | null\n          status?: Database[\"public\"][\"Enums\"][\"project_status\"] | null\n          system_size_btu?: number | null\n          system_size_tons?: number | null\n          updated_at?: string\n          user_id: string\n        }\n        Update: {\n          add_zones?: number | null\n          analysis_queued_at?: string | null\n          cooling_load_calculated?: number | null\n          created_at?: string\n          data_sharing_consent?: boolean\n          data_sharing_consented_at?: string | null\n          decision_date?: string | null\n          decision_notes?: string | null\n          demo_description?: string | null\n          desired_hspf?: number | null\n          desired_seer?: number | null\n          desired_start_date?: string | null\n          electrical_panel_amps?: number | null\n          financing_interested?: boolean | null\n          flexibility?: string | null\n          heat_pump_type?: Database[\"public\"][\"Enums\"][\"heat_pump_type\"] | null\n          heating_load_calculated?: number | null\n          id?: string\n          min_seer_requirement?: number | null\n          must_have_features?: string[] | null\n          notification_email?: string | null\n          notification_sent_at?: string | null\n          notify_on_completion?: boolean\n          project_name?: string\n          replace_air_handler?: boolean | null\n          replace_ductwork?: boolean | null\n          requires_electrical_upgrade?: boolean | null\n          rerun_count?: number\n          selected_bid_id?: string | null\n          session_id?: string | null\n          status?: Database[\"public\"][\"Enums\"][\"project_status\"] | null\n          system_size_btu?: number | null\n          system_size_tons?: number | null\n          updated_at?: string\n          user_id?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"fk_projects_selected_bid\"\n            columns: [\"selected_bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"bids\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"fk_projects_selected_bid\"\n            columns: [\"selected_bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_contractors\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"fk_projects_selected_bid\"\n            columns: [\"selected_bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_equipment\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"fk_projects_selected_bid\"\n            columns: [\"selected_bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_compare_scope\"\n            referencedColumns: [\"bid_id\"]\n          },\n          {\n            foreignKeyName: \"fk_projects_selected_bid\"\n            columns: [\"selected_bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_full\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"fk_projects_selected_bid\"\n            columns: [\"selected_bid_id\"]\n            isOneToOne: false\n            referencedRelation: \"v_bid_summary\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"projects_user_id_fkey\"\n            columns: [\"user_id\"]\n            isOneToOne: false\n            referencedRelation: \"users_ext\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      user_feedback: {\n        Row: {\n          created_at: string\n          id: string\n          message: string\n          timestamp: string | null\n          type: string\n          url: string | null\n          user_agent: string | null\n        }\n        Insert: {\n          created_at?: string\n          id?: string\n          message: string\n          timestamp?: string | null\n          type: string\n          url?: string | null\n          user_agent?: string | null\n        }\n        Update: {\n          created_at?: string\n          id?: string\n          message?: string\n          timestamp?: string | null\n          type?: string\n          url?: string | null\n          user_agent?: string | null\n        }\n        Relationships: []\n      }\n      users_ext: {\n        Row: {\n          annual_cooling_cost: number | null\n          annual_heating_cost: number | null\n          auth_user_id: string | null\n          created_at: string\n          current_cooling_type: string | null\n          current_heating_type: string | null\n          current_system_age: number | null\n          electric_utility: string | null\n          email: string\n          full_name: string | null\n          gas_utility: string | null\n          id: string\n          partner_code: string | null\n          phone: string | null\n          property_address: string | null\n          property_city: string | null\n          property_state: string | null\n          property_type: string | null\n          property_zip: string | null\n          referral_source: string | null\n          square_footage: number | null\n          updated_at: string\n          year_built: number | null\n        }\n        Insert: {\n          annual_cooling_cost?: number | null\n          annual_heating_cost?: number | null\n          auth_user_id?: string | null\n          created_at?: string\n          current_cooling_type?: string | null\n          current_heating_type?: string | null\n          current_system_age?: number | null\n          electric_utility?: string | null\n          email: string\n          full_name?: string | null\n          gas_utility?: string | null\n          id?: string\n          partner_code?: string | null\n          phone?: string | null\n          property_address?: string | null\n          property_city?: string | null\n          property_state?: string | null\n          property_type?: string | null\n          property_zip?: string | null\n          referral_source?: string | null\n          square_footage?: number | null\n          updated_at?: string\n          year_built?: number | null\n        }\n        Update: {\n          annual_cooling_cost?: number | null\n          annual_heating_cost?: number | null\n          auth_user_id?: string | null\n          created_at?: string\n          current_cooling_type?: string | null\n          current_heating_type?: string | null\n          current_system_age?: number | null\n          electric_utility?: string | null\n          email?: string\n          full_name?: string | null\n          gas_utility?: string | null\n          id?: string\n          partner_code?: string | null\n          phone?: string | null\n          property_address?: string | null\n          property_city?: string | null\n          property_state?: string | null\n          property_type?: string | null\n          property_zip?: string | null\n          referral_source?: string | null\n          square_footage?: number | null\n          updated_at?: string\n          year_built?: number | null\n        }\n        Relationships: []\n      }\n      verified_sessions: {\n        Row: {\n          created_at: string\n          email: string\n          expires_at: string\n          id: string\n          ip_address: string | null\n          session_token: string\n          user_agent: string | null\n        }\n        Insert: {\n          created_at?: string\n          email: string\n          expires_at: string\n          id?: string\n          ip_address?: string | null\n          session_token: string\n          user_agent?: string | null\n        }\n        Update: {\n          created_at?: string\n          email?: string\n          expires_at?: string\n          id?: string\n          ip_address?: string | null\n          session_token?: string\n          user_agent?: string | null\n        }\n        Relationships: []\n      }\n    }\n    Views: {\n      admin_stats: {\n        Row: {\n          analyzing_projects: number | null\n          community_bid_count: number | null\n          community_contractor_count: number | null\n          comparing_projects: number | null\n          completed_projects: number | null\n          draft_projects: number | null\n          generated_at: string | null\n          processed_pdfs: number | null\n          total_bids: number | null\n          total_pdfs: number | null\n          total_projects: number | null\n          total_runs: number | null\n          total_users: number | null\n          unique_contractors: number | null\n        }\n        Relationships: []\n      }\n      v_bid_compare_contractors: {\n        Row: {\n          bbb_accredited: boolean | null\n          bbb_complaints_3yr: number | null\n          bbb_rating: string | null\n          bid_contractor_id: string | null\n          bid_id: string | null\n          bonded: boolean | null\n          certifications: string[] | null\n          company: string | null\n          contact_name: string | null\n          contractor_name: string | null\n          email: string | null\n          employee_count: number | null\n          google_rating: number | null\n          google_review_count: number | null\n          insurance_verified: boolean | null\n          license: string | null\n          license_expiration_date: string | null\n          license_state: string | null\n          license_status: string | null\n          name: string | null\n          overall_score: number | null\n          phone: string | null\n          positive_indicators: Json | null\n          project_id: string | null\n          red_flags: Json | null\n          research_confidence: number | null\n          research_notes: string | null\n          service_area: string | null\n          total_installs: number | null\n          verification_date: string | null\n          website: string | null\n          year_established: number | null\n          years_in_business: number | null\n          yelp_rating: number | null\n          yelp_review_count: number | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"bids_project_id_fkey\"\n            columns: [\"project_id\"]\n            isOneToOne: false\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      v_bid_compare_equipment: {\n        Row: {\n          afue_rating: number | null\n          amperage_draw: number | null\n          bid_id: string | null\n          brand: string | null\n          capacity_btu: number | null\n          capacity_tons: number | null\n          compressor_warranty_years: number | null\n          confidence: Database[\"public\"][\"Enums\"][\"confidence_level\"] | null\n          contractor_name: string | null\n          cop: number | null\n          eer_rating: number | null\n          energy_star_certified: boolean | null\n          energy_star_most_efficient: boolean | null\n          equipment_cost: number | null\n          equipment_id: string | null\n          equipment_type: string | null\n          fuel_type: string | null\n          hspf_rating: number | null\n          hspf2_rating: number | null\n          minimum_circuit_amperage: number | null\n          model_name: string | null\n          model_number: string | null\n          project_id: string | null\n          refrigerant_type: string | null\n          seer_rating: number | null\n          seer2_rating: number | null\n          sound_level_db: number | null\n          stages: number | null\n          system_role: string | null\n          system_type: string | null\n          variable_speed: boolean | null\n          voltage: number | null\n          warranty_years: number | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"bids_project_id_fkey\"\n            columns: [\"project_id\"]\n            isOneToOne: false\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      v_bid_compare_scope: {\n        Row: {\n          accessories: Json | null\n          air_handler_detail: string | null\n          air_handler_included: boolean | null\n          bid_id: string | null\n          breaker_size_required: number | null\n          commissioning_detail: string | null\n          commissioning_included: boolean | null\n          contractor_name: string | null\n          dedicated_circuit_included: boolean | null\n          disconnect_detail: string | null\n          disconnect_included: boolean | null\n          disposal_detail: string | null\n          disposal_included: boolean | null\n          drain_line_detail: string | null\n          drain_line_included: boolean | null\n          ductwork_detail: string | null\n          ductwork_included: boolean | null\n          electrical_detail: string | null\n          electrical_included: boolean | null\n          electrical_notes: string | null\n          electrical_permit_included: boolean | null\n          exclusions: string[] | null\n          existing_panel_amps: number | null\n          inclusions: string[] | null\n          line_items: Json | null\n          line_set_detail: string | null\n          line_set_included: boolean | null\n          load_calculation_included: boolean | null\n          manual_j_detail: string | null\n          manual_j_included: boolean | null\n          pad_detail: string | null\n          pad_included: boolean | null\n          panel_assessment_included: boolean | null\n          panel_upgrade_cost: number | null\n          panel_upgrade_included: boolean | null\n          permit_detail: string | null\n          permit_included: boolean | null\n          project_id: string | null\n          proposed_panel_amps: number | null\n          scope_id: string | null\n          summary: string | null\n          thermostat_detail: string | null\n          thermostat_included: boolean | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"bids_project_id_fkey\"\n            columns: [\"project_id\"]\n            isOneToOne: false\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      v_bid_full: {\n        Row: {\n          accessories: Json | null\n          additional_warranty_details: string | null\n          bc_bbb_accredited: boolean | null\n          bc_bbb_rating: string | null\n          bc_certifications: string[] | null\n          bc_company: string | null\n          bc_email: string | null\n          bc_google_rating: number | null\n          bc_google_review_count: number | null\n          bc_license: string | null\n          bc_license_state: string | null\n          bc_license_status: string | null\n          bc_name: string | null\n          bc_phone: string | null\n          bc_research_confidence: number | null\n          bc_website: string | null\n          bc_years_in_business: number | null\n          bid_date: string | null\n          bid_index: number | null\n          completeness_score: number | null\n          compressor_warranty_years: number | null\n          contractor_name: string | null\n          created_at: string | null\n          deposit_percentage: number | null\n          deposit_required: number | null\n          disposal_cost: number | null\n          disposal_included: boolean | null\n          ductwork_included: boolean | null\n          electrical_cost: number | null\n          electrical_included: boolean | null\n          electrical_notes: string | null\n          equipment_cost: number | null\n          equipment_warranty_years: number | null\n          estimated_days: number | null\n          estimated_rebates: number | null\n          existing_panel_amps: number | null\n          extraction_confidence:\n            | Database[\"public\"][\"Enums\"][\"confidence_level\"]\n            | null\n          extraction_notes: string | null\n          financing_offered: boolean | null\n          financing_terms: string | null\n          id: string | null\n          is_favorite: boolean | null\n          labor_cost: number | null\n          labor_warranty_years: number | null\n          line_items: Json | null\n          manual_j_included: boolean | null\n          materials_cost: number | null\n          overall_score: number | null\n          panel_upgrade_included: boolean | null\n          payment_schedule: string | null\n          pdf_upload_id: string | null\n          permit_cost: number | null\n          permit_included: boolean | null\n          positive_indicators: Json | null\n          project_id: string | null\n          proposed_panel_amps: number | null\n          quality_score: number | null\n          ranking_recommendation: string | null\n          red_flags: Json | null\n          scope_summary: string | null\n          start_date_available: string | null\n          system_type: string | null\n          thermostat_included: boolean | null\n          total_after_rebates: number | null\n          total_before_rebates: number | null\n          total_bid_amount: number | null\n          updated_at: string | null\n          user_notes: string | null\n          valid_until: string | null\n          value_score: number | null\n          verified_at: string | null\n          verified_by_user: boolean | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"bids_pdf_upload_id_fkey\"\n            columns: [\"pdf_upload_id\"]\n            isOneToOne: false\n            referencedRelation: \"pdf_uploads\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"bids_project_id_fkey\"\n            columns: [\"project_id\"]\n            isOneToOne: false\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      v_bid_summary: {\n        Row: {\n          bbb_accredited: boolean | null\n          bbb_rating: string | null\n          certifications: string[] | null\n          completeness_score: number | null\n          contractor_company: string | null\n          contractor_name: string | null\n          created_at: string | null\n          equipment_warranty_years: number | null\n          estimated_days: number | null\n          estimated_rebates: number | null\n          google_rating: number | null\n          google_review_count: number | null\n          id: string | null\n          insurance_verified: boolean | null\n          is_favorite: boolean | null\n          labor_warranty_years: number | null\n          license_status: string | null\n          overall_score: number | null\n          positive_indicators: Json | null\n          project_id: string | null\n          quality_score: number | null\n          ranking_recommendation: string | null\n          red_flags: Json | null\n          system_type: string | null\n          total_after_rebates: number | null\n          total_bid_amount: number | null\n          value_score: number | null\n          years_in_business: number | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"bids_project_id_fkey\"\n            columns: [\"project_id\"]\n            isOneToOne: false\n            referencedRelation: \"projects\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      v_community_pricing: {\n        Row: {\n          bid_date: string | null\n          certifications: string[] | null\n          equipment_cost: number | null\n          equipment_type: string | null\n          estimated_days: number | null\n          google_rating: number | null\n          includes_ductwork: boolean | null\n          includes_electrical: boolean | null\n          includes_permit: boolean | null\n          labor_cost: number | null\n          labor_warranty_years: number | null\n          primary_capacity_tons: number | null\n          primary_seer_rating: number | null\n          state: string | null\n          total_bid_amount: number | null\n          years_in_business: number | null\n          zip_code_area: string | null\n        }\n        Relationships: []\n      }\n    }\n    Functions: {\n      cleanup_expired_verifications: { Args: never; Returns: undefined }\n      validate_admin_session: {\n        Args: { token: string }\n        Returns: {\n          admin_id: string\n          email: string\n          is_super_admin: boolean\n          name: string\n        }[]\n      }\n      verify_admin_password: {\n        Args: { input_password: string; stored_hash: string }\n        Returns: boolean\n      }\n    }\n    Enums: {\n      confidence_level: \"high\" | \"medium\" | \"low\" | \"manual\"\n      heat_pump_type:\n        | \"air_source\"\n        | \"ground_source\"\n        | \"water_source\"\n        | \"mini_split\"\n        | \"ducted\"\n        | \"hybrid\"\n        | \"other\"\n      line_item_type:\n        | \"equipment\"\n        | \"labor\"\n        | \"materials\"\n        | \"permit\"\n        | \"disposal\"\n        | \"electrical\"\n        | \"ductwork\"\n        | \"thermostat\"\n        | \"rebate_processing\"\n        | \"warranty\"\n        | \"other\"\n      pdf_status:\n        | \"uploaded\"\n        | \"processing\"\n        | \"extracted\"\n        | \"review_needed\"\n        | \"failed\"\n        | \"verified\"\n      project_status:\n        | \"draft\"\n        | \"specifications\"\n        | \"collecting_bids\"\n        | \"analyzing\"\n        | \"comparing\"\n        | \"decided\"\n        | \"in_progress\"\n        | \"completed\"\n        | \"cancelled\"\n    }\n    CompositeTypes: {\n      [_ in never]: never\n    }\n  }\n}\n\ntype DatabaseWithoutInternals = Omit<Database, \"__InternalSupabase\">\n\ntype DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, \"public\">]\n\nexport type Tables<\n  DefaultSchemaTableNameOrOptions extends\n    | keyof (DefaultSchema[\"Tables\"] & DefaultSchema[\"Views\"])\n    | { schema: keyof DatabaseWithoutInternals },\n  TableName extends DefaultSchemaTableNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"] &\n        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Views\"])\n    : never = never,\n> = DefaultSchemaTableNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"] &\n      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Views\"])[TableName] extends {\n      Row: infer R\n    }\n    ? R\n    : never\n  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema[\"Tables\"] &\n        DefaultSchema[\"Views\"])\n    ? (DefaultSchema[\"Tables\"] &\n        DefaultSchema[\"Views\"])[DefaultSchemaTableNameOrOptions] extends {\n        Row: infer R\n      }\n      ? R\n      : never\n    : never\n\nexport type TablesInsert<\n  DefaultSchemaTableNameOrOptions extends\n    | keyof DefaultSchema[\"Tables\"]\n    | { schema: keyof DatabaseWithoutInternals },\n  TableName extends DefaultSchemaTableNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"]\n    : never = never,\n> = DefaultSchemaTableNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"][TableName] extends {\n      Insert: infer I\n    }\n    ? I\n    : never\n  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema[\"Tables\"]\n    ? DefaultSchema[\"Tables\"][DefaultSchemaTableNameOrOptions] extends {\n        Insert: infer I\n      }\n      ? I\n      : never\n    : never\n\nexport type TablesUpdate<\n  DefaultSchemaTableNameOrOptions extends\n    | keyof DefaultSchema[\"Tables\"]\n    | { schema: keyof DatabaseWithoutInternals },\n  TableName extends DefaultSchemaTableNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"]\n    : never = never,\n> = DefaultSchemaTableNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"][TableName] extends {\n      Update: infer U\n    }\n    ? U\n    : never\n  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema[\"Tables\"]\n    ? DefaultSchema[\"Tables\"][DefaultSchemaTableNameOrOptions] extends {\n        Update: infer U\n      }\n      ? U\n      : never\n    : never\n\nexport type Enums<\n  DefaultSchemaEnumNameOrOptions extends\n    | keyof DefaultSchema[\"Enums\"]\n    | { schema: keyof DatabaseWithoutInternals },\n  EnumName extends DefaultSchemaEnumNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions[\"schema\"]][\"Enums\"]\n    : never = never,\n> = DefaultSchemaEnumNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions[\"schema\"]][\"Enums\"][EnumName]\n  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema[\"Enums\"]\n    ? DefaultSchema[\"Enums\"][DefaultSchemaEnumNameOrOptions]\n    : never\n\nexport type CompositeTypes<\n  PublicCompositeTypeNameOrOptions extends\n    | keyof DefaultSchema[\"CompositeTypes\"]\n    | { schema: keyof DatabaseWithoutInternals },\n  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions[\"schema\"]][\"CompositeTypes\"]\n    : never = never,\n> = PublicCompositeTypeNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions[\"schema\"]][\"CompositeTypes\"][CompositeTypeName]\n  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema[\"CompositeTypes\"]\n    ? DefaultSchema[\"CompositeTypes\"][PublicCompositeTypeNameOrOptions]\n    : never\n\nexport const Constants = {\n  public: {\n    Enums: {\n      confidence_level: [\"high\", \"medium\", \"low\", \"manual\"],\n      heat_pump_type: [\n        \"air_source\",\n        \"ground_source\",\n        \"water_source\",\n        \"mini_split\",\n        \"ducted\",\n        \"hybrid\",\n        \"other\",\n      ],\n      line_item_type: [\n        \"equipment\",\n        \"labor\",\n        \"materials\",\n        \"permit\",\n        \"disposal\",\n        \"electrical\",\n        \"ductwork\",\n        \"thermostat\",\n        \"rebate_processing\",\n        \"warranty\",\n        \"other\",\n      ],\n      pdf_status: [\n        \"uploaded\",\n        \"processing\",\n        \"extracted\",\n        \"review_needed\",\n        \"failed\",\n        \"verified\",\n      ],\n      project_status: [\n        \"draft\",\n        \"specifications\",\n        \"collecting_bids\",\n        \"analyzing\",\n        \"comparing\",\n        \"decided\",\n        \"in_progress\",\n        \"completed\",\n        \"cancelled\",\n      ],\n    },\n  },\n} as const\n"}
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
+  public: {
+    Tables: {
+      admin_sessions: {
+        Row: {
+          admin_user_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          session_token: string
+        }
+        Insert: {
+          admin_user_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          session_token: string
+        }
+        Update: {
+          admin_user_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          session_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_sessions_admin_user_id_fkey"
+            columns: ["admin_user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_super_admin: boolean | null
+          last_login_at: string | null
+          name: string | null
+          password_hash: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_super_admin?: boolean | null
+          last_login_at?: string | null
+          name?: string | null
+          password_hash: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_super_admin?: boolean | null
+          last_login_at?: string | null
+          name?: string | null
+          password_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      analytics_events: {
+        Row: {
+          client_timestamp: string | null
+          created_at: string
+          event_category: string | null
+          event_data: Json | null
+          event_name: string
+          event_type: string
+          id: string
+          page_url: string | null
+          project_id: string | null
+          referrer: string | null
+          session_id: string | null
+          user_agent: string | null
+          user_email: string | null
+        }
+        Insert: {
+          client_timestamp?: string | null
+          created_at?: string
+          event_category?: string | null
+          event_data?: Json | null
+          event_name: string
+          event_type: string
+          id?: string
+          page_url?: string | null
+          project_id?: string | null
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+        }
+        Update: {
+          client_timestamp?: string | null
+          created_at?: string
+          event_category?: string | null
+          event_data?: Json | null
+          event_name?: string
+          event_type?: string
+          id?: string
+          page_url?: string | null
+          project_id?: string | null
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+        }
+        Relationships: []
+      }
+      bid_contractors: {
+        Row: {
+          address: string | null
+          bbb_accredited: boolean | null
+          bbb_complaints_3yr: number | null
+          bbb_rating: string | null
+          bid_id: string
+          bonded: boolean | null
+          certifications: string[] | null
+          company: string | null
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          employee_count: number | null
+          google_rating: number | null
+          google_review_count: number | null
+          id: string
+          insurance_verified: boolean | null
+          license: string | null
+          license_expiration_date: string | null
+          license_state: string | null
+          license_status: string | null
+          name: string
+          phone: string | null
+          research_confidence: number | null
+          research_notes: string | null
+          service_area: string | null
+          total_installs: number | null
+          updated_at: string
+          verification_date: string | null
+          website: string | null
+          year_established: number | null
+          years_in_business: number | null
+          yelp_rating: number | null
+          yelp_review_count: number | null
+        }
+        Insert: {
+          address?: string | null
+          bbb_accredited?: boolean | null
+          bbb_complaints_3yr?: number | null
+          bbb_rating?: string | null
+          bid_id: string
+          bonded?: boolean | null
+          certifications?: string[] | null
+          company?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          employee_count?: number | null
+          google_rating?: number | null
+          google_review_count?: number | null
+          id?: string
+          insurance_verified?: boolean | null
+          license?: string | null
+          license_expiration_date?: string | null
+          license_state?: string | null
+          license_status?: string | null
+          name: string
+          phone?: string | null
+          research_confidence?: number | null
+          research_notes?: string | null
+          service_area?: string | null
+          total_installs?: number | null
+          updated_at?: string
+          verification_date?: string | null
+          website?: string | null
+          year_established?: number | null
+          years_in_business?: number | null
+          yelp_rating?: number | null
+          yelp_review_count?: number | null
+        }
+        Update: {
+          address?: string | null
+          bbb_accredited?: boolean | null
+          bbb_complaints_3yr?: number | null
+          bbb_rating?: string | null
+          bid_id?: string
+          bonded?: boolean | null
+          certifications?: string[] | null
+          company?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          employee_count?: number | null
+          google_rating?: number | null
+          google_review_count?: number | null
+          id?: string
+          insurance_verified?: boolean | null
+          license?: string | null
+          license_expiration_date?: string | null
+          license_state?: string | null
+          license_status?: string | null
+          name?: string
+          phone?: string | null
+          research_confidence?: number | null
+          research_notes?: string | null
+          service_area?: string | null
+          total_installs?: number | null
+          updated_at?: string
+          verification_date?: string | null
+          website?: string | null
+          year_established?: number | null
+          years_in_business?: number | null
+          yelp_rating?: number | null
+          yelp_review_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_contractors_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_contractors_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_compare_contractors"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_contractors_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_compare_equipment"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_contractors_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_compare_scope"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_contractors_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_contractors_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_equipment: {
+        Row: {
+          afue_rating: number | null
+          amperage_draw: number | null
+          bid_id: string
+          brand: string
+          capacity_btu: number | null
+          capacity_tons: number | null
+          compressor_warranty_years: number | null
+          confidence: Database["public"]["Enums"]["confidence_level"] | null
+          cop: number | null
+          created_at: string
+          eer_rating: number | null
+          energy_star_certified: boolean | null
+          energy_star_most_efficient: boolean | null
+          equipment_cost: number | null
+          equipment_type: string
+          fuel_type: string | null
+          hspf_rating: number | null
+          hspf2_rating: number | null
+          id: string
+          minimum_circuit_amperage: number | null
+          model_name: string | null
+          model_number: string | null
+          refrigerant_type: string | null
+          seer_rating: number | null
+          seer2_rating: number | null
+          sound_level_db: number | null
+          stages: number | null
+          system_role: string | null
+          variable_speed: boolean | null
+          voltage: number | null
+          warranty_years: number | null
+        }
+        Insert: {
+          afue_rating?: number | null
+          amperage_draw?: number | null
+          bid_id: string
+          brand: string
+          capacity_btu?: number | null
+          capacity_tons?: number | null
+          compressor_warranty_years?: number | null
+          confidence?: Database["public"]["Enums"]["confidence_level"] | null
+          cop?: number | null
+          created_at?: string
+          eer_rating?: number | null
+          energy_star_certified?: boolean | null
+          energy_star_most_efficient?: boolean | null
+          equipment_cost?: number | null
+          equipment_type: string
+          fuel_type?: string | null
+          hspf_rating?: number | null
+          hspf2_rating?: number | null
+          id?: string
+          minimum_circuit_amperage?: number | null
+          model_name?: string | null
+          model_number?: string | null
+          refrigerant_type?: string | null
+          seer_rating?: number | null
+          seer2_rating?: number | null
+          sound_level_db?: number | null
+          stages?: number | null
+          system_role?: string | null
+          variable_speed?: boolean | null
+          voltage?: number | null
+          warranty_years?: number | null
+        }
+        Update: {
+          afue_rating?: number | null
+          amperage_draw?: number | null
+          bid_id?: string
+          brand?: string
+          capacity_btu?: number | null
+          capacity_tons?: number | null
+          compressor_warranty_years?: number | null
+          confidence?: Database["public"]["Enums"]["confidence_level"] | null
+          cop?: number | null
+          created_at?: string
+          eer_rating?: number | null
+          energy_star_certified?: boolean | null
+          energy_star_most_efficient?: boolean | null
+          equipment_cost?: number | null
+          equipment_type?: string
+          fuel_type?: string | null
+          hspf_rating?: number | null
+          hspf2_rating?: number | null
+          id?: string
+          minimum_circuit_amperage?: number | null
+          model_name?: string | null
+          model_number?: string | null
+          refrigerant_type?: string | null
+          seer_rating?: number | null
+          seer2_rating?: number | null
+          sound_level_db?: number | null
+          stages?: number | null
+          system_role?: string | null
+          variable_speed?: boolean | null
+          voltage?: number | null
+          warranty_years?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_equipment_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_equipment_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_contractors"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_equipment_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_equipment"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_equipment_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_scope"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_equipment_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_equipment_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_faqs: {
+        Row: {
+          answer: string
+          answer_confidence: string | null
+          bid_id: string
+          category: string | null
+          created_at: string
+          display_order: number | null
+          id: string
+          question: string
+          sources: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          answer: string
+          answer_confidence?: string | null
+          bid_id: string
+          category?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          question: string
+          sources?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          answer_confidence?: string | null
+          bid_id?: string
+          category?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          question?: string
+          sources?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_faqs_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_faqs_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_contractors"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_faqs_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_equipment"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_faqs_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_scope"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_faqs_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_faqs_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_scope: {
+        Row: {
+          accessories: Json | null
+          air_handler_detail: string | null
+          air_handler_included: boolean | null
+          bid_id: string
+          breaker_size_required: number | null
+          commissioning_detail: string | null
+          commissioning_included: boolean | null
+          created_at: string
+          dedicated_circuit_included: boolean | null
+          disconnect_detail: string | null
+          disconnect_included: boolean | null
+          disposal_detail: string | null
+          disposal_included: boolean | null
+          drain_line_detail: string | null
+          drain_line_included: boolean | null
+          ductwork_detail: string | null
+          ductwork_included: boolean | null
+          electrical_detail: string | null
+          electrical_included: boolean | null
+          electrical_notes: string | null
+          electrical_permit_included: boolean | null
+          exclusions: string[] | null
+          existing_panel_amps: number | null
+          id: string
+          inclusions: string[] | null
+          line_items: Json | null
+          line_set_detail: string | null
+          line_set_included: boolean | null
+          load_calculation_included: boolean | null
+          manual_j_detail: string | null
+          manual_j_included: boolean | null
+          pad_detail: string | null
+          pad_included: boolean | null
+          panel_assessment_included: boolean | null
+          panel_upgrade_cost: number | null
+          panel_upgrade_included: boolean | null
+          permit_detail: string | null
+          permit_included: boolean | null
+          proposed_panel_amps: number | null
+          summary: string | null
+          thermostat_detail: string | null
+          thermostat_included: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          accessories?: Json | null
+          air_handler_detail?: string | null
+          air_handler_included?: boolean | null
+          bid_id: string
+          breaker_size_required?: number | null
+          commissioning_detail?: string | null
+          commissioning_included?: boolean | null
+          created_at?: string
+          dedicated_circuit_included?: boolean | null
+          disconnect_detail?: string | null
+          disconnect_included?: boolean | null
+          disposal_detail?: string | null
+          disposal_included?: boolean | null
+          drain_line_detail?: string | null
+          drain_line_included?: boolean | null
+          ductwork_detail?: string | null
+          ductwork_included?: boolean | null
+          electrical_detail?: string | null
+          electrical_included?: boolean | null
+          electrical_notes?: string | null
+          electrical_permit_included?: boolean | null
+          exclusions?: string[] | null
+          existing_panel_amps?: number | null
+          id?: string
+          inclusions?: string[] | null
+          line_items?: Json | null
+          line_set_detail?: string | null
+          line_set_included?: boolean | null
+          load_calculation_included?: boolean | null
+          manual_j_detail?: string | null
+          manual_j_included?: boolean | null
+          pad_detail?: string | null
+          pad_included?: boolean | null
+          panel_assessment_included?: boolean | null
+          panel_upgrade_cost?: number | null
+          panel_upgrade_included?: boolean | null
+          permit_detail?: string | null
+          permit_included?: boolean | null
+          proposed_panel_amps?: number | null
+          summary?: string | null
+          thermostat_detail?: string | null
+          thermostat_included?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          accessories?: Json | null
+          air_handler_detail?: string | null
+          air_handler_included?: boolean | null
+          bid_id?: string
+          breaker_size_required?: number | null
+          commissioning_detail?: string | null
+          commissioning_included?: boolean | null
+          created_at?: string
+          dedicated_circuit_included?: boolean | null
+          disconnect_detail?: string | null
+          disconnect_included?: boolean | null
+          disposal_detail?: string | null
+          disposal_included?: boolean | null
+          drain_line_detail?: string | null
+          drain_line_included?: boolean | null
+          ductwork_detail?: string | null
+          ductwork_included?: boolean | null
+          electrical_detail?: string | null
+          electrical_included?: boolean | null
+          electrical_notes?: string | null
+          electrical_permit_included?: boolean | null
+          exclusions?: string[] | null
+          existing_panel_amps?: number | null
+          id?: string
+          inclusions?: string[] | null
+          line_items?: Json | null
+          line_set_detail?: string | null
+          line_set_included?: boolean | null
+          load_calculation_included?: boolean | null
+          manual_j_detail?: string | null
+          manual_j_included?: boolean | null
+          pad_detail?: string | null
+          pad_included?: boolean | null
+          panel_assessment_included?: boolean | null
+          panel_upgrade_cost?: number | null
+          panel_upgrade_included?: boolean | null
+          permit_detail?: string | null
+          permit_included?: boolean | null
+          proposed_panel_amps?: number | null
+          summary?: string | null
+          thermostat_detail?: string | null
+          thermostat_included?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_scope_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_scope_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_compare_contractors"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_scope_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_compare_equipment"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_scope_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_compare_scope"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_scope_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_scope_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_scores: {
+        Row: {
+          bid_id: string
+          completeness_score: number | null
+          created_at: string
+          id: string
+          overall_score: number | null
+          positive_indicators: Json | null
+          quality_score: number | null
+          ranking_recommendation: string | null
+          red_flags: Json | null
+          score_confidence: number | null
+          scoring_notes: string | null
+          updated_at: string
+          value_score: number | null
+        }
+        Insert: {
+          bid_id: string
+          completeness_score?: number | null
+          created_at?: string
+          id?: string
+          overall_score?: number | null
+          positive_indicators?: Json | null
+          quality_score?: number | null
+          ranking_recommendation?: string | null
+          red_flags?: Json | null
+          score_confidence?: number | null
+          scoring_notes?: string | null
+          updated_at?: string
+          value_score?: number | null
+        }
+        Update: {
+          bid_id?: string
+          completeness_score?: number | null
+          created_at?: string
+          id?: string
+          overall_score?: number | null
+          positive_indicators?: Json | null
+          quality_score?: number | null
+          ranking_recommendation?: string | null
+          red_flags?: Json | null
+          score_confidence?: number | null
+          scoring_notes?: string | null
+          updated_at?: string
+          value_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_scores_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_scores_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_compare_contractors"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_scores_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_compare_equipment"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_scores_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_compare_scope"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "bid_scores_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_scores_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bids: {
+        Row: {
+          additional_warranty_details: string | null
+          bid_date: string | null
+          bid_index: number | null
+          compressor_warranty_years: number | null
+          contractor_name: string
+          created_at: string
+          deposit_percentage: number | null
+          deposit_required: number | null
+          disposal_cost: number | null
+          electrical_cost: number | null
+          equipment_cost: number | null
+          equipment_warranty_years: number | null
+          estimated_days: number | null
+          estimated_rebates: number | null
+          extraction_confidence:
+            | Database["public"]["Enums"]["confidence_level"]
+            | null
+          extraction_notes: string | null
+          financing_offered: boolean | null
+          financing_terms: string | null
+          id: string
+          is_favorite: boolean | null
+          labor_cost: number | null
+          labor_warranty_years: number | null
+          materials_cost: number | null
+          payment_schedule: string | null
+          pdf_upload_id: string | null
+          permit_cost: number | null
+          project_id: string
+          start_date_available: string | null
+          system_type: string | null
+          total_after_rebates: number | null
+          total_before_rebates: number | null
+          total_bid_amount: number
+          updated_at: string
+          user_notes: string | null
+          valid_until: string | null
+          verified_at: string | null
+          verified_by_user: boolean | null
+        }
+        Insert: {
+          additional_warranty_details?: string | null
+          bid_date?: string | null
+          bid_index?: number | null
+          compressor_warranty_years?: number | null
+          contractor_name: string
+          created_at?: string
+          deposit_percentage?: number | null
+          deposit_required?: number | null
+          disposal_cost?: number | null
+          electrical_cost?: number | null
+          equipment_cost?: number | null
+          equipment_warranty_years?: number | null
+          estimated_days?: number | null
+          estimated_rebates?: number | null
+          extraction_confidence?:
+            | Database["public"]["Enums"]["confidence_level"]
+            | null
+          extraction_notes?: string | null
+          financing_offered?: boolean | null
+          financing_terms?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          labor_cost?: number | null
+          labor_warranty_years?: number | null
+          materials_cost?: number | null
+          payment_schedule?: string | null
+          pdf_upload_id?: string | null
+          permit_cost?: number | null
+          project_id: string
+          start_date_available?: string | null
+          system_type?: string | null
+          total_after_rebates?: number | null
+          total_before_rebates?: number | null
+          total_bid_amount: number
+          updated_at?: string
+          user_notes?: string | null
+          valid_until?: string | null
+          verified_at?: string | null
+          verified_by_user?: boolean | null
+        }
+        Update: {
+          additional_warranty_details?: string | null
+          bid_date?: string | null
+          bid_index?: number | null
+          compressor_warranty_years?: number | null
+          contractor_name?: string
+          created_at?: string
+          deposit_percentage?: number | null
+          deposit_required?: number | null
+          disposal_cost?: number | null
+          electrical_cost?: number | null
+          equipment_cost?: number | null
+          equipment_warranty_years?: number | null
+          estimated_days?: number | null
+          estimated_rebates?: number | null
+          extraction_confidence?:
+            | Database["public"]["Enums"]["confidence_level"]
+            | null
+          extraction_notes?: string | null
+          financing_offered?: boolean | null
+          financing_terms?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          labor_cost?: number | null
+          labor_warranty_years?: number | null
+          materials_cost?: number | null
+          payment_schedule?: string | null
+          pdf_upload_id?: string | null
+          permit_cost?: number | null
+          project_id?: string
+          start_date_available?: string | null
+          system_type?: string | null
+          total_after_rebates?: number | null
+          total_before_rebates?: number | null
+          total_bid_amount?: number
+          updated_at?: string
+          user_notes?: string | null
+          valid_until?: string | null
+          verified_at?: string | null
+          verified_by_user?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_pdf_upload_id_fkey"
+            columns: ["pdf_upload_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_uploads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_bids: {
+        Row: {
+          bid_date: string | null
+          community_contractor_id: string | null
+          created_at: string
+          equipment_cost: number | null
+          equipment_type: string | null
+          estimated_days: number | null
+          id: string
+          includes_ductwork: boolean | null
+          includes_electrical: boolean | null
+          includes_permit: boolean | null
+          labor_cost: number | null
+          labor_warranty_years: number | null
+          primary_capacity_tons: number | null
+          primary_seer_rating: number | null
+          source_bid_id: string | null
+          state: string | null
+          total_bid_amount: number | null
+          zip_code_area: string | null
+        }
+        Insert: {
+          bid_date?: string | null
+          community_contractor_id?: string | null
+          created_at?: string
+          equipment_cost?: number | null
+          equipment_type?: string | null
+          estimated_days?: number | null
+          id?: string
+          includes_ductwork?: boolean | null
+          includes_electrical?: boolean | null
+          includes_permit?: boolean | null
+          labor_cost?: number | null
+          labor_warranty_years?: number | null
+          primary_capacity_tons?: number | null
+          primary_seer_rating?: number | null
+          source_bid_id?: string | null
+          state?: string | null
+          total_bid_amount?: number | null
+          zip_code_area?: string | null
+        }
+        Update: {
+          bid_date?: string | null
+          community_contractor_id?: string | null
+          created_at?: string
+          equipment_cost?: number | null
+          equipment_type?: string | null
+          estimated_days?: number | null
+          id?: string
+          includes_ductwork?: boolean | null
+          includes_electrical?: boolean | null
+          includes_permit?: boolean | null
+          labor_cost?: number | null
+          labor_warranty_years?: number | null
+          primary_capacity_tons?: number | null
+          primary_seer_rating?: number | null
+          source_bid_id?: string | null
+          state?: string | null
+          total_bid_amount?: number | null
+          zip_code_area?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_bids_community_contractor_id_fkey"
+            columns: ["community_contractor_id"]
+            isOneToOne: false
+            referencedRelation: "community_contractors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_bids_source_bid_id_fkey"
+            columns: ["source_bid_id"]
+            isOneToOne: true
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_bids_source_bid_id_fkey"
+            columns: ["source_bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_compare_contractors"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "community_bids_source_bid_id_fkey"
+            columns: ["source_bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_compare_equipment"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "community_bids_source_bid_id_fkey"
+            columns: ["source_bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_compare_scope"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "community_bids_source_bid_id_fkey"
+            columns: ["source_bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_bids_source_bid_id_fkey"
+            columns: ["source_bid_id"]
+            isOneToOne: true
+            referencedRelation: "v_bid_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_contractors: {
+        Row: {
+          bbb_accredited: boolean | null
+          bbb_rating: string | null
+          bidsmart_completed_on_time: boolean | null
+          bidsmart_overall_rating: number | null
+          bidsmart_would_recommend: boolean | null
+          certifications: string[] | null
+          created_at: string
+          employee_count: number | null
+          google_rating: number | null
+          id: string
+          service_area: string | null
+          source_project_id: string | null
+          state: string | null
+          updated_at: string
+          years_in_business: number | null
+          yelp_rating: number | null
+          zip_code_area: string | null
+        }
+        Insert: {
+          bbb_accredited?: boolean | null
+          bbb_rating?: string | null
+          bidsmart_completed_on_time?: boolean | null
+          bidsmart_overall_rating?: number | null
+          bidsmart_would_recommend?: boolean | null
+          certifications?: string[] | null
+          created_at?: string
+          employee_count?: number | null
+          google_rating?: number | null
+          id?: string
+          service_area?: string | null
+          source_project_id?: string | null
+          state?: string | null
+          updated_at?: string
+          years_in_business?: number | null
+          yelp_rating?: number | null
+          zip_code_area?: string | null
+        }
+        Update: {
+          bbb_accredited?: boolean | null
+          bbb_rating?: string | null
+          bidsmart_completed_on_time?: boolean | null
+          bidsmart_overall_rating?: number | null
+          bidsmart_would_recommend?: boolean | null
+          certifications?: string[] | null
+          created_at?: string
+          employee_count?: number | null
+          google_rating?: number | null
+          id?: string
+          service_area?: string | null
+          source_project_id?: string | null
+          state?: string | null
+          updated_at?: string
+          years_in_business?: number | null
+          yelp_rating?: number | null
+          zip_code_area?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_contractors_source_project_id_fkey"
+            columns: ["source_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contractor_installation_reviews: {
+        Row: {
+          bid_id: string
+          checklist_completeness_rating: number | null
+          communication_rating: number
+          completed_on_time: boolean
+          created_at: string
+          critical_items_verified: boolean
+          id: string
+          improvement_suggestions: string | null
+          issues_encountered: string[] | null
+          overall_rating: number
+          photo_documentation_provided: boolean
+          positive_comments: string | null
+          professionalism_rating: number
+          project_id: string
+          quality_of_work_rating: number
+          stayed_within_budget: boolean
+          timeliness_rating: number
+          updated_at: string
+          used_checklist: boolean
+          user_id: string
+          would_recommend: boolean
+        }
+        Insert: {
+          bid_id: string
+          checklist_completeness_rating?: number | null
+          communication_rating: number
+          completed_on_time: boolean
+          created_at?: string
+          critical_items_verified: boolean
+          id?: string
+          improvement_suggestions?: string | null
+          issues_encountered?: string[] | null
+          overall_rating: number
+          photo_documentation_provided: boolean
+          positive_comments?: string | null
+          professionalism_rating: number
+          project_id: string
+          quality_of_work_rating: number
+          stayed_within_budget: boolean
+          timeliness_rating: number
+          updated_at?: string
+          used_checklist?: boolean
+          user_id: string
+          would_recommend: boolean
+        }
+        Update: {
+          bid_id?: string
+          checklist_completeness_rating?: number | null
+          communication_rating?: number
+          completed_on_time?: boolean
+          created_at?: string
+          critical_items_verified?: boolean
+          id?: string
+          improvement_suggestions?: string | null
+          issues_encountered?: string[] | null
+          overall_rating?: number
+          photo_documentation_provided?: boolean
+          positive_comments?: string | null
+          professionalism_rating?: number
+          project_id?: string
+          quality_of_work_rating?: number
+          stayed_within_budget?: boolean
+          timeliness_rating?: number
+          updated_at?: string
+          used_checklist?: boolean
+          user_id?: string
+          would_recommend?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contractor_installation_reviews_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_installation_reviews_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_contractors"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "contractor_installation_reviews_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_equipment"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "contractor_installation_reviews_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_scope"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "contractor_installation_reviews_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_installation_reviews_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_installation_reviews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_installation_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_ext"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contractor_questions: {
+        Row: {
+          answer_text: string | null
+          answered_at: string | null
+          auto_generated: boolean | null
+          bid_id: string
+          category: string | null
+          concerning_answer_looks_like: string | null
+          context: string | null
+          created_at: string
+          display_order: number | null
+          generation_notes: string | null
+          good_answer_looks_like: string | null
+          id: string
+          is_answered: boolean | null
+          missing_field: string | null
+          priority: string | null
+          question_category: string | null
+          question_text: string
+          triggered_by: string | null
+        }
+        Insert: {
+          answer_text?: string | null
+          answered_at?: string | null
+          auto_generated?: boolean | null
+          bid_id: string
+          category?: string | null
+          concerning_answer_looks_like?: string | null
+          context?: string | null
+          created_at?: string
+          display_order?: number | null
+          generation_notes?: string | null
+          good_answer_looks_like?: string | null
+          id?: string
+          is_answered?: boolean | null
+          missing_field?: string | null
+          priority?: string | null
+          question_category?: string | null
+          question_text: string
+          triggered_by?: string | null
+        }
+        Update: {
+          answer_text?: string | null
+          answered_at?: string | null
+          auto_generated?: boolean | null
+          bid_id?: string
+          category?: string | null
+          concerning_answer_looks_like?: string | null
+          context?: string | null
+          created_at?: string
+          display_order?: number | null
+          generation_notes?: string | null
+          good_answer_looks_like?: string | null
+          id?: string
+          is_answered?: boolean | null
+          missing_field?: string | null
+          priority?: string | null
+          question_category?: string | null
+          question_text?: string
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contractor_questions_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_questions_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_contractors"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "contractor_questions_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_equipment"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "contractor_questions_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_scope"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "contractor_questions_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_questions_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_verifications: {
+        Row: {
+          code: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          verified: boolean | null
+          verified_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          verified?: boolean | null
+          verified_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          verified?: boolean | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
+      incentive_program_database: {
+        Row: {
+          application_process: string | null
+          application_url: string | null
+          available_nationwide: boolean | null
+          available_states: string[] | null
+          available_utilities: string[] | null
+          available_zip_codes: string[] | null
+          cannot_stack_with: string[] | null
+          created_at: string
+          description: string | null
+          discovered_by: string | null
+          discovery_source_url: string | null
+          id: string
+          income_limits: Json | null
+          income_qualified: boolean | null
+          is_active: boolean | null
+          last_verified: string | null
+          max_rebate: number | null
+          program_code: string | null
+          program_name: string
+          program_type: string | null
+          rebate_amount: number | null
+          rebate_percentage: number | null
+          requirements: Json | null
+          stackable: boolean | null
+          typical_processing_days: number | null
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          application_process?: string | null
+          application_url?: string | null
+          available_nationwide?: boolean | null
+          available_states?: string[] | null
+          available_utilities?: string[] | null
+          available_zip_codes?: string[] | null
+          cannot_stack_with?: string[] | null
+          created_at?: string
+          description?: string | null
+          discovered_by?: string | null
+          discovery_source_url?: string | null
+          id?: string
+          income_limits?: Json | null
+          income_qualified?: boolean | null
+          is_active?: boolean | null
+          last_verified?: string | null
+          max_rebate?: number | null
+          program_code?: string | null
+          program_name: string
+          program_type?: string | null
+          rebate_amount?: number | null
+          rebate_percentage?: number | null
+          requirements?: Json | null
+          stackable?: boolean | null
+          typical_processing_days?: number | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          application_process?: string | null
+          application_url?: string | null
+          available_nationwide?: boolean | null
+          available_states?: string[] | null
+          available_utilities?: string[] | null
+          available_zip_codes?: string[] | null
+          cannot_stack_with?: string[] | null
+          created_at?: string
+          description?: string | null
+          discovered_by?: string | null
+          discovery_source_url?: string | null
+          id?: string
+          income_limits?: Json | null
+          income_qualified?: boolean | null
+          is_active?: boolean | null
+          last_verified?: string | null
+          max_rebate?: number | null
+          program_code?: string | null
+          program_name?: string
+          program_type?: string | null
+          rebate_amount?: number | null
+          rebate_percentage?: number | null
+          requirements?: Json | null
+          stackable?: boolean | null
+          typical_processing_days?: number | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
+      pdf_uploads: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          extracted_bid_id: string | null
+          extraction_confidence: number | null
+          file_hash: string | null
+          file_name: string
+          file_path: string
+          file_size_bytes: number | null
+          id: string
+          mindpal_job_id: string | null
+          mindpal_run_id: string | null
+          mindpal_status: string | null
+          mindpal_workflow_id: string | null
+          project_id: string
+          retry_count: number | null
+          status: Database["public"]["Enums"]["pdf_status"] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          extracted_bid_id?: string | null
+          extraction_confidence?: number | null
+          file_hash?: string | null
+          file_name: string
+          file_path: string
+          file_size_bytes?: number | null
+          id?: string
+          mindpal_job_id?: string | null
+          mindpal_run_id?: string | null
+          mindpal_status?: string | null
+          mindpal_workflow_id?: string | null
+          project_id: string
+          retry_count?: number | null
+          status?: Database["public"]["Enums"]["pdf_status"] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          extracted_bid_id?: string | null
+          extraction_confidence?: number | null
+          file_hash?: string | null
+          file_name?: string
+          file_path?: string
+          file_size_bytes?: number | null
+          id?: string
+          mindpal_job_id?: string | null
+          mindpal_run_id?: string | null
+          mindpal_status?: string | null
+          mindpal_workflow_id?: string | null
+          project_id?: string
+          retry_count?: number | null
+          status?: Database["public"]["Enums"]["pdf_status"] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_pdf_uploads_extracted_bid"
+            columns: ["extracted_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_pdf_uploads_extracted_bid"
+            columns: ["extracted_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_contractors"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "fk_pdf_uploads_extracted_bid"
+            columns: ["extracted_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_equipment"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "fk_pdf_uploads_extracted_bid"
+            columns: ["extracted_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_scope"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "fk_pdf_uploads_extracted_bid"
+            columns: ["extracted_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_pdf_uploads_extracted_bid"
+            columns: ["extracted_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_uploads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_faqs: {
+        Row: {
+          answer: string
+          category: string | null
+          created_at: string
+          display_order: number | null
+          id: string
+          project_id: string
+          question: string
+          sources: string[] | null
+        }
+        Insert: {
+          answer: string
+          category?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          project_id: string
+          question: string
+          sources?: string[] | null
+        }
+        Update: {
+          answer?: string
+          category?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          project_id?: string
+          question?: string
+          sources?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_faqs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_incentives: {
+        Row: {
+          amount_description: string | null
+          amount_max: number | null
+          amount_min: number | null
+          application_process: string | null
+          application_status: string | null
+          application_url: string | null
+          applied_amount: number | null
+          can_stack: boolean | null
+          confidence: string | null
+          created_at: string
+          eligibility_requirements: string | null
+          equipment_types_eligible: string[] | null
+          id: string
+          incentive_database_id: string | null
+          income_limits: string | null
+          income_qualified: boolean | null
+          program_name: string
+          program_type: string
+          project_id: string
+          source: string
+          stacking_notes: string | null
+          still_active: boolean | null
+          updated_at: string
+          user_plans_to_apply: boolean | null
+          verification_source: string | null
+        }
+        Insert: {
+          amount_description?: string | null
+          amount_max?: number | null
+          amount_min?: number | null
+          application_process?: string | null
+          application_status?: string | null
+          application_url?: string | null
+          applied_amount?: number | null
+          can_stack?: boolean | null
+          confidence?: string | null
+          created_at?: string
+          eligibility_requirements?: string | null
+          equipment_types_eligible?: string[] | null
+          id?: string
+          incentive_database_id?: string | null
+          income_limits?: string | null
+          income_qualified?: boolean | null
+          program_name: string
+          program_type: string
+          project_id: string
+          source: string
+          stacking_notes?: string | null
+          still_active?: boolean | null
+          updated_at?: string
+          user_plans_to_apply?: boolean | null
+          verification_source?: string | null
+        }
+        Update: {
+          amount_description?: string | null
+          amount_max?: number | null
+          amount_min?: number | null
+          application_process?: string | null
+          application_status?: string | null
+          application_url?: string | null
+          applied_amount?: number | null
+          can_stack?: boolean | null
+          confidence?: string | null
+          created_at?: string
+          eligibility_requirements?: string | null
+          equipment_types_eligible?: string[] | null
+          id?: string
+          incentive_database_id?: string | null
+          income_limits?: string | null
+          income_qualified?: boolean | null
+          program_name?: string
+          program_type?: string
+          project_id?: string
+          source?: string
+          stacking_notes?: string | null
+          still_active?: boolean | null
+          updated_at?: string
+          user_plans_to_apply?: boolean | null
+          verification_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_incentives_incentive_database_id_fkey"
+            columns: ["incentive_database_id"]
+            isOneToOne: false
+            referencedRelation: "incentive_program_database"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_incentives_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_qii_checklist: {
+        Row: {
+          checklist_item_key: string
+          created_at: string
+          id: string
+          is_verified: boolean | null
+          notes: string | null
+          photo_url: string | null
+          project_id: string
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          checklist_item_key: string
+          created_at?: string
+          id?: string
+          is_verified?: boolean | null
+          notes?: string | null
+          photo_url?: string | null
+          project_id: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          checklist_item_key?: string
+          created_at?: string
+          id?: string
+          is_verified?: boolean | null
+          notes?: string | null
+          photo_url?: string | null
+          project_id?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_qii_checklist_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_requirements: {
+        Row: {
+          additional_notes: string | null
+          budget_range: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          must_have_features: string[] | null
+          nice_to_have_features: string[] | null
+          priority_efficiency: number | null
+          priority_price: number | null
+          priority_reputation: number | null
+          priority_timeline: number | null
+          priority_warranty: number | null
+          project_id: string
+          specific_concerns: string[] | null
+          timeline_urgency: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_notes?: string | null
+          budget_range?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          must_have_features?: string[] | null
+          nice_to_have_features?: string[] | null
+          priority_efficiency?: number | null
+          priority_price?: number | null
+          priority_reputation?: number | null
+          priority_timeline?: number | null
+          priority_warranty?: number | null
+          project_id: string
+          specific_concerns?: string[] | null
+          timeline_urgency?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_notes?: string | null
+          budget_range?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          must_have_features?: string[] | null
+          nice_to_have_features?: string[] | null
+          priority_efficiency?: number | null
+          priority_price?: number | null
+          priority_reputation?: number | null
+          priority_timeline?: number | null
+          priority_warranty?: number | null
+          project_id?: string
+          specific_concerns?: string[] | null
+          timeline_urgency?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_requirements_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          add_zones: number | null
+          analysis_queued_at: string | null
+          cooling_load_calculated: number | null
+          created_at: string
+          data_sharing_consent: boolean
+          data_sharing_consented_at: string | null
+          decision_date: string | null
+          decision_notes: string | null
+          demo_description: string | null
+          desired_hspf: number | null
+          desired_seer: number | null
+          desired_start_date: string | null
+          electrical_panel_amps: number | null
+          financing_interested: boolean | null
+          flexibility: string | null
+          heat_pump_type: Database["public"]["Enums"]["heat_pump_type"] | null
+          heating_load_calculated: number | null
+          id: string
+          min_seer_requirement: number | null
+          must_have_features: string[] | null
+          notification_email: string | null
+          notification_sent_at: string | null
+          notify_on_completion: boolean
+          project_name: string
+          replace_air_handler: boolean | null
+          replace_ductwork: boolean | null
+          requires_electrical_upgrade: boolean | null
+          rerun_count: number
+          selected_bid_id: string | null
+          session_id: string | null
+          status: Database["public"]["Enums"]["project_status"] | null
+          system_size_btu: number | null
+          system_size_tons: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          add_zones?: number | null
+          analysis_queued_at?: string | null
+          cooling_load_calculated?: number | null
+          created_at?: string
+          data_sharing_consent?: boolean
+          data_sharing_consented_at?: string | null
+          decision_date?: string | null
+          decision_notes?: string | null
+          demo_description?: string | null
+          desired_hspf?: number | null
+          desired_seer?: number | null
+          desired_start_date?: string | null
+          electrical_panel_amps?: number | null
+          financing_interested?: boolean | null
+          flexibility?: string | null
+          heat_pump_type?: Database["public"]["Enums"]["heat_pump_type"] | null
+          heating_load_calculated?: number | null
+          id?: string
+          min_seer_requirement?: number | null
+          must_have_features?: string[] | null
+          notification_email?: string | null
+          notification_sent_at?: string | null
+          notify_on_completion?: boolean
+          project_name?: string
+          replace_air_handler?: boolean | null
+          replace_ductwork?: boolean | null
+          requires_electrical_upgrade?: boolean | null
+          rerun_count?: number
+          selected_bid_id?: string | null
+          session_id?: string | null
+          status?: Database["public"]["Enums"]["project_status"] | null
+          system_size_btu?: number | null
+          system_size_tons?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          add_zones?: number | null
+          analysis_queued_at?: string | null
+          cooling_load_calculated?: number | null
+          created_at?: string
+          data_sharing_consent?: boolean
+          data_sharing_consented_at?: string | null
+          decision_date?: string | null
+          decision_notes?: string | null
+          demo_description?: string | null
+          desired_hspf?: number | null
+          desired_seer?: number | null
+          desired_start_date?: string | null
+          electrical_panel_amps?: number | null
+          financing_interested?: boolean | null
+          flexibility?: string | null
+          heat_pump_type?: Database["public"]["Enums"]["heat_pump_type"] | null
+          heating_load_calculated?: number | null
+          id?: string
+          min_seer_requirement?: number | null
+          must_have_features?: string[] | null
+          notification_email?: string | null
+          notification_sent_at?: string | null
+          notify_on_completion?: boolean
+          project_name?: string
+          replace_air_handler?: boolean | null
+          replace_ductwork?: boolean | null
+          requires_electrical_upgrade?: boolean | null
+          rerun_count?: number
+          selected_bid_id?: string | null
+          session_id?: string | null
+          status?: Database["public"]["Enums"]["project_status"] | null
+          system_size_btu?: number | null
+          system_size_tons?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_projects_selected_bid"
+            columns: ["selected_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_projects_selected_bid"
+            columns: ["selected_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_contractors"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "fk_projects_selected_bid"
+            columns: ["selected_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_equipment"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "fk_projects_selected_bid"
+            columns: ["selected_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_scope"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "fk_projects_selected_bid"
+            columns: ["selected_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_projects_selected_bid"
+            columns: ["selected_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_ext"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_feedback: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          timestamp: string | null
+          type: string
+          url: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          timestamp?: string | null
+          type: string
+          url?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          timestamp?: string | null
+          type?: string
+          url?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      users_ext: {
+        Row: {
+          annual_cooling_cost: number | null
+          annual_heating_cost: number | null
+          auth_user_id: string | null
+          created_at: string
+          current_cooling_type: string | null
+          current_heating_type: string | null
+          current_system_age: number | null
+          electric_utility: string | null
+          email: string
+          full_name: string | null
+          gas_utility: string | null
+          id: string
+          partner_code: string | null
+          phone: string | null
+          property_address: string | null
+          property_city: string | null
+          property_state: string | null
+          property_type: string | null
+          property_zip: string | null
+          referral_source: string | null
+          square_footage: number | null
+          updated_at: string
+          year_built: number | null
+        }
+        Insert: {
+          annual_cooling_cost?: number | null
+          annual_heating_cost?: number | null
+          auth_user_id?: string | null
+          created_at?: string
+          current_cooling_type?: string | null
+          current_heating_type?: string | null
+          current_system_age?: number | null
+          electric_utility?: string | null
+          email: string
+          full_name?: string | null
+          gas_utility?: string | null
+          id?: string
+          partner_code?: string | null
+          phone?: string | null
+          property_address?: string | null
+          property_city?: string | null
+          property_state?: string | null
+          property_type?: string | null
+          property_zip?: string | null
+          referral_source?: string | null
+          square_footage?: number | null
+          updated_at?: string
+          year_built?: number | null
+        }
+        Update: {
+          annual_cooling_cost?: number | null
+          annual_heating_cost?: number | null
+          auth_user_id?: string | null
+          created_at?: string
+          current_cooling_type?: string | null
+          current_heating_type?: string | null
+          current_system_age?: number | null
+          electric_utility?: string | null
+          email?: string
+          full_name?: string | null
+          gas_utility?: string | null
+          id?: string
+          partner_code?: string | null
+          phone?: string | null
+          property_address?: string | null
+          property_city?: string | null
+          property_state?: string | null
+          property_type?: string | null
+          property_zip?: string | null
+          referral_source?: string | null
+          square_footage?: number | null
+          updated_at?: string
+          year_built?: number | null
+        }
+        Relationships: []
+      }
+      verified_sessions: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          session_token: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          session_token: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          session_token?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      admin_stats: {
+        Row: {
+          analyzing_projects: number | null
+          community_bid_count: number | null
+          community_contractor_count: number | null
+          comparing_projects: number | null
+          completed_projects: number | null
+          draft_projects: number | null
+          generated_at: string | null
+          processed_pdfs: number | null
+          total_bids: number | null
+          total_pdfs: number | null
+          total_projects: number | null
+          total_runs: number | null
+          total_users: number | null
+          unique_contractors: number | null
+        }
+        Relationships: []
+      }
+      v_bid_compare_contractors: {
+        Row: {
+          bbb_accredited: boolean | null
+          bbb_complaints_3yr: number | null
+          bbb_rating: string | null
+          bid_contractor_id: string | null
+          bid_id: string | null
+          bonded: boolean | null
+          certifications: string[] | null
+          company: string | null
+          contact_name: string | null
+          contractor_name: string | null
+          email: string | null
+          employee_count: number | null
+          google_rating: number | null
+          google_review_count: number | null
+          insurance_verified: boolean | null
+          license: string | null
+          license_expiration_date: string | null
+          license_state: string | null
+          license_status: string | null
+          name: string | null
+          overall_score: number | null
+          phone: string | null
+          positive_indicators: Json | null
+          project_id: string | null
+          red_flags: Json | null
+          research_confidence: number | null
+          research_notes: string | null
+          service_area: string | null
+          total_installs: number | null
+          verification_date: string | null
+          website: string | null
+          year_established: number | null
+          years_in_business: number | null
+          yelp_rating: number | null
+          yelp_review_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_bid_compare_equipment: {
+        Row: {
+          afue_rating: number | null
+          amperage_draw: number | null
+          bid_id: string | null
+          brand: string | null
+          capacity_btu: number | null
+          capacity_tons: number | null
+          compressor_warranty_years: number | null
+          confidence: Database["public"]["Enums"]["confidence_level"] | null
+          contractor_name: string | null
+          cop: number | null
+          eer_rating: number | null
+          energy_star_certified: boolean | null
+          energy_star_most_efficient: boolean | null
+          equipment_cost: number | null
+          equipment_id: string | null
+          equipment_type: string | null
+          fuel_type: string | null
+          hspf_rating: number | null
+          hspf2_rating: number | null
+          minimum_circuit_amperage: number | null
+          model_name: string | null
+          model_number: string | null
+          project_id: string | null
+          refrigerant_type: string | null
+          seer_rating: number | null
+          seer2_rating: number | null
+          sound_level_db: number | null
+          stages: number | null
+          system_role: string | null
+          system_type: string | null
+          variable_speed: boolean | null
+          voltage: number | null
+          warranty_years: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_bid_compare_scope: {
+        Row: {
+          accessories: Json | null
+          air_handler_detail: string | null
+          air_handler_included: boolean | null
+          bid_id: string | null
+          breaker_size_required: number | null
+          commissioning_detail: string | null
+          commissioning_included: boolean | null
+          contractor_name: string | null
+          dedicated_circuit_included: boolean | null
+          disconnect_detail: string | null
+          disconnect_included: boolean | null
+          disposal_detail: string | null
+          disposal_included: boolean | null
+          drain_line_detail: string | null
+          drain_line_included: boolean | null
+          ductwork_detail: string | null
+          ductwork_included: boolean | null
+          electrical_detail: string | null
+          electrical_included: boolean | null
+          electrical_notes: string | null
+          electrical_permit_included: boolean | null
+          exclusions: string[] | null
+          existing_panel_amps: number | null
+          inclusions: string[] | null
+          line_items: Json | null
+          line_set_detail: string | null
+          line_set_included: boolean | null
+          load_calculation_included: boolean | null
+          manual_j_detail: string | null
+          manual_j_included: boolean | null
+          pad_detail: string | null
+          pad_included: boolean | null
+          panel_assessment_included: boolean | null
+          panel_upgrade_cost: number | null
+          panel_upgrade_included: boolean | null
+          permit_detail: string | null
+          permit_included: boolean | null
+          project_id: string | null
+          proposed_panel_amps: number | null
+          scope_id: string | null
+          summary: string | null
+          thermostat_detail: string | null
+          thermostat_included: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_bid_full: {
+        Row: {
+          accessories: Json | null
+          additional_warranty_details: string | null
+          bc_bbb_accredited: boolean | null
+          bc_bbb_rating: string | null
+          bc_certifications: string[] | null
+          bc_company: string | null
+          bc_email: string | null
+          bc_google_rating: number | null
+          bc_google_review_count: number | null
+          bc_license: string | null
+          bc_license_state: string | null
+          bc_license_status: string | null
+          bc_name: string | null
+          bc_phone: string | null
+          bc_research_confidence: number | null
+          bc_website: string | null
+          bc_years_in_business: number | null
+          bid_date: string | null
+          bid_index: number | null
+          completeness_score: number | null
+          compressor_warranty_years: number | null
+          contractor_name: string | null
+          created_at: string | null
+          deposit_percentage: number | null
+          deposit_required: number | null
+          disposal_cost: number | null
+          disposal_included: boolean | null
+          ductwork_included: boolean | null
+          electrical_cost: number | null
+          electrical_included: boolean | null
+          electrical_notes: string | null
+          equipment_cost: number | null
+          equipment_warranty_years: number | null
+          estimated_days: number | null
+          estimated_rebates: number | null
+          existing_panel_amps: number | null
+          extraction_confidence:
+            | Database["public"]["Enums"]["confidence_level"]
+            | null
+          extraction_notes: string | null
+          financing_offered: boolean | null
+          financing_terms: string | null
+          id: string | null
+          is_favorite: boolean | null
+          labor_cost: number | null
+          labor_warranty_years: number | null
+          line_items: Json | null
+          manual_j_included: boolean | null
+          materials_cost: number | null
+          overall_score: number | null
+          panel_upgrade_included: boolean | null
+          payment_schedule: string | null
+          pdf_upload_id: string | null
+          permit_cost: number | null
+          permit_included: boolean | null
+          positive_indicators: Json | null
+          project_id: string | null
+          proposed_panel_amps: number | null
+          quality_score: number | null
+          ranking_recommendation: string | null
+          red_flags: Json | null
+          scope_summary: string | null
+          start_date_available: string | null
+          system_type: string | null
+          thermostat_included: boolean | null
+          total_after_rebates: number | null
+          total_before_rebates: number | null
+          total_bid_amount: number | null
+          updated_at: string | null
+          user_notes: string | null
+          valid_until: string | null
+          value_score: number | null
+          verified_at: string | null
+          verified_by_user: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_pdf_upload_id_fkey"
+            columns: ["pdf_upload_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_uploads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_bid_summary: {
+        Row: {
+          bbb_accredited: boolean | null
+          bbb_rating: string | null
+          certifications: string[] | null
+          completeness_score: number | null
+          contractor_company: string | null
+          contractor_name: string | null
+          created_at: string | null
+          equipment_warranty_years: number | null
+          estimated_days: number | null
+          estimated_rebates: number | null
+          google_rating: number | null
+          google_review_count: number | null
+          id: string | null
+          insurance_verified: boolean | null
+          is_favorite: boolean | null
+          labor_warranty_years: number | null
+          license_status: string | null
+          overall_score: number | null
+          positive_indicators: Json | null
+          project_id: string | null
+          quality_score: number | null
+          ranking_recommendation: string | null
+          red_flags: Json | null
+          system_type: string | null
+          total_after_rebates: number | null
+          total_bid_amount: number | null
+          value_score: number | null
+          years_in_business: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_community_pricing: {
+        Row: {
+          bid_date: string | null
+          certifications: string[] | null
+          equipment_cost: number | null
+          equipment_type: string | null
+          estimated_days: number | null
+          google_rating: number | null
+          includes_ductwork: boolean | null
+          includes_electrical: boolean | null
+          includes_permit: boolean | null
+          labor_cost: number | null
+          labor_warranty_years: number | null
+          primary_capacity_tons: number | null
+          primary_seer_rating: number | null
+          state: string | null
+          total_bid_amount: number | null
+          years_in_business: number | null
+          zip_code_area: string | null
+        }
+        Relationships: []
+      }
+    }
+    Functions: {
+      cleanup_expired_verifications: { Args: never; Returns: undefined }
+      validate_admin_session: {
+        Args: { token: string }
+        Returns: {
+          admin_id: string
+          email: string
+          is_super_admin: boolean
+          name: string
+        }[]
+      }
+      verify_admin_password: {
+        Args: { input_password: string; stored_hash: string }
+        Returns: boolean
+      }
+    }
+    Enums: {
+      confidence_level: "high" | "medium" | "low" | "manual"
+      heat_pump_type:
+        | "air_source"
+        | "ground_source"
+        | "water_source"
+        | "mini_split"
+        | "ducted"
+        | "hybrid"
+        | "other"
+      line_item_type:
+        | "equipment"
+        | "labor"
+        | "materials"
+        | "permit"
+        | "disposal"
+        | "electrical"
+        | "ductwork"
+        | "thermostat"
+        | "rebate_processing"
+        | "warranty"
+        | "other"
+      pdf_status:
+        | "uploaded"
+        | "processing"
+        | "extracted"
+        | "review_needed"
+        | "failed"
+        | "verified"
+      project_status:
+        | "draft"
+        | "specifications"
+        | "collecting_bids"
+        | "analyzing"
+        | "comparing"
+        | "decided"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      confidence_level: ["high", "medium", "low", "manual"],
+      heat_pump_type: [
+        "air_source",
+        "ground_source",
+        "water_source",
+        "mini_split",
+        "ducted",
+        "hybrid",
+        "other",
+      ],
+      line_item_type: [
+        "equipment",
+        "labor",
+        "materials",
+        "permit",
+        "disposal",
+        "electrical",
+        "ductwork",
+        "thermostat",
+        "rebate_processing",
+        "warranty",
+        "other",
+      ],
+      pdf_status: [
+        "uploaded",
+        "processing",
+        "extracted",
+        "review_needed",
+        "failed",
+        "verified",
+      ],
+      project_status: [
+        "draft",
+        "specifications",
+        "collecting_bids",
+        "analyzing",
+        "comparing",
+        "decided",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+    },
+  },
+} as const
