@@ -58,7 +58,7 @@ The current Supabase project has **24 tables**. Below is the complete inventory 
 | `project_requirements` | 15 | User priorities questionnaire | Keep as-is |
 | `contractor_bids` | 98 | **GOD TABLE** — bids from contractors | **SPLIT into 4 tables** (see Section 5) |
 | `bid_equipment` | 28 | Equipment specs per bid (1:N, per device) | **Restructure:** add `system_role`, `afue_rating`; move accessories out |
-| `bid_line_items` | 14 | Itemized cost breakdown per bid | Keep (future UI) |
+| ~~`bid_line_items`~~ | — | **DROPPED** — merged into `bid_scope.line_items` JSONB | **DROPPED — see bid_scope** |
 | `bid_questions` | 18 | Clarification questions per bid | **Rename -> `contractor_questions`** |
 | `bid_faqs` | 10 | Per-bid FAQs | Keep as-is |
 | `project_faqs` | 8 | Project-level comparison FAQs | Keep as-is |
@@ -130,9 +130,11 @@ The `incentive_*` columns on contractor_bids are not read by any component. `Inc
 
 Fully built component reading electrical fields, but never imported by any parent. Will be activated as a sub-table in the Scope tab, pulling from electrical columns within `bid_scope`.
 
-### 3.5 bid_line_items Has No UI
+### 3.5 bid_line_items → DROPPED (merged into bid_scope)
 
-CRUD exists in service but no component renders line items. Keep the table for future cost detail views.
+~~CRUD exists in service but no component renders line items. Keep the table for future cost detail views.~~
+
+**Decision:** `bid_line_items` is dropped. Line items are merged into `bid_scope` as `line_items JSONB DEFAULT '[]'` (same pattern as `accessories`). Each entry: `{item_type, description, amount, quantity, unit_price, is_included, notes}`. Both tables are populated by the same MindPal node (Node 1: Bid Data Extractor), displayed in the same Scope tab, and line items are a variable-length array that maps naturally to JSONB. This reduces table count from 25 → 24.
 
 ### 3.6 bid_faqs Callback Field Name Mismatch
 
@@ -457,7 +459,6 @@ users_ext
                              |-- 1:1 -- bid_scope (scope booleans + details + electrical work)
                              |-- 1:1 -- bid_scores (scores, flags)
                              |-- 1:N -- bid_equipment (MAJOR appliances: heat pump, furnace, AC, air handler)
-                             |-- 1:N -- bid_line_items (itemized costs)
                              |-- 1:N -- contractor_questions (clarification Qs)
                              |-- 1:N -- bid_faqs (per-bid FAQs)
 
@@ -555,16 +556,20 @@ incentive_program_database (reference, geo-indexed)
 | Electrical notes | `electrical_notes` (TEXT) |
 | **Accessories** (sub-group) | |
 | | `accessories` (JSONB DEFAULT '[]') — Array of {type, name, brand, model_number, description, cost} |
+| **Line Items** (sub-group — MERGED from bid_line_items) | |
+| | `line_items` (JSONB DEFAULT '[]') — Array of {item_type, description, amount, quantity, unit_price, is_included, notes} |
 
 **Notes:**
 - `_detail` columns are NEW to the database — fixes the ghost column bug
 - Drop `scope_` prefix from all scope columns (table name provides context)
 - Electrical columns drop the `electrical_` prefix where the table context is clear, but keep it for `electrical_permit_included` (distinct from `permit_included` which is the general construction permit) and `electrical_notes`
 - The UI renders this as TWO visual sub-tables from the same data source
+- `line_items` JSONB replaces the `bid_line_items` table (same node, same tab, natural array structure)
 
 **Front-end:**
 - Scope tab -> **Scope Comparison grid** (12 boolean+detail pairs)
 - Scope tab -> **Electrical Work sub-table** (electrical columns) — powers re-activated `ElectricalComparisonTable.tsx`
+- Scope tab -> **Line Items** (from `line_items` JSONB)
 
 **Cardinality:** 1 per bid.
 
@@ -709,7 +714,7 @@ See **Section D6** for full design rationale. Key changes:
 
 ### 6.12 Existing Tables — No Changes (beyond FK updates)
 
-- **`bid_line_items`** (14 cols) — Keep for future cost detail view. Update FK to `bids`.
+- ~~**`bid_line_items`**~~ — **DROPPED.** Merged into `bid_scope.line_items` JSONB (same MindPal node, same UI tab, natural array structure). Table count: 25 → 24.
 - **`bid_faqs`** (10 cols) — Keep. Fix column name mismatch in new insert paths. Update FK to `bids`.
 - **`project_faqs`** (8 cols) — Keep as-is.
 - **`contractor_installation_reviews`** (20 cols) — Keep as-is. User-input post-installation survey (5 star ratings, yes/no questions, free text). Update FK to `bids`.
@@ -917,8 +922,8 @@ Also includes:
 | 7 | `bid_scope` | — | **NEW** (scope + electrical from contractor_bids) |
 | 8 | `bid_scores` | — | **NEW** (from contractor_bids) |
 | 9 | `bid_equipment` | — | **Restructured** (major appliances only + system_role + afue_rating + fuel_type) |
-| 10 | `bid_line_items` | — | As-is |
-| 11 | `contractor_questions` | `bid_questions` | **Renamed** |
+| ~~10~~ | ~~`bid_line_items`~~ | — | **DROPPED** — merged into `bid_scope.line_items` JSONB |
+| 10 | `contractor_questions` | `bid_questions` | **Renamed** |
 | 12 | `bid_faqs` | — | As-is |
 | 13 | `project_faqs` | — | As-is |
 | 14 | `project_incentives` | `incentive_programs` + `project_rebates` | **Merged + renamed** |
@@ -949,14 +954,15 @@ Also includes:
 | 24 | `email_verifications` | As-is |
 | 25 | `verified_sessions` | As-is |
 
-**DROPPED (2 tables):**
+**DROPPED (3 tables):**
 - `bid_analysis` (replaced by dedicated tables)
 - `mindpal_extractions` (debug artifact)
+- `bid_line_items` (merged into `bid_scope.line_items` JSONB)
 
 **HARDCODED (1 table -> TypeScript constant):**
 - `qii_checklist_items` -> `src/lib/constants/qiiChecklist.ts`
 
-**Total: 25 tables** (was 24, +2 community, -1 QII checklist from DB)
+**Total: 24 tables** (was 24 in v1, +2 community, -1 QII checklist from DB, -1 bid_line_items merged into bid_scope)
 
 ---
 
