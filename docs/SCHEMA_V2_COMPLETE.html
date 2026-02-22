@@ -186,7 +186,7 @@
 <!-- ============================================================ -->
 <div class="stats-bar">
   <div class="stat-box total"><div class="num">24</div><div class="lbl">Total Tables</div></div>
-  <div class="stat-box ok"><div class="num">433</div><div class="lbl">Total Columns</div></div>
+  <div class="stat-box ok"><div class="num">451</div><div class="lbl">Total Columns</div></div>
   <div class="stat-box missing"><div class="num">4</div><div class="lbl">New Tables</div></div>
   <div class="stat-box partial"><div class="num">6</div><div class="lbl">SQL Views</div></div>
   <div class="stat-box sys"><div class="num">10</div><div class="lbl">MindPal Nodes</div></div>
@@ -380,7 +380,7 @@ incentive_program_database  (reference, geo-indexed)
     <h3>
       <span class="tbl-badge">TABLE 6</span>
       <code>bid_contractors</code>
-      <span class="col-badge">28 columns</span>
+      <span class="col-badge">33 columns</span>
       <span class="change-badge new">NEW</span>
       <span class="cat-badge user">USER DATA</span>
     </h3>
@@ -539,7 +539,7 @@ incentive_program_database  (reference, geo-indexed)
     <h3>
       <span class="tbl-badge">TABLE 7</span>
       <code>bid_scope</code>
-      <span class="col-badge">42 columns</span>
+      <span class="col-badge">43 columns</span>
       <span class="change-badge new">NEW</span>
       <span class="cat-badge user">USER DATA</span>
     </h3>
@@ -666,7 +666,7 @@ incentive_program_database  (reference, geo-indexed)
     <h3>
       <span class="tbl-badge">TABLE 8</span>
       <code>bid_scores</code>
-      <span class="col-badge">11 columns</span>
+      <span class="col-badge">13 columns</span>
       <span class="change-badge new">NEW</span>
       <span class="cat-badge user">USER DATA</span>
     </h3>
@@ -769,7 +769,7 @@ incentive_program_database  (reference, geo-indexed)
     <h3>
       <span class="tbl-badge">TABLE 14</span>
       <code>project_incentives</code>
-      <span class="col-badge">24 columns</span>
+      <span class="col-badge">25 columns</span>
       <span class="change-badge new">NEW</span>
       <span class="cat-badge user">USER DATA</span>
     </h3>
@@ -890,7 +890,7 @@ incentive_program_database  (reference, geo-indexed)
     <h3>
       <span class="tbl-badge">TABLE 5</span>
       <code>bids</code>
-      <span class="col-badge">33 columns</span>
+      <span class="col-badge">37 columns</span>
       <span class="change-badge renamed">RENAMED+SPLIT</span>
       <span class="cat-badge user">USER DATA</span>
     </h3>
@@ -1060,7 +1060,7 @@ incentive_program_database  (reference, geo-indexed)
     <h3>
       <span class="tbl-badge">TABLE 9</span>
       <code>bid_equipment</code>
-      <span class="col-badge">30 columns</span>
+      <span class="col-badge">31 columns</span>
       <span class="change-badge restructured">RESTRUCTURED</span>
       <span class="cat-badge user">USER DATA</span>
     </h3>
@@ -1275,7 +1275,7 @@ incentive_program_database  (reference, geo-indexed)
 <!-- TABLE 18: incentive_program_database (RENAMED from rebate_programs) -->
 <div class="accordion" id="incentive_program_database">
   <div class="accordion-header">
-    <h3><span class="tbl-badge">TABLE 18</span> <code>incentive_program_database</code> <span class="col-badge">24 columns</span> <span class="change-badge renamed">RENAMED</span> <span class="cat-badge reference">REFERENCE</span></h3>
+    <h3><span class="tbl-badge">TABLE 18</span> <code>incentive_program_database</code> <span class="col-badge">28 columns</span> <span class="change-badge renamed">RENAMED</span> <span class="cat-badge reference">REFERENCE</span></h3>
     <div class="mini-stats"><span class="mini-stat g">8 core</span> <span class="mini-stat a">13 optional</span> <span class="mini-stat s">3 system</span></div>
     <span class="chevron">&#9660;</span>
   </div>
@@ -1531,7 +1531,7 @@ incentive_program_database  (reference, geo-indexed)
 <!-- ============================================================ -->
 <div class="accordion" id="project_requirements">
   <div class="accordion-header">
-    <h3><span class="tbl-badge">TABLE 4</span> <code>project_requirements</code> <span class="col-badge">15 columns</span> <span class="change-badge asis">AS-IS</span> <span class="cat-badge user">USER DATA</span></h3>
+    <h3><span class="tbl-badge">TABLE 4</span> <code>project_requirements</code> <span class="col-badge">16 columns</span> <span class="change-badge asis">AS-IS</span> <span class="cat-badge user">USER DATA</span></h3>
     <div class="mini-stats"><span class="mini-stat g">6 core</span> <span class="mini-stat a">6 optional</span> <span class="mini-stat s">3 system</span></div>
     <span class="chevron">&#9660;</span>
   </div>
@@ -1578,7 +1578,7 @@ incentive_program_database  (reference, geo-indexed)
 <div class="accordion" id="bid_faqs">
   <div class="accordion-header">
     <h3><span class="tbl-badge">TABLE 11</span> <code>bid_faqs</code> <span class="col-badge">10 columns</span> <span class="change-badge asis">AS-IS</span> <span class="cat-badge user">USER DATA</span></h3>
-    <div class="mini-stats"><span class="mini-stat g">4 core</span> <span class="mini-stat a">4 optional</span> <span class="mini-stat s">3 system</span></div>
+    <div class="mini-stats"><span class="mini-stat g">4 core</span> <span class="mini-stat a">2 optional</span> <span class="mini-stat s">4 system</span></div>
     <span class="chevron">&#9660;</span>
   </div>
   <div class="accordion-body">
@@ -1596,10 +1596,10 @@ incentive_program_database  (reference, geo-indexed)
         <tr><td class="col-name">sources</td><td class="col-type">TEXT[]</td><td class="col-null">YES</td><td class="col-default">&mdash;</td><td class="col-constraint"></td><td class="col-desc">Source references</td><td><span class="status optional">Optional</span></td></tr>
         <tr><td class="col-name">display_order</td><td class="col-type">INTEGER</td><td class="col-null">YES</td><td class="col-default">&mdash;</td><td class="col-constraint"></td><td class="col-desc">Display ordering</td><td><span class="status optional">Optional</span></td></tr>
         <tr><td class="col-name">created_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-null">NO</td><td class="col-default">now()</td><td class="col-constraint"></td><td class="col-desc">Created</td><td><span class="status system">System</span></td></tr>
-        <tr><td class="col-name">updated_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-null">NO</td><td class="col-default">now()</td><td class="col-constraint"></td><td class="col-desc">Updated</td><td><span class="status optional">Optional</span></td></tr>
+        <tr><td class="col-name">updated_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-null">NO</td><td class="col-default">now()</td><td class="col-constraint"></td><td class="col-desc">Updated (trigger)</td><td><span class="status system">System</span></td></tr>
       </tbody>
     </table></div>
-    <div class="note-banner">Note: Column name mismatch fixed &mdash; callback now uses <code>question</code>/<code>answer</code> (not <code>question_text</code>/<code>answer_text</code>). Column <code>faq_category</code> renamed to <code>category</code> in migration 028.</div>
+    <div class="note-banner">V2: Column renamed <code>faq_category</code> &rarr; <code>category</code> (migration 009). Column <code>sources TEXT[]</code> added (migration 009). Callback uses <code>question</code>/<code>answer</code> field names.</div>
     <div class="meta-section"><h4>Indexes</h4><ul><li><code>idx_bid_faqs_bid</code> ON bid_faqs(bid_id)</li><li><code>idx_bid_faqs_category</code> ON bid_faqs(category)</li></ul></div>
     <div class="meta-section"><h4>RLS Policy</h4><ul><li>Ownership via <code>bid_id &rarr; bids.project_id &rarr; projects.user_id</code></li></ul></div>
     <div class="meta-section"><h4>MindPal Node</h4><ul><li>Node 7: Per-Bid FAQ Generator</li></ul></div>
@@ -1642,28 +1642,30 @@ incentive_program_database  (reference, geo-indexed)
 <!-- ============================================================ -->
 <div class="accordion" id="project_qii_checklist">
   <div class="accordion-header">
-    <h3><span class="tbl-badge">TABLE 15</span> <code>project_qii_checklist</code> <span class="col-badge">8 columns</span> <span class="change-badge asis">AS-IS</span> <span class="cat-badge user">USER DATA</span></h3>
-    <div class="mini-stats"><span class="mini-stat g">2 core</span> <span class="mini-stat a">3 optional</span> <span class="mini-stat s">3 system</span></div>
+    <h3><span class="tbl-badge">TABLE 15</span> <code>project_qii_checklist</code> <span class="col-badge">10 columns</span> <span class="change-badge asis">AS-IS</span> <span class="cat-badge user">USER DATA</span></h3>
+    <div class="mini-stats"><span class="mini-stat g">2 core</span> <span class="mini-stat a">4 optional</span> <span class="mini-stat s">4 system</span></div>
     <span class="chevron">&#9660;</span>
   </div>
   <div class="accordion-body">
     <div class="purpose">Per-project QII verification tracking. Tracks which ACCA/ANSI checklist items the homeowner has verified. Checklist items are now hardcoded in app (no DB table).</div>
-    <div class="note-banner">V2 change: FK <code>checklist_item_id</code> (UUID) replaced with <code>item_key</code> (TEXT) matching hardcoded constants in <code>src/lib/constants/qiiChecklist.ts</code>. The <code>qii_checklist_items</code> table is DROPPED from the DB.</div>
+    <div class="note-banner">V2 change: FK <code>checklist_item_id</code> (UUID) replaced with <code>checklist_item_key</code> (TEXT) matching hardcoded constants in <code>src/lib/constants/qiiChecklist.ts</code>. The <code>qii_checklist_items</code> table is DROPPED from the DB.</div>
     <div class="sub-group">All Columns</div>
     <div class="table-wrap"><table>
       <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Constraints</th><th>Description</th><th>Status</th></tr></thead>
       <tbody>
         <tr><td class="col-name">id</td><td class="col-type">UUID</td><td class="col-null">NO</td><td class="col-default">gen_random_uuid()</td><td class="col-constraint"><span class="cb pk">PK</span></td><td class="col-desc">Primary key</td><td><span class="status system">System</span></td></tr>
         <tr><td class="col-name">project_id</td><td class="col-type">UUID</td><td class="col-null">NO</td><td class="col-default">&mdash;</td><td class="col-constraint"><span class="cb fk">FK &rarr; projects(id) CASCADE</span> <span class="cb nn">NOT NULL</span></td><td class="col-desc">Parent project</td><td><span class="status system">System</span></td></tr>
-        <tr><td class="col-name">item_key</td><td class="col-type">TEXT</td><td class="col-null">NO</td><td class="col-default">&mdash;</td><td class="col-constraint"><span class="cb nn">NOT NULL</span></td><td class="col-desc">Matches hardcoded item_key (e.g. manual_j, permit_pulled)</td><td><span class="status core">Core</span></td></tr>
+        <tr><td class="col-name">checklist_item_key</td><td class="col-type">TEXT</td><td class="col-null">NO</td><td class="col-default">&mdash;</td><td class="col-constraint"><span class="cb nn">NOT NULL</span></td><td class="col-desc">Matches hardcoded checklist_item_key (e.g. manual_j, permit_pulled)</td><td><span class="status core">Core</span></td></tr>
         <tr><td class="col-name">is_verified</td><td class="col-type">BOOLEAN</td><td class="col-null">YES</td><td class="col-default">false</td><td class="col-constraint"></td><td class="col-desc">Has this item been verified?</td><td><span class="status core">Core</span></td></tr>
         <tr><td class="col-name">verified_by</td><td class="col-type">TEXT</td><td class="col-null">YES</td><td class="col-default">&mdash;</td><td class="col-constraint"></td><td class="col-desc">contractor, homeowner, inspector</td><td><span class="status optional">Optional</span></td></tr>
         <tr><td class="col-name">verified_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-null">YES</td><td class="col-default">&mdash;</td><td class="col-constraint"></td><td class="col-desc">When verified</td><td><span class="status optional">Optional</span></td></tr>
         <tr><td class="col-name">notes</td><td class="col-type">TEXT</td><td class="col-null">YES</td><td class="col-default">&mdash;</td><td class="col-constraint"></td><td class="col-desc">Verification notes</td><td><span class="status optional">Optional</span></td></tr>
+        <tr><td class="col-name">photo_url</td><td class="col-type">TEXT</td><td class="col-null">YES</td><td class="col-default">&mdash;</td><td class="col-constraint"></td><td class="col-desc">Photo verification URL</td><td><span class="status optional">Optional</span></td></tr>
         <tr><td class="col-name">created_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-null">NO</td><td class="col-default">now()</td><td class="col-constraint"></td><td class="col-desc">Created</td><td><span class="status system">System</span></td></tr>
+        <tr><td class="col-name">updated_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-null">NO</td><td class="col-default">now()</td><td class="col-constraint"></td><td class="col-desc">Updated (trigger)</td><td><span class="status system">System</span></td></tr>
       </tbody>
     </table></div>
-    <div class="meta-section"><h4>Constraints</h4><ul><li>UNIQUE(project_id, item_key)</li></ul></div>
+    <div class="meta-section"><h4>Constraints</h4><ul><li>UNIQUE(project_id, checklist_item_key)</li></ul></div>
     <div class="meta-section"><h4>Indexes</h4><ul><li><code>idx_project_qii_project</code> ON project_qii_checklist(project_id)</li></ul></div>
     <div class="meta-section"><h4>RLS Policy</h4><ul><li>Ownership via <code>project_id &rarr; projects.user_id</code></li></ul></div>
   </div>
@@ -1674,8 +1676,8 @@ incentive_program_database  (reference, geo-indexed)
 <!-- ============================================================ -->
 <div class="accordion" id="contractor_installation_reviews">
   <div class="accordion-header">
-    <h3><span class="tbl-badge">TABLE 16</span> <code>contractor_installation_reviews</code> <span class="col-badge">20 columns</span> <span class="change-badge asis">AS-IS</span> <span class="cat-badge user">USER DATA</span></h3>
-    <div class="mini-stats"><span class="mini-stat g">10 core</span> <span class="mini-stat a">7 optional</span> <span class="mini-stat s">3 system</span></div>
+    <h3><span class="tbl-badge">TABLE 16</span> <code>contractor_installation_reviews</code> <span class="col-badge">21 columns</span> <span class="change-badge asis">AS-IS</span> <span class="cat-badge user">USER DATA</span></h3>
+    <div class="mini-stats"><span class="mini-stat g">10 core</span> <span class="mini-stat a">7 optional</span> <span class="mini-stat s">4 system</span></div>
     <span class="chevron">&#9660;</span>
   </div>
   <div class="accordion-body">
@@ -1686,7 +1688,8 @@ incentive_program_database  (reference, geo-indexed)
       <tbody>
         <tr><td class="col-name">id</td><td class="col-type">UUID</td><td class="col-null">NO</td><td class="col-default">gen_random_uuid()</td><td class="col-constraint"><span class="cb pk">PK</span></td><td class="col-desc">Primary key</td><td><span class="status system">System</span></td></tr>
         <tr><td class="col-name">project_id</td><td class="col-type">UUID</td><td class="col-null">NO</td><td class="col-default">&mdash;</td><td class="col-constraint"><span class="cb fk">FK &rarr; projects(id) CASCADE</span> <span class="cb uq">UNIQUE</span> <span class="cb nn">NOT NULL</span></td><td class="col-desc">One review per project</td><td><span class="status system">System</span></td></tr>
-        <tr><td class="col-name">contractor_bid_id</td><td class="col-type">UUID</td><td class="col-null">NO</td><td class="col-default">&mdash;</td><td class="col-constraint"><span class="cb fk">FK &rarr; bids(id) CASCADE</span> <span class="cb nn">NOT NULL</span></td><td class="col-desc">Which bid/contractor is being reviewed</td><td><span class="status system">System</span></td></tr>
+        <tr><td class="col-name">bid_id</td><td class="col-type">UUID</td><td class="col-null">NO</td><td class="col-default">&mdash;</td><td class="col-constraint"><span class="cb fk">FK &rarr; bids(id) CASCADE</span> <span class="cb nn">NOT NULL</span></td><td class="col-desc">Which bid/contractor is being reviewed</td><td><span class="status system">System</span></td></tr>
+        <tr><td class="col-name">user_id</td><td class="col-type">UUID</td><td class="col-null">NO</td><td class="col-default">&mdash;</td><td class="col-constraint"><span class="cb fk">FK &rarr; users_ext(id) CASCADE</span> <span class="cb nn">NOT NULL</span></td><td class="col-desc">Reviewer (user who submitted review)</td><td><span class="status system">System</span></td></tr>
         <tr><td class="col-name">overall_rating</td><td class="col-type">INTEGER</td><td class="col-null">NO</td><td class="col-default">&mdash;</td><td class="col-constraint"><span class="cb ck">CHECK 1-5</span> <span class="cb nn">NOT NULL</span></td><td class="col-desc">Overall rating</td><td><span class="status core">Core</span></td></tr>
         <tr><td class="col-name">quality_of_work_rating</td><td class="col-type">INTEGER</td><td class="col-null">NO</td><td class="col-default">&mdash;</td><td class="col-constraint"><span class="cb ck">CHECK 1-5</span> <span class="cb nn">NOT NULL</span></td><td class="col-desc">Work quality</td><td><span class="status core">Core</span></td></tr>
         <tr><td class="col-name">professionalism_rating</td><td class="col-type">INTEGER</td><td class="col-null">NO</td><td class="col-default">&mdash;</td><td class="col-constraint"><span class="cb ck">CHECK 1-5</span> <span class="cb nn">NOT NULL</span></td><td class="col-desc">Professionalism</td><td><span class="status core">Core</span></td></tr>
@@ -1702,11 +1705,11 @@ incentive_program_database  (reference, geo-indexed)
         <tr><td class="col-name">issues_encountered</td><td class="col-type">TEXT[]</td><td class="col-null">YES</td><td class="col-default">'{}'</td><td class="col-constraint"></td><td class="col-desc">Issues encountered</td><td><span class="status optional">Optional</span></td></tr>
         <tr><td class="col-name">positive_comments</td><td class="col-type">TEXT</td><td class="col-null">YES</td><td class="col-default">&mdash;</td><td class="col-constraint"></td><td class="col-desc">Positive comments</td><td><span class="status optional">Optional</span></td></tr>
         <tr><td class="col-name">improvement_suggestions</td><td class="col-type">TEXT</td><td class="col-null">YES</td><td class="col-default">&mdash;</td><td class="col-constraint"></td><td class="col-desc">Improvement suggestions</td><td><span class="status optional">Optional</span></td></tr>
-        <tr><td class="col-name">created_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-null">NO</td><td class="col-default">now()</td><td class="col-constraint"></td><td class="col-desc">Created</td><td><span class="status optional">Optional</span></td></tr>
-        <tr><td class="col-name">updated_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-null">NO</td><td class="col-default">now()</td><td class="col-constraint"></td><td class="col-desc">Updated (trigger)</td><td><span class="status optional">Optional</span></td></tr>
+        <tr><td class="col-name">created_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-null">NO</td><td class="col-default">now()</td><td class="col-constraint"></td><td class="col-desc">Created</td><td><span class="status system">System</span></td></tr>
+        <tr><td class="col-name">updated_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-null">NO</td><td class="col-default">now()</td><td class="col-constraint"></td><td class="col-desc">Updated (trigger)</td><td><span class="status system">System</span></td></tr>
       </tbody>
     </table></div>
-    <div class="meta-section"><h4>Indexes</h4><ul><li><code>idx_contractor_reviews_bid_id</code> ON contractor_installation_reviews(contractor_bid_id)</li></ul></div>
+    <div class="meta-section"><h4>Indexes</h4><ul><li><code>idx_contractor_reviews_bid_id</code> ON contractor_installation_reviews(bid_id)</li></ul></div>
     <div class="meta-section"><h4>RLS Policy</h4><ul><li>Ownership via <code>project_id &rarr; projects.user_id</code></li></ul></div>
   </div>
 </div>
