@@ -332,11 +332,6 @@ async function mapExtractionToBid(
 
   const bid = await db.createBid(projectId, {
     contractor_name: extraction.contractor_info?.company_name || 'Unknown Contractor',
-    contractor_company: extraction.contractor_info?.company_name,
-    contractor_phone: extraction.contractor_info?.phone,
-    contractor_email: extraction.contractor_info?.email,
-    contractor_license: extraction.contractor_info?.license_number,
-    contractor_website: extraction.contractor_info?.website,
     total_bid_amount: extraction.pricing?.total_amount || 0,
     labor_cost: extraction.pricing?.labor_cost,
     equipment_cost: extraction.pricing?.equipment_cost,
@@ -356,11 +351,8 @@ async function mapExtractionToBid(
     deposit_required: extraction.payment_terms?.deposit_amount,
     deposit_percentage: extraction.payment_terms?.deposit_percentage,
     payment_schedule: extraction.payment_terms?.payment_schedule,
-    financing_offered: extraction.payment_terms?.financing_offered || false,
+    financing_offered: extraction.payment_terms?.financing_offered ?? false,
     financing_terms: extraction.payment_terms?.financing_terms,
-    scope_summary: extraction.scope_of_work?.summary,
-    inclusions: extraction.scope_of_work?.inclusions,
-    exclusions: extraction.scope_of_work?.exclusions,
     bid_date: extraction.dates?.bid_date || extraction.dates?.quote_date,
     valid_until: extraction.dates?.valid_until || extraction.timeline?.bid_valid_until,
     extraction_confidence: confidenceLevel,
@@ -369,22 +361,37 @@ async function mapExtractionToBid(
       .join('\n'),
   });
 
-  if (extraction.line_items && extraction.line_items.length > 0) {
-    const lineItems = extraction.line_items.map((item, index) => ({
-      item_type: mapLineItemType(item.item_type),
-      description: item.description,
-      quantity: item.quantity || 1,
-      unit_price: item.unit_price,
-      total_price: item.total_price,
-      brand: item.brand,
-      model_number: item.model_number,
-      confidence: mapConfidenceToLevel(item.confidence || extraction.overall_confidence),
-      source_text: item.source_text,
-      line_order: index,
-    }));
+  // Create bid_contractor record — contractor identity fields split into own table in V2
+  await db.createBidContractor(bid.id, {
+    name: extraction.contractor_info?.company_name || 'Unknown Contractor',
+    company: extraction.contractor_info?.company_name,
+    phone: extraction.contractor_info?.phone,
+    email: extraction.contractor_info?.email,
+    license: extraction.contractor_info?.license_number,
+    website: extraction.contractor_info?.website,
+  });
 
-    await db.bulkCreateLineItems(bid.id, lineItems);
-  }
+  // Build line items as JSONB — no separate bid_line_items table in V2
+  const lineItemsJson = (extraction.line_items || []).map((item, index) => ({
+    item_type: mapLineItemType(item.item_type),
+    description: item.description,
+    quantity: item.quantity || 1,
+    unit_price: item.unit_price,
+    total_price: item.total_price,
+    brand: item.brand,
+    model_number: item.model_number,
+    confidence: mapConfidenceToLevel(item.confidence || extraction.overall_confidence),
+    source_text: item.source_text,
+    line_order: index,
+  }));
+
+  // Create bid_scope record with line_items JSONB
+  await db.createBidScope(bid.id, {
+    summary: extraction.scope_of_work?.summary,
+    inclusions: extraction.scope_of_work?.inclusions,
+    exclusions: extraction.scope_of_work?.exclusions,
+    line_items: lineItemsJson,
+  });
 
   if (extraction.equipment && extraction.equipment.length > 0) {
     const equipment = extraction.equipment.map((eq) => ({

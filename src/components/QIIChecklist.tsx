@@ -4,13 +4,21 @@ import {
   ChevronDown, ChevronUp, Printer
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import type { QIIChecklistItem, ProjectQIIChecklist, QIICategory } from '../lib/types';
+import type { ProjectQIIChecklist, QIICategory } from '../lib/types';
+import { QII_CHECKLIST_ITEMS } from '../lib/constants/qiiChecklist';
 
 interface QIIChecklistProps {
   projectId: string;
 }
 
-interface ChecklistItemWithStatus extends QIIChecklistItem {
+interface ChecklistItemWithStatus {
+  item_key: string;
+  category: QIICategory;
+  item_text: string;
+  description: string | null | undefined;
+  why_it_matters: string | null | undefined;
+  is_critical: boolean;
+  display_order: number;
   status?: ProjectQIIChecklist;
 }
 
@@ -57,11 +65,8 @@ export function QIIChecklist({ projectId }: QIIChecklistProps) {
   }, [projectId]);
 
   async function loadChecklist() {
-    // Load all checklist items
-    const { data: allItems } = await supabase
-      .from('qii_checklist_items')
-      .select('*')
-      .order('display_order', { ascending: true });
+    // Use hardcoded constants instead of DB table (qii_checklist_items removed in V2)
+    const allItems = QII_CHECKLIST_ITEMS;
 
     // Load project-specific status
     const { data: projectStatus } = await supabase
@@ -69,12 +74,18 @@ export function QIIChecklist({ projectId }: QIIChecklistProps) {
       .select('*')
       .eq('project_id', projectId);
 
-    // Merge status with items
-    const statusMap = new Map(projectStatus?.map(s => [s.checklist_item_id, s]) || []);
-    
-    const itemsWithStatus = (allItems || []).map(item => ({
-      ...item,
-      status: statusMap.get(item.id),
+    // Merge status with items — keyed by item_key (TEXT) not id (UUID)
+    const statusMap = new Map(projectStatus?.map(s => [s.checklist_item_key, s]) || []);
+
+    const itemsWithStatus: ChecklistItemWithStatus[] = allItems.map(item => ({
+      item_key: item.item_key,
+      category: item.category,
+      item_text: item.item_text,
+      description: item.description,
+      why_it_matters: item.why_it_matters,
+      is_critical: item.is_critical,
+      display_order: item.display_order,
+      status: statusMap.get(item.item_key),
     }));
 
     setItems(itemsWithStatus);
@@ -88,19 +99,19 @@ export function QIIChecklist({ projectId }: QIIChecklistProps) {
       // Update existing status
       await supabase
         .from('project_qii_checklist')
-        .update({ 
+        .update({
           is_verified: !isCurrentlyVerified,
           verified_at: !isCurrentlyVerified ? new Date().toISOString() : null,
           verified_by: !isCurrentlyVerified ? 'homeowner' : null,
         })
         .eq('id', item.status.id);
     } else {
-      // Create new status
+      // Create new status — use checklist_item_key (TEXT) in V2
       await supabase
         .from('project_qii_checklist')
         .insert({
           project_id: projectId,
-          checklist_item_id: item.id,
+          checklist_item_key: item.item_key,
           is_verified: true,
           verified_at: new Date().toISOString(),
           verified_by: 'homeowner',
@@ -177,7 +188,7 @@ export function QIIChecklist({ projectId }: QIIChecklistProps) {
               <span className="text-sm font-bold text-gray-900">{progress.verified}/{progress.total}</span>
             </div>
             <div className="progress-bar">
-              <div 
+              <div
                 className="progress-fill"
                 style={{ width: `${progress.percentage}%` }}
               />
@@ -242,7 +253,7 @@ export function QIIChecklist({ projectId }: QIIChecklistProps) {
                 <div className="border-t border-gray-100 divide-y divide-gray-100">
                   {categoryItems.map((item) => (
                     <div
-                      key={item.id}
+                      key={item.item_key}
                       className={`checklist-item ${item.status?.is_verified ? 'verified' : ''} ${item.is_critical ? 'critical' : ''}`}
                     >
                       <button
@@ -255,7 +266,7 @@ export function QIIChecklist({ projectId }: QIIChecklistProps) {
                           <Circle className="w-6 h-6 text-gray-300 hover:text-gray-400" />
                         )}
                       </button>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className={`font-medium ${item.status?.is_verified ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
