@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { 
+import {
   MessageSquareText, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp,
   Copy, Check, HelpCircle
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import type { ContractorBid, BidQuestion, QuestionPriority } from '../lib/types';
+import type { BidWithChildren, ContractorQuestion, QuestionPriority } from '../lib/types';
 
 interface ContractorQuestionsProps {
   projectId: string;
-  bids: ContractorBid[];
+  bids: BidWithChildren[];
 }
 
 interface GeneratedQuestion {
@@ -19,8 +19,8 @@ interface GeneratedQuestion {
 }
 
 export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQuestionsProps) {
-  const [questions, setQuestions] = useState<Record<string, BidQuestion[]>>({});
-  const [expandedBid, setExpandedBid] = useState<string | null>(bids[0]?.id || null);
+  const [questions, setQuestions] = useState<Record<string, ContractorQuestion[]>>({});
+  const [expandedBid, setExpandedBid] = useState<string | null>(bids[0]?.bid.id || null);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -29,27 +29,29 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
   }, [bids]);
 
   async function loadOrGenerateQuestions() {
-    const questionsMap: Record<string, BidQuestion[]> = {};
+    const questionsMap: Record<string, ContractorQuestion[]> = {};
 
-    for (const bid of bids) {
-      // Try to load existing questions
+    for (const bidWithChildren of bids) {
+      const bidId = bidWithChildren.bid.id;
+
+      // Try to load existing questions from contractor_questions table (V2)
       const { data: existingQuestions } = await supabase
-        .from('bid_questions')
+        .from('contractor_questions')
         .select('*')
-        .eq('bid_id', bid.id)
+        .eq('bid_id', bidId)
         .order('priority', { ascending: true })
         .order('display_order', { ascending: true });
 
       if (existingQuestions && existingQuestions.length > 0) {
-        questionsMap[bid.id] = existingQuestions;
+        questionsMap[bidId] = existingQuestions;
       } else {
         // Generate questions based on missing info
-        const generated = generateQuestionsForBid(bid);
-        
+        const generated = generateQuestionsForBid(bidWithChildren);
+
         // Save to database
         if (generated.length > 0) {
           const toInsert = generated.map((q, i) => ({
-            bid_id: bid.id,
+            bid_id: bidId,
             question_text: q.text,
             question_category: q.category,
             priority: q.priority,
@@ -59,13 +61,13 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
           }));
 
           const { data: inserted } = await supabase
-            .from('bid_questions')
+            .from('contractor_questions')
             .insert(toInsert)
             .select();
 
-          questionsMap[bid.id] = inserted || [];
+          questionsMap[bidId] = inserted || [];
         } else {
-          questionsMap[bid.id] = [];
+          questionsMap[bidId] = [];
         }
       }
     }
@@ -74,8 +76,10 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
     setLoading(false);
   }
 
-  function generateQuestionsForBid(bid: ContractorBid): GeneratedQuestion[] {
+  function generateQuestionsForBid(bidWithChildren: BidWithChildren): GeneratedQuestion[] {
     const questions: GeneratedQuestion[] = [];
+    const bid = bidWithChildren.bid;
+    const contractor = bidWithChildren.contractor;
 
     // Pricing questions
     if (!bid.equipment_cost && !bid.labor_cost) {
@@ -126,7 +130,7 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
     }
 
     // Credentials questions
-    if (!bid.contractor_license) {
+    if (!contractor?.license) {
       questions.push({
         text: "What is your contractor's license number?",
         category: 'credentials',
@@ -135,7 +139,7 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
       });
     }
 
-    if (!bid.contractor_years_in_business) {
+    if (!contractor?.years_in_business) {
       questions.push({
         text: 'How many years has your company been in business?',
         category: 'credentials',
@@ -144,7 +148,7 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
       });
     }
 
-    if (!bid.contractor_certifications || bid.contractor_certifications.length === 0) {
+    if (!contractor?.certifications || contractor.certifications.length === 0) {
       questions.push({
         text: 'What professional certifications do your technicians hold (NATE, EPA 608, manufacturer certifications)?',
         category: 'credentials',
@@ -154,7 +158,7 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
     }
 
     // Scope questions
-    if (!bid.scope_summary) {
+    if (!bidWithChildren.scope?.summary) {
       questions.push({
         text: 'Can you provide a detailed scope of work for this installation?',
         category: 'scope',
@@ -204,16 +208,16 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
 
   async function markAsAnswered(questionId: string, bidId: string) {
     await supabase
-      .from('bid_questions')
-      .update({ 
-        is_answered: true, 
-        answered_at: new Date().toISOString() 
+      .from('contractor_questions')
+      .update({
+        is_answered: true,
+        answered_at: new Date().toISOString()
       })
       .eq('id', questionId);
 
     setQuestions(prev => ({
       ...prev,
-      [bidId]: prev[bidId].map(q => 
+      [bidId]: prev[bidId].map(q =>
         q.id === questionId ? { ...q, is_answered: true, answered_at: new Date().toISOString() } : q
       ),
     }));
@@ -222,19 +226,20 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
   async function copyAllQuestions(bidId: string) {
     const bidQuestions = questions[bidId]?.filter(q => !q.is_answered) || [];
     const text = bidQuestions.map((q, i) => `${i + 1}. ${q.question_text}`).join('\n');
-    
+
     await navigator.clipboard.writeText(text);
     setCopiedId(bidId);
     setTimeout(() => setCopiedId(null), 2000);
   }
 
-  function getPriorityBadge(priority: QuestionPriority) {
+  function getPriorityBadge(priority: QuestionPriority | string | null | undefined) {
+    const resolvedPriority = (priority ?? 'medium') as QuestionPriority;
     const config = {
       high: { label: 'Important', className: 'bg-red-100 text-red-800' },
       medium: { label: 'Recommended', className: 'bg-yellow-100 text-yellow-800' },
       low: { label: 'Nice to know', className: 'bg-gray-100 text-gray-700' },
     };
-    const { label, className } = config[priority];
+    const { label, className } = config[resolvedPriority] ?? config.medium;
     return <span className={`text-xs px-2 py-0.5 rounded-full ${className}`}>{label}</span>;
   }
 
@@ -257,23 +262,25 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-medium text-blue-900 mb-1">Questions to Ask Each Contractor</h3>
         <p className="text-sm text-blue-700">
-          Based on what's missing from each bid, here are personalized questions to ask. 
+          Based on what's missing from each bid, here are personalized questions to ask.
           Getting answers will help you make a more informed comparison.
         </p>
       </div>
 
       <div className="space-y-4">
-        {bids.map((bid) => {
-          const bidQuestions = questions[bid.id] || [];
+        {bids.map((bidWithChildren) => {
+          const bid = bidWithChildren.bid;
+          const bidId = bid.id;
+          const bidQuestions = questions[bidId] || [];
           const unanswered = bidQuestions.filter(q => !q.is_answered);
           const answered = bidQuestions.filter(q => q.is_answered);
-          const isExpanded = expandedBid === bid.id;
+          const isExpanded = expandedBid === bidId;
 
           return (
-            <div key={bid.id} className="card overflow-hidden">
+            <div key={bidId} className="card overflow-hidden">
               {/* Header */}
               <button
-                onClick={() => setExpandedBid(isExpanded ? null : bid.id)}
+                onClick={() => setExpandedBid(isExpanded ? null : bidId)}
                 className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center gap-3">
@@ -313,10 +320,10 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
                   {unanswered.length > 0 && (
                     <div className="flex justify-end">
                       <button
-                        onClick={() => copyAllQuestions(bid.id)}
+                        onClick={() => copyAllQuestions(bidId)}
                         className="btn btn-secondary text-sm"
                       >
-                        {copiedId === bid.id ? (
+                        {copiedId === bidId ? (
                           <>
                             <Check className="w-4 h-4 text-green-600" />
                             Copied!
@@ -335,8 +342,8 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
                   {unanswered.length > 0 && (
                     <div className="space-y-3">
                       {unanswered.map((question, index) => (
-                        <div 
-                          key={question.id} 
+                        <div
+                          key={question.id}
                           className={`question-card ${question.priority === 'high' ? 'high-priority' : ''}`}
                         >
                           <div className="flex items-start justify-between gap-4">
@@ -348,7 +355,7 @@ export function ContractorQuestions({ projectId: _projectId, bids }: ContractorQ
                               <p className="text-gray-900">{question.question_text}</p>
                             </div>
                             <button
-                              onClick={() => markAsAnswered(question.id, bid.id)}
+                              onClick={() => markAsAnswered(question.id, bidId)}
                               className="btn btn-ghost text-sm text-gray-500 hover:text-green-600"
                               title="Mark as answered"
                             >

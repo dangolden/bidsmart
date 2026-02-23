@@ -6,9 +6,10 @@
 
 import * as db from '../database/bidsmartService';
 import type {
-  ContractorBid,
+  Bid,
+  BidContractor,
+  BidScope,
   BidEquipment,
-  BidLineItem,
   BidAnalysis,
   WeightedScoreConfig,
   PriceComparison,
@@ -30,9 +31,10 @@ export const DEFAULT_WEIGHTS: WeightedScoreConfig = {
 };
 
 interface BidWithDetails {
-  bid: ContractorBid;
+  bid: Bid;
+  contractor: BidContractor | null;
+  scope: BidScope | null;
   equipment: BidEquipment[];
-  lineItems: BidLineItem[];
 }
 
 /**
@@ -42,16 +44,15 @@ export async function calculateProjectScores(
   projectId: string,
   weights: WeightedScoreConfig = DEFAULT_WEIGHTS
 ): Promise<BidComparisonTableRow[]> {
-  const bids = await db.getBidsByProject(projectId);
-  
-  // Load details for each bid
-  const bidsWithDetails: BidWithDetails[] = await Promise.all(
-    bids.map(async (bid) => ({
-      bid,
-      equipment: await db.getEquipmentByBid(bid.id),
-      lineItems: await db.getLineItemsByBid(bid.id),
-    }))
-  );
+  const bidsWithChildren = await db.getBidsWithChildren(projectId);
+
+  // Map to BidWithDetails shape
+  const bidsWithDetails: BidWithDetails[] = bidsWithChildren.map((bwc) => ({
+    bid: bwc.bid,
+    contractor: bwc.contractor,
+    scope: bwc.scope,
+    equipment: bwc.equipment,
+  }));
 
   // Calculate individual scores
   const priceScores = calculatePriceScores(bidsWithDetails);
@@ -77,8 +78,9 @@ export async function calculateProjectScores(
 
     return {
       bid: bwd.bid,
+      contractor: bwd.contractor,
+      scope: bwd.scope,
       equipment: bwd.equipment,
-      lineItems: bwd.lineItems,
       scores: {
         overall: Math.round(overall * 100) / 100,
         price: priceScore,
@@ -160,7 +162,7 @@ function calculateWarrantyScores(bids: BidWithDetails[]): number[] {
     else if (equipYears > 0) score += 5;
 
     // Bonus for insurance verification
-    if (b.bid.contractor_insurance_verified) score += 10;
+    if (b.contractor?.insurance_verified) score += 10;
 
     return Math.min(score, 100);
   });
@@ -171,17 +173,18 @@ function calculateWarrantyScores(bids: BidWithDetails[]): number[] {
  */
 function calculateCompletenessScores(bids: BidWithDetails[]): number[] {
   return bids.map((b) => {
+    const lineItems = (b.scope?.line_items as unknown[]) ?? [];
     const fields = [
       { value: b.bid.contractor_name, points: 5 },
-      { value: b.bid.contractor_phone, points: 5 },
-      { value: b.bid.contractor_email, points: 5 },
-      { value: b.bid.contractor_license, points: 10 },
+      { value: b.contractor?.phone, points: 5 },
+      { value: b.contractor?.email, points: 5 },
+      { value: b.contractor?.license, points: 10 },
       { value: b.bid.total_bid_amount > 0, points: 15 },
       { value: b.bid.labor_warranty_years, points: 10 },
       { value: b.bid.equipment_warranty_years, points: 10 },
       { value: b.bid.estimated_days, points: 5 },
-      { value: b.bid.scope_summary, points: 10 },
-      { value: b.lineItems.length > 0, points: 15 },
+      { value: b.scope?.summary, points: 10 },
+      { value: lineItems.length > 0, points: 15 },
       { value: b.equipment.length > 0, points: 10 },
     ];
 
@@ -395,7 +398,7 @@ export function identifyRedFlags(bids: BidWithDetails[]): RedFlag[] {
     }
 
     // Missing license
-    if (!b.bid.contractor_license) {
+    if (!b.contractor?.license) {
       flags.push({
         bid_id: b.bid.id,
         contractor_name: b.bid.contractor_name,
@@ -406,7 +409,7 @@ export function identifyRedFlags(bids: BidWithDetails[]): RedFlag[] {
     }
 
     // Missing contact info
-    if (!b.bid.contractor_phone && !b.bid.contractor_email) {
+    if (!b.contractor?.phone && !b.contractor?.email) {
       flags.push({
         bid_id: b.bid.id,
         contractor_name: b.bid.contractor_name,
@@ -428,7 +431,8 @@ export function identifyRedFlags(bids: BidWithDetails[]): RedFlag[] {
     }
 
     // No itemized breakdown
-    if (b.lineItems.length === 0) {
+    const lineItemsForFlags = (b.scope?.line_items as unknown[]) ?? [];
+    if (lineItemsForFlags.length === 0) {
       flags.push({
         bid_id: b.bid.id,
         contractor_name: b.bid.contractor_name,
@@ -465,14 +469,15 @@ export function identifyMissingInfo(bids: BidWithDetails[]): MissingInfo[] {
   };
 
   for (const b of bids) {
+    const lineItemsForMissing = (b.scope?.line_items as unknown[]) ?? [];
     checkField(b, 'Total bid amount', b.bid.total_bid_amount, 'critical');
     checkField(b, 'Equipment warranty', b.bid.equipment_warranty_years, 'critical');
     checkField(b, 'Labor warranty', b.bid.labor_warranty_years, 'important');
-    checkField(b, 'Contractor license', b.bid.contractor_license, 'important');
+    checkField(b, 'Contractor license', b.contractor?.license, 'important');
     checkField(b, 'Estimated timeline', b.bid.estimated_days, 'important');
     checkField(b, 'Equipment details', b.equipment.length > 0, 'important');
-    checkField(b, 'Scope of work', b.bid.scope_summary, 'nice_to_have');
-    checkField(b, 'Line item breakdown', b.lineItems.length > 0, 'nice_to_have');
+    checkField(b, 'Scope of work', b.scope?.summary, 'nice_to_have');
+    checkField(b, 'Line item breakdown', lineItemsForMissing.length > 0, 'nice_to_have');
     checkField(b, 'Payment terms', b.bid.payment_schedule, 'nice_to_have');
   }
 
@@ -560,16 +565,15 @@ export async function generateProjectAnalysis(
   projectId: string,
   weights: WeightedScoreConfig = DEFAULT_WEIGHTS
 ): Promise<BidAnalysis> {
-  const bids = await db.getBidsByProject(projectId);
-  
-  // Load details for each bid
-  const bidsWithDetails: BidWithDetails[] = await Promise.all(
-    bids.map(async (bid) => ({
-      bid,
-      equipment: await db.getEquipmentByBid(bid.id),
-      lineItems: await db.getLineItemsByBid(bid.id),
-    }))
-  );
+  const bidsWithChildren = await db.getBidsWithChildren(projectId);
+
+  // Map to BidWithDetails shape
+  const bidsWithDetails: BidWithDetails[] = bidsWithChildren.map((bwc) => ({
+    bid: bwc.bid,
+    contractor: bwc.contractor,
+    scope: bwc.scope,
+    equipment: bwc.equipment,
+  }));
 
   if (bidsWithDetails.length === 0) {
     // Create empty analysis

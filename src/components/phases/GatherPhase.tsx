@@ -733,7 +733,7 @@ export function GatherPhase() {
                   <FileText className="w-5 h-5 text-switch-green-600" />
                   <div>
                     <p className="font-medium text-gray-900">
-                      {item.bid.contractor_name || item.bid.contractor_company || 'Unknown Contractor'}
+                      {item.bid.contractor_name || item.contractor?.company || 'Unknown Contractor'}
                     </p>
                     <p className="text-sm text-gray-500">
                       ${item.bid.total_bid_amount.toLocaleString()}

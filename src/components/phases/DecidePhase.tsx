@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { IncentivesTable } from '../IncentivesTable';
 import { OverallFaqsCard } from '../OverallFaqsCard';
 import { BidSpecificFaqsCard } from '../BidSpecificFaqsCard';
-import type { BidQuestion, RebateProgram, ProjectFaqData } from '../../lib/types';
+import type { ContractorQuestion, RebateProgram, ProjectFaqData } from '../../lib/types';
 import { getFaqsByProject } from '../../lib/database/bidsmartService';
 import { formatCurrency, formatDate } from '../../lib/utils/formatters';
 
@@ -74,9 +74,9 @@ export function DecidePhase() {
     }, 0);
   };
 
-  const toggleQuestionAnswered = async (question: BidQuestion) => {
+  const toggleQuestionAnswered = async (question: ContractorQuestion) => {
     await supabase
-      .from('bid_questions')
+      .from('contractor_questions')
       .update({
         is_answered: !question.is_answered,
         answered_at: !question.is_answered ? new Date().toISOString() : null,
@@ -86,7 +86,7 @@ export function DecidePhase() {
     refreshQuestions();
   };
 
-  const getQuestionsForBid = (bidId: string): BidQuestion[] => {
+  const getQuestionsForBid = (bidId: string): ContractorQuestion[] => {
     return questions.filter((q) => q.bid_id === bidId);
   };
 
@@ -153,27 +153,27 @@ export function DecidePhase() {
 
       return {
         bidId: b.bid.id,
-        contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
+        contractor: b.bid.contractor_name || b.contractor?.company || 'Unknown',
         totalAmount: b.bid.total_bid_amount,
         estimatedRebates: totalSelectedRebates,
         netCost,
         equipmentBrand: mainEquipment?.brand || '-',
         equipmentModel: mainEquipment?.model_number || mainEquipment?.model_name || '-',
         seer2: mainEquipment?.seer2_rating || mainEquipment?.seer_rating,
-        googleRating: b.bid.contractor_google_rating,
-        reviewCount: b.bid.contractor_google_review_count,
+        googleRating: b.contractor?.google_rating,
+        reviewCount: b.contractor?.google_review_count,
         laborWarranty: b.bid.labor_warranty_years,
         equipmentWarranty: b.bid.equipment_warranty_years,
-        isSwitchPreferred: b.bid.contractor_is_switch_preferred,
-        phone: b.bid.contractor_phone,
-        email: b.bid.contractor_email,
-        website: b.bid.contractor_website,
-        license: b.bid.contractor_license,
-        licenseState: b.bid.contractor_license_state,
-        insuranceVerified: b.bid.contractor_insurance_verified,
-        yearsInBusiness: b.bid.contractor_years_in_business,
-        totalInstalls: b.bid.contractor_total_installs,
-        certifications: b.bid.contractor_certifications || [],
+        isSwitchPreferred: null as boolean | null,
+        phone: b.contractor?.phone,
+        email: b.contractor?.email,
+        website: b.contractor?.website,
+        license: b.contractor?.license,
+        licenseState: b.contractor?.license_state,
+        insuranceVerified: b.contractor?.insurance_verified,
+        yearsInBusiness: b.contractor?.years_in_business,
+        totalInstalls: b.contractor?.total_installs,
+        certifications: b.contractor?.certifications || [],
         estimatedDays: b.bid.estimated_days,
         startDateAvailable: b.bid.start_date_available,
         validUntil: b.bid.valid_until,
@@ -184,9 +184,9 @@ export function DecidePhase() {
         isFavorite: b.bid.is_favorite,
         verifiedByUser: b.bid.verified_by_user,
         extractionConfidence: b.bid.extraction_confidence,
-        valueScore: b.bid.value_score,
-        qualityScore: b.bid.quality_score,
-        completenessScore: b.bid.completeness_score,
+        valueScore: b.scores?.value_score,
+        qualityScore: b.scores?.quality_score,
+        completenessScore: b.scores?.completeness_score,
       };
     });
   };
@@ -249,26 +249,29 @@ export function DecidePhase() {
       </div>
 
       {/* Red Flags Alert */}
-      {bids.some(b => b.bid.red_flags && b.bid.red_flags.length > 0) && (
+      {bids.some(b => Array.isArray(b.scores?.red_flags) && (b.scores!.red_flags as unknown[]).length > 0) && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <h3 className="font-medium text-red-900 mb-2">Potential Issues Identified</h3>
               <div className="space-y-2">
-                {bids.filter(b => b.bid.red_flags && b.bid.red_flags.length > 0).map(b => (
-                  <div key={b.bid.id} className="text-sm">
-                    <span className="font-medium text-red-800">{b.bid.contractor_name}:</span>
-                    <ul className="list-disc ml-5 mt-1 text-red-700">
-                      {b.bid.red_flags?.slice(0, 3).map((flag, i) => (
-                        <li key={i}>{flag.issue}</li>
-                      ))}
-                      {b.bid.red_flags && b.bid.red_flags.length > 3 && (
-                        <li className="text-red-500">+{b.bid.red_flags.length - 3} more issues</li>
-                      )}
-                    </ul>
-                  </div>
-                ))}
+                {bids.filter(b => Array.isArray(b.scores?.red_flags) && (b.scores!.red_flags as unknown[]).length > 0).map(b => {
+                  const flags = b.scores!.red_flags as Array<{ issue: string }>;
+                  return (
+                    <div key={b.bid.id} className="text-sm">
+                      <span className="font-medium text-red-800">{b.bid.contractor_name}:</span>
+                      <ul className="list-disc ml-5 mt-1 text-red-700">
+                        {flags.slice(0, 3).map((flag, i) => (
+                          <li key={i}>{flag.issue}</li>
+                        ))}
+                        {flags.length > 3 && (
+                          <li className="text-red-500">+{flags.length - 3} more issues</li>
+                        )}
+                      </ul>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -276,26 +279,29 @@ export function DecidePhase() {
       )}
 
       {/* Positive Indicators */}
-      {bids.some(b => b.bid.positive_indicators && b.bid.positive_indicators.length > 0) && (
+      {bids.some(b => Array.isArray(b.scores?.positive_indicators) && (b.scores!.positive_indicators as unknown[]).length > 0) && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <h3 className="font-medium text-green-900 mb-2">Positive Indicators</h3>
               <div className="space-y-2">
-                {bids.filter(b => b.bid.positive_indicators && b.bid.positive_indicators.length > 0).map(b => (
-                  <div key={b.bid.id} className="text-sm">
-                    <span className="font-medium text-green-800">{b.bid.contractor_name}:</span>
-                    <ul className="list-disc ml-5 mt-1 text-green-700">
-                      {b.bid.positive_indicators?.slice(0, 3).map((indicator, i) => (
-                        <li key={i}>{indicator.indicator}</li>
-                      ))}
-                      {b.bid.positive_indicators && b.bid.positive_indicators.length > 3 && (
-                        <li className="text-green-500">+{b.bid.positive_indicators.length - 3} more</li>
-                      )}
-                    </ul>
-                  </div>
-                ))}
+                {bids.filter(b => Array.isArray(b.scores?.positive_indicators) && (b.scores!.positive_indicators as unknown[]).length > 0).map(b => {
+                  const indicators = b.scores!.positive_indicators as Array<{ indicator: string }>;
+                  return (
+                    <div key={b.bid.id} className="text-sm">
+                      <span className="font-medium text-green-800">{b.bid.contractor_name}:</span>
+                      <ul className="list-disc ml-5 mt-1 text-green-700">
+                        {indicators.slice(0, 3).map((indicator, i) => (
+                          <li key={i}>{indicator.indicator}</li>
+                        ))}
+                        {indicators.length > 3 && (
+                          <li className="text-green-500">+{indicators.length - 3} more</li>
+                        )}
+                      </ul>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -429,7 +435,7 @@ export function DecidePhase() {
               {projectFaqData.by_bid.length > 0 && (
                 <BidSpecificFaqsCard
                   bidFaqSets={projectFaqData.by_bid}
-                  switchPreferredBids={new Set(bids.filter(b => b.bid.contractor_is_switch_preferred).map(b => b.bid.id))}
+                  switchPreferredBids={new Set(bids.filter(b => b.bid.is_favorite).map(b => b.bid.id))}
                 />
               )}
 
@@ -678,7 +684,7 @@ export function DecidePhase() {
                                   </p>
                                   {!question.is_answered && (
                                     <div className="flex items-center gap-1 mt-1.5">
-                                      <span className={`text-[10px] px-2 py-0.5 rounded border font-medium ${getPriorityColor(question.priority)}`}>
+                                      <span className={`text-[10px] px-2 py-0.5 rounded border font-medium ${getPriorityColor(question.priority ?? 'medium')}`}>
                                         {question.priority}
                                       </span>
                                     </div>

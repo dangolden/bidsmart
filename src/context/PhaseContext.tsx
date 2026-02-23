@@ -1,10 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import type { Project, ContractorBid, BidEquipment, ProjectRequirements, BidQuestion } from '../lib/types';
+import type { Project, BidWithChildren, ContractorQuestion, ProjectRequirements } from '../lib/types';
 import {
   createProject,
   getProjectsByUser,
-  getBidsByProject,
-  getEquipmentByBid,
+  getBidsWithChildren,
   getProjectRequirements,
 } from '../lib/database/bidsmartService';
 import { supabase } from '../lib/supabaseClient';
@@ -19,19 +18,14 @@ const PHASE_LABELS: Record<Phase, string> = {
   4: 'VERIFY',
 };
 
-interface BidWithEquipment {
-  bid: ContractorBid;
-  equipment: BidEquipment[];
-}
-
 interface PhaseState {
   currentPhase: Phase;
   phaseStatus: Record<Phase, PhaseStatus>;
   projectId: string | null;
   project: Project | null;
-  bids: BidWithEquipment[];
+  bids: BidWithChildren[];
   requirements: ProjectRequirements | null;
-  questions: BidQuestion[];
+  questions: ContractorQuestion[];
   loading: boolean;
   error: string | null;
   isDemoMode: boolean;
@@ -129,25 +123,19 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
           projectId = project.id;
         }
 
-        let bidsWithEquipment: BidWithEquipment[] = [];
+        let bids: BidWithChildren[] = [];
         let requirements: ProjectRequirements | null = null;
-        let questions: BidQuestion[] = [];
+        let questions: ContractorQuestion[] = [];
 
         if (projectId) {
-          const bids = await getBidsByProject(projectId);
-          bidsWithEquipment = await Promise.all(
-            bids.map(async (bid) => ({
-              bid,
-              equipment: await getEquipmentByBid(bid.id),
-            }))
-          );
+          bids = await getBidsWithChildren(projectId);
 
           requirements = await getProjectRequirements(projectId);
 
           const { data: questionsData } = await supabase
-            .from('bid_questions')
+            .from('contractor_questions')
             .select('*')
-            .in('bid_id', bids.map(b => b.id))
+            .in('bid_id', bids.map(b => b.bid.id))
             .order('display_order', { ascending: true });
 
           questions = questionsData || [];
@@ -164,7 +152,7 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
         if (storedState && storedState.projectId === projectId) {
           currentPhase = storedState.currentPhase;
           phaseStatus = storedState.phaseStatus;
-        } else if (bidsWithEquipment.length >= 2 && requirements?.completed_at) {
+        } else if (bids.length >= 2 && requirements?.completed_at) {
           phaseStatus[1] = 'completed';
           phaseStatus[2] = 'active';
           phaseStatus[3] = 'active';
@@ -176,7 +164,7 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
           phaseStatus,
           projectId,
           project,
-          bids: bidsWithEquipment,
+          bids,
           requirements,
           questions: questions || [],
           loading: false,
@@ -254,15 +242,8 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
   const refreshBids = useCallback(async () => {
     if (!state.projectId) return;
 
-    const bids = await getBidsByProject(state.projectId);
-    const bidsWithEquipment = await Promise.all(
-      bids.map(async (bid) => ({
-        bid,
-        equipment: await getEquipmentByBid(bid.id),
-      }))
-    );
-
-    setState(prev => ({ ...prev, bids: bidsWithEquipment }));
+    const bids = await getBidsWithChildren(state.projectId);
+    setState(prev => ({ ...prev, bids }));
   }, [state.projectId]);
 
   const refreshRequirements = useCallback(async () => {
@@ -276,7 +257,7 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
     if (!state.projectId || state.bids.length === 0) return;
 
     const { data: questions } = await supabase
-      .from('bid_questions')
+      .from('contractor_questions')
       .select('*')
       .in('bid_id', state.bids.map(b => b.bid.id))
       .order('display_order', { ascending: true });
