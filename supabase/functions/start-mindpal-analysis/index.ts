@@ -3,8 +3,8 @@ import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
 import { verifyEmailAuth, verifyProjectOwnership } from "../_shared/auth.ts";
 
-// MindPal API configuration
-const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://api-v3.mindpal.io/api/v1/workflows/699a33ac6787d2e1b0e9ed93/run";
+// MindPal API configuration (v18 workflow — app.mindpal.space v2 API + humanInputs format)
+const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://app.mindpal.space/api/v2/workflow/run";
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 
@@ -92,8 +92,8 @@ async function callMindPalAPI(payload: MindPalPayload): Promise<{
     throw new Error("MindPal workflow ID not configured");
   }
 
-  // v18 API: workflow ID is embedded in the endpoint URL
-  const apiUrl = MINDPAL_API_ENDPOINT;
+  // v2 API uses query parameter for workflow_id
+  const apiUrl = `${MINDPAL_API_ENDPOINT}?workflow_id=${WORKFLOW_ID}`;
 
   console.log("MindPal API Request:", {
     url: apiUrl,
@@ -113,7 +113,7 @@ async function callMindPalAPI(payload: MindPalPayload): Promise<{
     method: "POST",
     headers: {
       "accept": "application/json",
-      "Authorization": `Bearer ${MINDPAL_API_KEY}`,
+      "x-api-key": MINDPAL_API_KEY!,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
