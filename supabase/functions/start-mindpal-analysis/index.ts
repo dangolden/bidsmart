@@ -148,7 +148,7 @@ Deno.serve(async (req: Request) => {
     if (corsResponse) return corsResponse;
 
     if (req.method !== "POST") {
-      return errorResponse("Method not allowed", 405);
+      return errorResponse("Method not allowed", 405, req);
     }
 
     const authResult = await verifyEmailAuth(req);
@@ -170,20 +170,20 @@ Deno.serve(async (req: Request) => {
 
     // Validate inputs
     if (!projectId) {
-      return errorResponse("Missing projectId");
+      return errorResponse("Missing projectId", 400, req);
     }
 
     if (!pdfUploadIds || !Array.isArray(pdfUploadIds) || pdfUploadIds.length === 0) {
-      return errorResponse("Missing or invalid pdfUploadIds array");
+      return errorResponse("Missing or invalid pdfUploadIds array", 400, req);
     }
 
     if (!userPriorities || typeof userPriorities !== "object") {
-      return errorResponse("Missing or invalid userPriorities");
+      return errorResponse("Missing or invalid userPriorities", 400, req);
     }
 
     const isOwner = await verifyProjectOwnership(userExtId, projectId);
     if (!isOwner) {
-      return errorResponse("Not authorized to access this project", 403);
+      return errorResponse("Not authorized to access this project", 403, req);
     }
 
     // Generate public URLs for the uploaded PDFs
@@ -194,7 +194,7 @@ Deno.serve(async (req: Request) => {
       console.log("Generated URLs:", documentUrls.length, documentUrls);
     } catch (urlError) {
       console.error("Failed to generate URLs:", urlError);
-      return errorResponse(`URL generation failed: ${urlError instanceof Error ? urlError.message : String(urlError)}`);
+      return errorResponse(`URL generation failed: ${urlError instanceof Error ? urlError.message : String(urlError)}`, 400, req);
     }
 
     const requestId = generateUUID();
@@ -223,7 +223,7 @@ Deno.serve(async (req: Request) => {
       mindpalResult = await callMindPalAPI(payload);
     } catch (apiError) {
       console.error("MindPal API call failed:", apiError);
-      return errorResponse(`MindPal API failed: ${apiError instanceof Error ? apiError.message : String(apiError)}`);
+      return errorResponse(`MindPal API failed: ${apiError instanceof Error ? apiError.message : String(apiError)}`, 500, req);
     }
 
     // Update project status
@@ -255,12 +255,13 @@ Deno.serve(async (req: Request) => {
       pdfCount: pdfUploadIds.length,
       mode: "url",
       message: "Analysis started successfully",
-    });
+    }, 200, req);
   } catch (error) {
     console.error("Error in start-mindpal-analysis:", error);
     return errorResponse(
       error instanceof Error ? error.message : "Internal server error",
-      500
+      500,
+      req
     );
   }
 });
