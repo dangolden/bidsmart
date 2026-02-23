@@ -3,7 +3,7 @@ import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
 import { verifyEmailAuth, verifyProjectOwnership } from "../_shared/auth.ts";
 
-// MindPal API configuration (v18 workflow — app.mindpal.space v2 API + humanInputs format)
+// MindPal API configuration (v18 workflow — app.mindpal.space v2 API + data format)
 const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://app.mindpal.space/api/v2/workflow/run";
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -26,9 +26,9 @@ interface RequestBody {
   userPriorities: Record<string, number>;
 }
 
-// MindPal payload structure (v18 humanInputs format)
+// MindPal payload structure (v18 data format — same as v10)
 interface MindPalPayload {
-  humanInputs: Array<{ fieldId: string; value: string }>;
+  data: Record<string, string>;
 }
 
 function generateUUID(): string {
@@ -203,16 +203,16 @@ Deno.serve(async (req: Request) => {
     // Extract user_notes from userPriorities.project_details if present
     const userNotes = String(userPriorities.project_details || '');
     
-    // Construct v18 payload with humanInputs format
+    // Construct v18 payload with data format (field ID → value map)
     const payload: MindPalPayload = {
-      humanInputs: [
-        { fieldId: DOCUMENT_URLS_FIELD_ID, value: JSON.stringify(documentUrls) },
-        { fieldId: USER_PRIORITIES_FIELD_ID, value: JSON.stringify(userPriorities) },
-        { fieldId: USER_NOTES_FIELD_ID, value: userNotes },
-        { fieldId: PROJECT_ID_FIELD_ID, value: projectId },
-        { fieldId: CALLBACK_URL_FIELD_ID, value: callbackUrl },
-        { fieldId: REQUEST_ID_FIELD_ID, value: requestId },
-      ]
+      data: {
+        [DOCUMENT_URLS_FIELD_ID]: JSON.stringify(documentUrls),
+        [USER_PRIORITIES_FIELD_ID]: JSON.stringify(userPriorities),
+        [USER_NOTES_FIELD_ID]: userNotes,
+        [PROJECT_ID_FIELD_ID]: projectId,
+        [CALLBACK_URL_FIELD_ID]: callbackUrl,
+        [REQUEST_ID_FIELD_ID]: requestId,
+      }
     };
 
     console.log("Calling MindPal API with", documentUrls.length, "documents");
