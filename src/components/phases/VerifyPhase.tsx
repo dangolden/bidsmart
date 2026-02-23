@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { ClipboardCheck, Download, FileCheck2, MessageSquare } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { supabase } from '../../lib/supabaseClient';
+import { getBidWithChildren } from '../../lib/database/bidsmartService';
 import { ContractorReviewSurvey } from '../ContractorReviewSurvey';
+import type { BidWithChildren } from '../../lib/types';
 
 export function VerifyPhase() {
   const { projectId } = usePhase();
   const [loading, setLoading] = useState(true);
-  const [contractorBid, setContractorBid] = useState<any>(null);
+  const [selectedBid, setSelectedBid] = useState<BidWithChildren | null>(null);
 
   useEffect(() => {
     if (projectId) {
@@ -18,18 +20,17 @@ export function VerifyPhase() {
   async function loadProjectData() {
     const { data: projectData } = await supabase
       .from('projects')
-      .select('*, users_ext(*)')
+      .select('id, selected_bid_id')
       .eq('id', projectId)
       .single();
 
     if (projectData?.selected_bid_id) {
-      const { data: bidData } = await supabase
-        .from('contractor_bids')
-        .select('*')
-        .eq('id', projectData.selected_bid_id)
-        .single();
-
-      setContractorBid(bidData);
+      try {
+        const bidWithChildren = await getBidWithChildren(projectData.selected_bid_id);
+        setSelectedBid(bidWithChildren);
+      } catch (error) {
+        console.error('Error loading selected bid:', error);
+      }
     }
 
     setLoading(false);
@@ -109,10 +110,10 @@ export function VerifyPhase() {
           </div>
         </div>
 
-        {contractorBid ? (
+        {selectedBid ? (
           <ContractorReviewSurvey
             projectId={projectId!}
-            contractorBidId={contractorBid.id}
+            contractorBidId={selectedBid.bid.id}
             onSubmitSuccess={() => {
               loadProjectData();
             }}

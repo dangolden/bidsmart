@@ -5,8 +5,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { IncentivesTable } from '../IncentivesTable';
 import { OverallFaqsCard } from '../OverallFaqsCard';
 import { BidSpecificFaqsCard } from '../BidSpecificFaqsCard';
-import type { ContractorQuestion, RebateProgram, ProjectFaqData } from '../../lib/types';
-import { getFaqsByProject } from '../../lib/database/bidsmartService';
+import type { ContractorQuestion, ProjectIncentive, ProjectFaqData } from '../../lib/types';
+import { getFaqsByProject, getProjectIncentives } from '../../lib/database/bidsmartService';
 import { formatCurrency, formatDate } from '../../lib/utils/formatters';
 
 type DecideTab = 'incentives' | 'questions' | 'faqs';
@@ -21,7 +21,7 @@ interface TabConfig {
 export function DecidePhase() {
   const { bids, questions, refreshQuestions, completePhase, projectId } = usePhase();
   const [activeTab, setActiveTab] = useState<DecideTab>('incentives');
-  const [rebatePrograms, setRebatePrograms] = useState<RebateProgram[]>([]);
+  const [projectIncentives, setProjectIncentives] = useState<ProjectIncentive[]>([]);
   const [selectedIncentives, setSelectedIncentives] = useState<Set<string>>(new Set());
   const [selectedContractor, setSelectedContractor] = useState<string | null>(null);
   const [copiedContractor, setCopiedContractor] = useState<string | null>(null);
@@ -29,20 +29,18 @@ export function DecidePhase() {
   const [projectFaqData, setProjectFaqData] = useState<ProjectFaqData>({ overall: [], by_bid: [] });
 
   useEffect(() => {
-    loadRebatePrograms();
+    loadProjectIncentives();
     loadAllFaqs();
   }, [projectId, bids]);
 
-  const loadRebatePrograms = async () => {
-    const { data } = await supabase
-      .from('rebate_programs')
-      .select('*')
-      .eq('is_active', true)
-      .order('program_name');
-
-    if (data) {
-      setRebatePrograms(data);
-      setSelectedIncentives(new Set(data.map(p => p.id)));
+  const loadProjectIncentives = async () => {
+    if (!projectId) return;
+    try {
+      const incentives = await getProjectIncentives(projectId);
+      setProjectIncentives(incentives);
+      setSelectedIncentives(new Set(incentives.map(i => i.id)));
+    } catch (error) {
+      console.error('Error loading project incentives:', error);
     }
   };
 
@@ -69,8 +67,8 @@ export function DecidePhase() {
 
   const getTotalSelectedRebates = () => {
     return Array.from(selectedIncentives).reduce((sum, id) => {
-      const program = rebatePrograms.find(p => p.id === id);
-      return sum + (program ? (Number(program.max_rebate) || Number(program.rebate_amount) || 0) : 0);
+      const incentive = projectIncentives.find(i => i.id === id);
+      return sum + (incentive ? (Number(incentive.amount_max) || Number(incentive.amount_min) || 0) : 0);
     }, 0);
   };
 
@@ -402,9 +400,9 @@ export function DecidePhase() {
 
       {activeTab === 'incentives' && (
         <div className="space-y-6">
-          {rebatePrograms.length > 0 ? (
+          {projectIncentives.length > 0 ? (
             <IncentivesTable
-              rebatePrograms={rebatePrograms}
+              projectIncentives={projectIncentives}
               selectedIncentives={selectedIncentives}
               onToggleIncentive={toggleIncentive}
             />
@@ -412,7 +410,7 @@ export function DecidePhase() {
             <div className="bg-white rounded-xl border-2 border-gray-200 p-12 text-center">
               <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No Incentives Available</h3>
-              <p className="text-gray-600">There are currently no active rebate programs in the system.</p>
+              <p className="text-gray-600">No incentives have been identified for this project yet.</p>
             </div>
           )}
         </div>

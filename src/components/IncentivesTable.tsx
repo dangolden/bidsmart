@@ -1,37 +1,37 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, DollarSign, CheckSquare, Square, ExternalLink, Calendar, Clock, Info } from 'lucide-react';
-import type { RebateProgram } from '../lib/types';
-import { formatCurrency, formatDate } from '../lib/utils/formatters';
+import { ChevronDown, ChevronRight, DollarSign, CheckSquare, Square, ExternalLink, Info } from 'lucide-react';
+import type { ProjectIncentive } from '../lib/types';
+import { formatCurrency } from '../lib/utils/formatters';
 
 interface IncentivesTableProps {
-  rebatePrograms: RebateProgram[];
+  projectIncentives: ProjectIncentive[];
   selectedIncentives: Set<string>;
-  onToggleIncentive: (programId: string) => void;
+  onToggleIncentive: (incentiveId: string) => void;
 }
 
-export function IncentivesTable({ rebatePrograms, selectedIncentives, onToggleIncentive }: IncentivesTableProps) {
+export function IncentivesTable({ projectIncentives, selectedIncentives, onToggleIncentive }: IncentivesTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-  const toggleExpand = (programId: string) => {
+  const toggleExpand = (incentiveId: string) => {
     const newExpanded = new Set(expandedRows);
-    if (newExpanded.has(programId)) {
-      newExpanded.delete(programId);
+    if (newExpanded.has(incentiveId)) {
+      newExpanded.delete(incentiveId);
     } else {
-      newExpanded.add(programId);
+      newExpanded.add(incentiveId);
     }
     setExpandedRows(newExpanded);
   };
 
-  const getAmount = (program: RebateProgram) => {
-    return program.max_rebate || program.rebate_amount || 0;
+  const getAmount = (incentive: ProjectIncentive) => {
+    return incentive.amount_max || incentive.amount_min || 0;
   };
 
   const totalSelectedAmount = Array.from(selectedIncentives).reduce((sum, id) => {
-    const program = rebatePrograms.find(p => p.id === id);
-    return sum + (program ? getAmount(program) : 0);
+    const incentive = projectIncentives.find(i => i.id === id);
+    return sum + (incentive ? getAmount(incentive) : 0);
   }, 0);
 
-  if (rebatePrograms.length === 0) {
+  if (projectIncentives.length === 0) {
     return null;
   }
 
@@ -52,16 +52,16 @@ export function IncentivesTable({ rebatePrograms, selectedIncentives, onToggleIn
       </div>
 
       <div className="divide-y divide-gray-200">
-        {rebatePrograms.map((program) => {
-          const isExpanded = expandedRows.has(program.id);
-          const isSelected = selectedIncentives.has(program.id);
-          const amount = getAmount(program);
+        {projectIncentives.map((incentive) => {
+          const isExpanded = expandedRows.has(incentive.id);
+          const isSelected = selectedIncentives.has(incentive.id);
+          const amount = getAmount(incentive);
 
           return (
-            <div key={program.id} className={isSelected ? 'bg-switch-green-50/50' : ''}>
+            <div key={incentive.id} className={isSelected ? 'bg-switch-green-50/50' : ''}>
               <div className="flex items-center gap-3 px-5 py-4">
                 <button
-                  onClick={() => toggleExpand(program.id)}
+                  onClick={() => toggleExpand(incentive.id)}
                   className="p-1 hover:bg-gray-100 rounded transition-colors"
                 >
                   {isExpanded ? (
@@ -73,38 +73,50 @@ export function IncentivesTable({ rebatePrograms, selectedIncentives, onToggleIn
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-gray-900">{program.program_name}</h4>
-                    {program.program_type && (
-                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
-                        {program.program_type}
+                    <h4 className="font-semibold text-gray-900">{incentive.program_name}</h4>
+                    {incentive.program_type && (
+                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full capitalize">
+                        {incentive.program_type.replace(/_/g, ' ')}
                       </span>
                     )}
-                    {program.income_qualified && (
+                    {incentive.income_qualified && (
                       <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
                         Income Qualified
                       </span>
                     )}
+                    {incentive.still_active === false && (
+                      <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full">
+                        Inactive
+                      </span>
+                    )}
                   </div>
-                  {!isExpanded && program.description && (
-                    <p className="text-sm text-gray-500 mt-0.5 truncate">{program.description}</p>
+                  {!isExpanded && incentive.eligibility_requirements && (
+                    <p className="text-sm text-gray-500 mt-0.5 truncate">{incentive.eligibility_requirements}</p>
                   )}
                 </div>
 
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <span className="text-lg font-bold text-switch-green-700">
-                      {program.rebate_percentage
-                        ? `Up to ${program.rebate_percentage}%`
-                        : formatCurrency(amount)
-                      }
-                    </span>
-                    {program.rebate_percentage && program.max_rebate && (
-                      <p className="text-xs text-gray-500">Max: {formatCurrency(program.max_rebate)}</p>
+                    {incentive.amount_description ? (
+                      <span className="text-base font-bold text-switch-green-700">
+                        {incentive.amount_description}
+                      </span>
+                    ) : amount > 0 ? (
+                      <>
+                        <span className="text-lg font-bold text-switch-green-700">
+                          {incentive.amount_min && incentive.amount_max && incentive.amount_min !== incentive.amount_max
+                            ? `${formatCurrency(incentive.amount_min)}–${formatCurrency(incentive.amount_max)}`
+                            : formatCurrency(amount)
+                          }
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-400">Amount varies</span>
                     )}
                   </div>
 
                   <button
-                    onClick={() => onToggleIncentive(program.id)}
+                    onClick={() => onToggleIncentive(incentive.id)}
                     className="p-1 hover:bg-gray-100 rounded transition-colors"
                   >
                     {isSelected ? (
@@ -118,93 +130,57 @@ export function IncentivesTable({ rebatePrograms, selectedIncentives, onToggleIn
 
               {isExpanded && (
                 <div className="px-5 pb-5 pl-14 space-y-4">
-                  {program.description && (
+                  {incentive.eligibility_requirements && (
                     <div>
-                      <p className="text-sm text-gray-700">{program.description}</p>
+                      <span className="text-xs font-medium text-gray-500 uppercase">Eligibility</span>
+                      <p className="text-sm text-gray-700 mt-1">{incentive.eligibility_requirements}</p>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(program.valid_from || program.valid_until) && (
-                      <div className="flex items-start gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <span className="text-xs font-medium text-gray-500 uppercase">Valid Period</span>
-                          <p className="text-sm text-gray-900">
-                            {program.valid_from && formatDate(program.valid_from)}
-                            {program.valid_from && program.valid_until && ' - '}
-                            {program.valid_until && formatDate(program.valid_until)}
-                            {!program.valid_from && !program.valid_until && 'Ongoing'}
-                          </p>
-                        </div>
+                  {incentive.income_limits && (
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <span className="text-xs font-medium text-gray-500 uppercase">Income Limits</span>
+                        <p className="text-sm text-gray-900">{incentive.income_limits}</p>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {program.typical_processing_days && (
-                      <div className="flex items-start gap-2">
-                        <Clock className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <span className="text-xs font-medium text-gray-500 uppercase">Processing Time</span>
-                          <p className="text-sm text-gray-900">
-                            ~{program.typical_processing_days} days
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                  {incentive.equipment_types_eligible && incentive.equipment_types_eligible.length > 0 && (
+                    <div>
+                      <span className="text-xs font-medium text-gray-500 uppercase">Eligible Equipment</span>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {incentive.equipment_types_eligible.join(', ')}
+                      </p>
+                    </div>
+                  )}
 
-                    {program.available_states && program.available_states.length > 0 && !program.available_nationwide && (
-                      <div className="flex items-start gap-2">
-                        <Info className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <span className="text-xs font-medium text-gray-500 uppercase">Available In</span>
-                          <p className="text-sm text-gray-900">
-                            {program.available_states.join(', ')}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {program.available_nationwide && (
-                      <div className="flex items-start gap-2">
-                        <Info className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <span className="text-xs font-medium text-gray-500 uppercase">Availability</span>
-                          <p className="text-sm text-gray-900">Available Nationwide</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {program.application_process && (
+                  {incentive.application_process && (
                     <div className="bg-gray-50 rounded-lg p-3">
                       <span className="text-xs font-medium text-gray-500 uppercase">How to Apply</span>
-                      <p className="text-sm text-gray-700 mt-1">{program.application_process}</p>
+                      <p className="text-sm text-gray-700 mt-1">{incentive.application_process}</p>
                     </div>
                   )}
 
-                  {program.requirements && Object.keys(program.requirements).length > 0 && (
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <span className="text-xs font-medium text-gray-500 uppercase">Requirements</span>
-                      <ul className="text-sm text-gray-700 mt-1 space-y-1">
-                        {Object.entries(program.requirements).map(([key, value]) => (
-                          <li key={key} className="flex items-start gap-2">
-                            <span className="text-gray-400">-</span>
-                            <span>{String(value)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {!program.stackable && program.cannot_stack_with && program.cannot_stack_with.length > 0 && (
+                  {incentive.stacking_notes && (
                     <div className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3">
-                      <span className="font-medium">Note:</span> Cannot be combined with: {program.cannot_stack_with.join(', ')}
+                      <span className="font-medium">Stacking Note:</span> {incentive.stacking_notes}
                     </div>
                   )}
 
-                  {program.application_url && (
+                  {incentive.confidence && (
+                    <div className="text-xs text-gray-500">
+                      Confidence: <span className="capitalize font-medium">{incentive.confidence}</span>
+                      {incentive.verification_source && (
+                        <span className="ml-2 text-gray-400">· Source: {incentive.verification_source}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {incentive.application_url && (
                     <a
-                      href={program.application_url}
+                      href={incentive.application_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-sm text-switch-green-600 hover:text-switch-green-700 font-medium"
@@ -223,7 +199,7 @@ export function IncentivesTable({ rebatePrograms, selectedIncentives, onToggleIn
       <div className="bg-gray-50 px-5 py-4 border-t-2 border-gray-200">
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            {selectedIncentives.size} of {rebatePrograms.length} selected
+            {selectedIncentives.size} of {projectIncentives.length} selected
           </div>
           <div className="text-right">
             <span className="text-sm text-gray-500">Estimated Total Savings</span>
