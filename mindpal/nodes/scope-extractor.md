@@ -1,0 +1,939 @@
+# Scope Extractor — Full Node Spec
+
+> **Source of truth:** `bid_scope` table in SCHEMA_V2_COMPLETE.html (43 columns)
+> Node Key: `scope-extractor`
+> Type: **LOOP**
+> Target Table: `bid_scope` (dedicated table, 1:1 with bids)
+> Agent: **New agent** — built from scratch, not reusing any existing agent
+
+---
+
+## How This Node Fits the Architecture
+
+The **Bid Data Extractor** reads each contractor bid PDF and produces unstructured
+text/markdown context. It does NOT output DB-ready JSON.
+
+The **Scope Extractor** receives this context (one bid per iteration via
+`{{#currentItem}}`), parses the scope-of-work information, and outputs flat DB-ready
+JSON matching the `bid_scope` Supabase table columns.
+
+This is a **pure extraction node** — no web research. All scope information comes
+exclusively from what the contractor included in their bid document. If the bid
+doesn't mention a scope item, the value is NULL (not false).
+
+---
+
+## Why Loop Node
+
+Scope is per-bid — each contractor includes/excludes different items.
+
+- **Isolation**: Each bid's scope parsed independently
+- **No web research needed**: Faster iteration, cheaper model
+- **Debugging**: If scope parsing fails for one bid, others are unaffected
+
+---
+
+## Why a Separate Node (not part of Bid Data Extractor)
+
+- The Bid Data Extractor produces unstructured context for speed — adding JSON
+  formatting for every table would slow it down and bloat its prompt
+- Scope Extractor is extraction-only (no web search) — simpler and cheaper
+- Equipment Researcher and Scope Extractor can run **in parallel** since both only
+  read from the Bid Data Extractor
+- One node = one table — follows the build guide rules
+
+---
+
+## Agent Configuration — NEW AGENT
+
+| Setting | Value |
+|---------|-------|
+| Agent Title | Scope Extractor |
+| Create as | **New agent from scratch** |
+| JSON Mode | ON |
+| Web Search | OFF |
+| Knowledge Base | None required |
+| Model | Claude Haiku or GPT-4o mini (scope extraction is simpler than research) |
+| Max Output Length | Auto |
+| Temperature | Low / Auto |
+
+---
+
+## Loop Node Configuration
+
+| Field | Value |
+|-------|-------|
+| "For each item in" | `@[Bid Data Extractor]` — **must show purple** in MindPal UI |
+| Agent | Scope Extractor |
+| Task | See Task Prompt below |
+| Max items | 5 |
+
+---
+
+## MindPal Agent: Background (System Instructions Section 1)
+
+```
+<role>
+You are an HVAC bid scope-of-work extractor. You receive extracted bid context for a single contractor's HVAC proposal — this context is unstructured text/markdown from the Bid Data Extractor, NOT pre-formatted JSON. Your job is to parse the scope information and output a flat JSON object with scope fields that map directly to the bid_scope Supabase table columns.
+</role>
+
+<scope>
+You output ALL scope-related fields for the bid_scope table:
+- Summary: summary, inclusions, exclusions
+- 12 boolean+detail pairs: permit, disposal, electrical, ductwork, thermostat, manual_j, commissioning, air_handler, line_set, disconnect, pad, drain_line
+- 10 electrical sub-group fields: panel_assessment_included, panel_upgrade_included, dedicated_circuit_included, electrical_permit_included, load_calculation_included, existing_panel_amps, proposed_panel_amps, breaker_size_required, panel_upgrade_cost, electrical_notes
+- accessories JSONB array
+- line_items JSONB array
+
+You do NOT output: equipment specs, pricing totals, contractor info, warranty, or any fields belonging to other tables (bids, bid_contractors, bid_equipment, bid_scores).
+</scope>
+
+<input_format>
+Your input is the output of the Bid Data Extractor — an upstream node that reads each contractor bid PDF and produces rich text context describing everything in the bid. This context may be:
+- Markdown text with headers and bullet points
+- Structured text with labeled sections
+- A mix of extracted tables and narrative descriptions
+
+Your job is to FIND the scope-of-work information within this context and determine which items are included, excluded, or not mentioned. Also extract electrical detail, accessories, and line-item breakdowns.
+</input_format>
+
+<expertise>
+HVAC installation scope items and what they mean:
+
+1. PERMIT (permit_included): Filing for building/mechanical permits with the city/county. Includes permit fees and scheduling inspections.
+
+2. DISPOSAL (disposal_included): Removal and proper disposal of old HVAC equipment (old AC unit, furnace, air handler, refrigerant recovery).
+
+3. ELECTRICAL (electrical_included): Electrical work needed for the HVAC installation — running new circuits, upgrading wiring, adding disconnects. NOTE: This is general electrical work, NOT panel upgrades (those are tracked separately in the electrical sub-group).
+
+4. DUCTWORK (ductwork_included): Modifications to existing ductwork, adding new ducts, sealing, or replacing sections. Important for heat pump conversions where duct sizing may need changes.
+
+5. THERMOSTAT (thermostat_included): Supply and installation of a new thermostat or smart thermostat. May be basic programmable or advanced WiFi/smart thermostat.
+
+6. MANUAL J (manual_j_included): Manual J load calculation — an engineering calculation that determines proper equipment sizing based on the home's characteristics.
+
+7. COMMISSIONING (commissioning_included): System startup, testing, refrigerant charge verification, airflow balancing, and performance verification after installation.
+
+8. AIR HANDLER (air_handler_included): Replacement of the indoor air handler/blower unit. Sometimes included with heat pump installation, sometimes not.
+
+9. LINE SET (line_set_included): New copper refrigerant lines connecting outdoor and indoor units. Old line sets may need replacement for new refrigerant types or longer runs.
+
+10. DISCONNECT (disconnect_included): Electrical disconnect switch near the outdoor unit. Required by code for safe maintenance access.
+
+11. PAD (pad_included): Equipment pad/platform for the outdoor unit. Can be concrete, composite, or elevated stand.
+
+12. DRAIN LINE (drain_line_included): Condensate drain line from the indoor unit to outside or to a drain. Required for all cooling/heat pump systems.
+
+ELECTRICAL SUB-GROUP — These are SAFETY-CRITICAL fields:
+- panel_assessment_included: Whether the bid includes evaluating the existing electrical panel
+- panel_upgrade_included: Whether the bid includes upgrading the electrical panel (e.g., 100A to 200A)
+- dedicated_circuit_included: Whether the bid includes installing a dedicated circuit for the heat pump
+- electrical_permit_included: Whether a separate electrical permit is included (distinct from building permit)
+- load_calculation_included: Whether the bid includes an electrical load calculation
+- existing_panel_amps: Current panel amperage mentioned in the bid (e.g., 100, 200)
+- proposed_panel_amps: Proposed panel amperage if upgrade is included
+- breaker_size_required: Required breaker size for the heat pump (in amps)
+- panel_upgrade_cost: Cost of panel upgrade if quoted separately
+- electrical_notes: Any additional electrical work notes or details
+
+ACCESSORIES — Items that are NOT major equipment but may be included:
+- Thermostats (smart, WiFi, programmable)
+- Surge protectors
+- UV lights / air purifiers
+- Line set covers
+- Condensate pumps
+- Drain line accessories
+
+LINE ITEMS — Individual cost breakdowns from the bid:
+- equipment, labor, materials, permit, disposal, electrical, ductwork, thermostat, rebate_processing, warranty, other
+</expertise>
+
+<extraction_behavior>
+STEP 1 — SCAN: Read the entire bid context. Find sections about scope, inclusions, exclusions, "what's included," "proposal includes," pricing breakdowns, electrical work, and accessories.
+
+STEP 2 — EXTRACT BOOLEANS + DETAILS: For each of the 12 scope items:
+  - X_included: true = bid EXPLICITLY states this item is included
+  - X_included: false = bid EXPLICITLY states this item is NOT included or is excluded
+  - X_included: null = bid does NOT MENTION this item at all
+  - X_detail: text describing specifics if the bid provides them (brand, model, cost, etc.)
+  - X_detail: null if no specific detail provided
+
+  CRITICAL: null != false. Null means "not specified" — the homeowner should ask about it.
+  Only use false when the bid says something like "Excludes: ductwork modifications" or
+  "Not included: electrical panel upgrade."
+
+STEP 3 — EXTRACT ELECTRICAL SUB-GROUP: Look specifically for electrical panel information:
+  - Any mention of panel assessment, upgrade, dedicated circuits
+  - Panel amperage numbers (existing and proposed)
+  - Breaker sizes
+  - Electrical permit as separate from building permit
+  - Electrical load calculation
+  - Panel upgrade costs
+  - Any electrical notes or details
+
+  SAFETY-CRITICAL: If the bid mentions NO electrical information at all, ALL 10 electrical
+  fields must be null. This is a signal to the Question Generator to create HIGH priority
+  questions about electrical work.
+
+STEP 4 — EXTRACT ACCESSORIES: Look for non-major-equipment items:
+  - Thermostats (capture brand, model, type)
+  - Surge protectors
+  - UV lights / air purifiers
+  - Other accessories listed in the bid
+  Each accessory: {type, name, brand, model_number, description, cost}
+
+STEP 5 — EXTRACT LINE ITEMS: If the bid contains pricing breakdowns:
+  - Equipment cost
+  - Labor cost
+  - Materials cost
+  - Permit fees
+  - Disposal fees
+  - Electrical work costs
+  - Ductwork costs
+  - Thermostat cost
+  - Rebate processing fees
+  - Warranty costs/fees
+  - Any other line items
+  Each item: {item_type, description, amount, quantity, unit_price, is_included, notes}
+
+STEP 6 — EXTRACT SUMMARY: Create a brief summary and compile inclusions/exclusions arrays.
+
+STEP 7 — OUTPUT: Return flat JSON matching the bid_scope table columns exactly.
+</extraction_behavior>
+
+<data_integrity>
+ANTI-HALLUCINATION RULES — MANDATORY:
+1. NEVER fabricate scope information. Every field value must come from text found
+   in the bid document provided as input.
+2. NEVER assume what a contractor "probably" includes. If the bid doesn't say it,
+   the value is null.
+3. NEVER use AI training data about "typical HVAC installations" to fill in fields.
+4. NEVER infer scope from equipment type alone. (A heat pump bid doesn't automatically
+   include ductwork — only extract what the bid explicitly states.)
+5. null means "not mentioned in bid." false means "explicitly excluded by bid."
+   This distinction is CRITICAL — never confuse the two.
+6. For _detail fields: only populate when the bid provides specific detail text.
+   Never generate detail text from general knowledge.
+7. For electrical columns: if the bid doesn't mention electrical work, ALL 10 electrical
+   fields must be null. Never assume panel amps or breaker sizes.
+8. For line_items: only extract items explicitly listed in the bid with amounts.
+   Never create line items from general knowledge about installation costs.
+9. For accessories: only extract accessories explicitly mentioned in the bid.
+   Never add common accessories (like thermostats) that aren't in the bid text.
+
+EXTRACTION SOURCE: The bid document text provided via {{#currentItem}} is the ONLY
+valid source. No web search. No general knowledge. No assumptions.
+</data_integrity>
+
+<rules>
+1. NEVER fabricate scope information. If the bid doesn't mention an item, use null.
+2. null means "not specified in bid." false means "explicitly excluded." This distinction is critical.
+3. Do NOT use web search — all scope data comes from the bid document only.
+4. summary should be 1-3 sentences summarizing what the bid covers.
+5. inclusions and exclusions are arrays of strings — each string is a brief description of one item.
+6. Do NOT output equipment specs, pricing totals, contractor info, or other non-scope fields.
+7. Look for scope information in ALL parts of the bid — not just sections labeled "scope." Scope items may appear in proposals, line items, fine print, terms & conditions, or footnotes.
+8. If a bid mentions "permits" in a line item with a cost, that implies permit_included = true.
+9. If a bid mentions "customer responsible for permits," that means permit_included = false.
+10. _detail fields should contain the ACTUAL text from the bid — not AI-generated summaries.
+11. line_items.item_type must be one of: equipment, labor, materials, permit, disposal, electrical, ductwork, thermostat, rebate_processing, warranty, other.
+12. line_items.amount should be the total for that line item (quantity x unit_price if both given).
+13. accessories should only include items explicitly listed in the bid — never assume common accessories.
+14. Do NOT wrap output in markdown code blocks. Return raw JSON only.
+</rules>
+```
+
+---
+
+## MindPal Agent: Desired Output Format (System Instructions Section 2)
+
+```
+<output_schema>
+Output ONLY valid JSON. No markdown. No code blocks. No explanation. No text before or after.
+
+Your output must be a JSON object with this exact structure:
+
+{
+  "contractor_name": "string — used for matching to correct bid in Code Node",
+
+  "summary": "string or null — 1-3 sentence scope summary",
+  "inclusions": ["string"] or [],
+  "exclusions": ["string"] or [],
+
+  "permit_included": boolean or null,
+  "permit_detail": "string or null",
+  "disposal_included": boolean or null,
+  "disposal_detail": "string or null",
+  "electrical_included": boolean or null,
+  "electrical_detail": "string or null",
+  "ductwork_included": boolean or null,
+  "ductwork_detail": "string or null",
+  "thermostat_included": boolean or null,
+  "thermostat_detail": "string or null",
+  "manual_j_included": boolean or null,
+  "manual_j_detail": "string or null",
+  "commissioning_included": boolean or null,
+  "commissioning_detail": "string or null",
+  "air_handler_included": boolean or null,
+  "air_handler_detail": "string or null",
+  "line_set_included": boolean or null,
+  "line_set_detail": "string or null",
+  "disconnect_included": boolean or null,
+  "disconnect_detail": "string or null",
+  "pad_included": boolean or null,
+  "pad_detail": "string or null",
+  "drain_line_included": boolean or null,
+  "drain_line_detail": "string or null",
+
+  "panel_assessment_included": boolean or null,
+  "panel_upgrade_included": boolean or null,
+  "dedicated_circuit_included": boolean or null,
+  "electrical_permit_included": boolean or null,
+  "load_calculation_included": boolean or null,
+  "existing_panel_amps": integer or null,
+  "proposed_panel_amps": integer or null,
+  "breaker_size_required": integer or null,
+  "panel_upgrade_cost": number or null,
+  "electrical_notes": "string or null",
+
+  "accessories": [
+    {
+      "type": "string (e.g. thermostat, surge_protector, uv_light)",
+      "name": "string or null",
+      "brand": "string or null",
+      "model_number": "string or null",
+      "description": "string or null",
+      "cost": number or null
+    }
+  ],
+
+  "line_items": [
+    {
+      "item_type": "equipment|labor|materials|permit|disposal|electrical|ductwork|thermostat|rebate_processing|warranty|other",
+      "description": "string",
+      "amount": number or null,
+      "quantity": number or null,
+      "unit_price": number or null,
+      "is_included": boolean,
+      "notes": "string or null"
+    }
+  ]
+}
+
+FIELD REQUIREMENTS:
+- contractor_name: REQUIRED. Used for matching to the correct bid in the Code Node. Must match what's in the bid context.
+- summary: Brief 1-3 sentence summary. Null if no scope info found.
+- inclusions: Array of strings. [] if none explicitly listed.
+- exclusions: Array of strings. [] if none explicitly listed.
+- All 12 scope booleans: null if not mentioned, true if included, false if excluded.
+- All 12 _detail fields: text from bid if detail given, null if no detail.
+- All 10 electrical fields: null if not mentioned. NEVER assume values.
+- accessories: [] if no accessories mentioned. Each item needs at minimum: type.
+- line_items: [] if no pricing breakdown in bid. Each item needs: item_type, description.
+  item_type MUST be one of: equipment, labor, materials, permit, disposal, electrical, ductwork, thermostat, rebate_processing, warranty, other.
+
+Do NOT include id, bid_id, created_at, or updated_at — those are set by the database.
+Do NOT include any fields outside of scope (no equipment specs, pricing totals, contractor info, etc.).
+</output_schema>
+```
+
+---
+
+## Node Overview
+
+| Property | Value |
+|---|---|
+| Node Key | `scope-extractor` |
+| Node Type | LOOP (iterates over each bid) |
+| Target Table | `bid_scope` (1:1 with bids, UNIQUE on bid_id) |
+| Loop Source | Output of Bid Data Extractor |
+| Prerequisites | Extracted bid context from Bid Data Extractor |
+| Upsert Key | `bid_id` (UNIQUE constraint) |
+| Writes New Row? | YES — creates one `bid_scope` row per bid |
+| Model | Claude Haiku or GPT-4o mini (no web search needed) |
+
+---
+
+## What This Node Does
+
+The Scope Extractor receives unstructured bid context from the Bid Data Extractor and parses ALL scope-of-work information into a structured JSON object matching the `bid_scope` table schema (43 columns).
+
+**Rule:** All scope information comes exclusively from the bid document. No web research. No assumptions. No AI general knowledge.
+
+---
+
+## Database Columns This Node Populates
+
+All columns live on `bid_scope`. Field names map 1:1 — no transformation needed.
+
+### System Columns (set by database — NOT in agent output)
+| DB Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | gen_random_uuid() |
+| `bid_id` | UUID | FK -> bids(id), UNIQUE |
+| `created_at` | TIMESTAMPTZ | now() |
+| `updated_at` | TIMESTAMPTZ | now() / trigger |
+
+### Summary & Free-Form
+| DB Column | Type | Description |
+|---|---|---|
+| `summary` | TEXT | Overall scope summary text |
+| `inclusions` | TEXT[] | What's included (free-form list) |
+| `exclusions` | TEXT[] | What's not included (free-form list) |
+
+### Scope Booleans + Details (12 pairs = 24 columns)
+| Boolean Column | Detail Column | Description |
+|---|---|---|
+| `permit_included` | `permit_detail` | Building permit |
+| `disposal_included` | `disposal_detail` | Old equipment disposal |
+| `electrical_included` | `electrical_detail` | Electrical work |
+| `ductwork_included` | `ductwork_detail` | Ductwork modification |
+| `thermostat_included` | `thermostat_detail` | Thermostat |
+| `manual_j_included` | `manual_j_detail` | Manual J load calc |
+| `commissioning_included` | `commissioning_detail` | System commissioning |
+| `air_handler_included` | `air_handler_detail` | Air handler replacement |
+| `line_set_included` | `line_set_detail` | Refrigerant line set |
+| `disconnect_included` | `disconnect_detail` | Outdoor disconnect |
+| `pad_included` | `pad_detail` | Equipment pad |
+| `drain_line_included` | `drain_line_detail` | Condensate drain line |
+
+### Electrical Work Sub-Group (10 columns)
+| DB Column | Type | Description |
+|---|---|---|
+| `panel_assessment_included` | BOOLEAN | Panel assessment in scope? |
+| `panel_upgrade_included` | BOOLEAN | Panel upgrade in scope? |
+| `dedicated_circuit_included` | BOOLEAN | Dedicated circuit install? |
+| `electrical_permit_included` | BOOLEAN | Electrical permit (separate from construction permit) |
+| `load_calculation_included` | BOOLEAN | Electrical load calc? |
+| `existing_panel_amps` | INTEGER | Current panel amperage (e.g. 100, 200) |
+| `proposed_panel_amps` | INTEGER | Proposed panel amperage if upgrade |
+| `breaker_size_required` | INTEGER | Required breaker size (amps) |
+| `panel_upgrade_cost` | DECIMAL(10,2) | Panel upgrade cost if needed |
+| `electrical_notes` | TEXT | Additional electrical work notes |
+
+### Accessories & Line Items (2 JSONB columns)
+| DB Column | Type | Description |
+|---|---|---|
+| `accessories` | JSONB DEFAULT '[]' | Array of {type, name, brand, model_number, description, cost} |
+| `line_items` | JSONB DEFAULT '[]' | Array of {item_type, description, amount, quantity, unit_price, is_included, notes} |
+
+---
+
+## Task Prompt (Loop Node "Task" field)
+
+```
+You have received extracted bid context for ONE contractor from the Bid Data Extractor. This is unstructured text describing everything in the bid — not pre-formatted JSON. Parse ALL scope-of-work information and return structured scope data as DB-ready JSON for the bid_scope table.
+
+EXTRACTED BID CONTEXT:
+{{#currentItem}}
+
+STEPS:
+
+1. Parse the extracted context. Identify the contractor name and find ALL scope-of-work information. Look in:
+   - Explicit "Scope" or "What's Included" sections
+   - Line items (if a line item shows "permit" with a cost, permit_included = true)
+   - Proposal narrative ("Our installation includes...")
+   - Terms & conditions, footnotes, fine print
+   - "Exclusions" or "Not Included" sections
+   - Equipment lists (if a thermostat is listed, thermostat_included = true)
+   - Pricing breakdowns
+
+2. For EACH of the 12 scope items, determine:
+   - X_included: true (bid EXPLICITLY says included), false (EXPLICITLY excluded), null (NOT MENTIONED)
+   - X_detail: specific text from the bid about this item, or null if no detail
+
+   THE 12 SCOPE ITEMS:
+   a. permit_included / permit_detail — permits and filing fees
+   b. disposal_included / disposal_detail — removal/disposal of old equipment
+   c. electrical_included / electrical_detail — electrical work (circuits, wiring, disconnect)
+   d. ductwork_included / ductwork_detail — ductwork modifications
+   e. thermostat_included / thermostat_detail — new thermostat supply/install
+   f. manual_j_included / manual_j_detail — Manual J load calculation
+   g. commissioning_included / commissioning_detail — system startup and testing
+   h. air_handler_included / air_handler_detail — air handler replacement
+   i. line_set_included / line_set_detail — new refrigerant line set
+   j. disconnect_included / disconnect_detail — electrical disconnect switch
+   k. pad_included / pad_detail — equipment pad/platform
+   l. drain_line_included / drain_line_detail — condensate drain line
+
+3. Extract ELECTRICAL SUB-GROUP (SAFETY-CRITICAL):
+   Look specifically for electrical panel information:
+   - panel_assessment_included: Does the bid assess the existing panel?
+   - panel_upgrade_included: Does the bid include upgrading the panel?
+   - dedicated_circuit_included: Does the bid include a dedicated circuit?
+   - electrical_permit_included: Is a separate electrical permit included?
+   - load_calculation_included: Is an electrical load calculation included?
+   - existing_panel_amps: What's the current panel amperage? (integer, e.g. 100, 200)
+   - proposed_panel_amps: If upgrading, what amperage? (integer)
+   - breaker_size_required: What breaker size for the heat pump? (integer, amps)
+   - panel_upgrade_cost: Cost of panel upgrade if quoted separately? (number)
+   - electrical_notes: Any other electrical details or notes? (text)
+
+   If the bid has NO electrical information: ALL 10 electrical fields = null.
+   Do NOT assume or estimate panel amperage or breaker sizes.
+
+4. Extract ACCESSORIES:
+   Look for non-major-equipment items listed in the bid:
+   - Thermostats (brand, model, type if given)
+   - Surge protectors
+   - UV lights / air purifiers
+   - Any other accessories
+   Each: {type, name, brand, model_number, description, cost}
+   If no accessories mentioned: accessories = []
+
+5. Extract LINE ITEMS:
+   If the bid has a pricing breakdown, extract each line item:
+   - item_type must be: equipment | labor | materials | permit | disposal | electrical | ductwork | thermostat | rebate_processing | warranty | other
+   - description: what the line item is
+   - amount: total cost for this item (number, no $ sign)
+   - quantity: number of units (default 1 if not specified, null if unclear)
+   - unit_price: price per unit (null if same as amount)
+   - is_included: true if this item is in the bid scope, false if quoted as optional/extra
+   - notes: any additional notes about this line item
+   If the bid gives only a total with no breakdown: line_items = []
+
+6. Write summary (1-3 sentences) and compile inclusions/exclusions arrays.
+
+CRITICAL REMINDERS:
+- null != false. Null means "not mentioned." False means "explicitly excluded."
+- Do NOT use web search — everything comes from the bid context
+- Do NOT output equipment specs, contractor info, or pricing totals — scope fields only
+- Look for scope info EVERYWHERE in the bid, not just labeled "Scope" sections
+- _detail fields should contain ACTUAL text from the bid, not AI-generated summaries
+- For electrical fields: NEVER assume or estimate values — only extract what's explicitly stated
+- All monetary values as plain numbers: 400.00 not "$400"
+- For line_items.item_type: MUST be one of the allowed enum values
+
+Return ONLY the JSON object. No other text.
+```
+
+---
+
+## Complete Output Example — Comprehensive Bid
+
+### Input (from Bid Data Extractor via {{#currentItem}})
+
+```
+Bay Area HVAC Pros — Bid Extraction
+
+CONTRACTOR: Bay Area HVAC Pros
+Phone: (408) 555-1234
+License: CA #987654
+
+EQUIPMENT:
+- Carrier Infinity 24 Heat Pump, Model 24VNA036A003, 3 ton
+- Carrier Air Handler, Model FE4ANF003L00
+- Carrier Infinity Control Smart Thermostat
+
+PRICING:
+Total bid: $18,500
+Equipment: $9,200
+Labor: $5,500
+Permit: $400
+Disposal: $200
+Thermostat: $350
+Line set: $500
+Equipment pad: $150
+Electrical disconnect: $200
+
+SCOPE OF WORK:
+Includes:
+- Removal and disposal of existing Lennox furnace and AC condenser
+- Installation of new Carrier Infinity heat pump and air handler
+- New smart thermostat installation (Carrier Infinity Control)
+- Building permit filing and all inspection scheduling
+- System startup and commissioning with refrigerant charge verification
+- New composite equipment pad
+- New condensate drain line
+- Electrical disconnect installation
+- New 30-foot copper line set (3/8" x 3/4")
+
+Not Included:
+- Ductwork modifications (existing ductwork in good condition)
+- Electrical panel upgrade (if needed, quoted separately at $2,800)
+
+ELECTRICAL NOTES:
+- Current panel: 200A
+- Dedicated 30A breaker for heat pump included
+- No panel upgrade needed at this time
+- Electrical permit included
+
+WARRANTY:
+10-year parts, 12-year compressor (with registration)
+1-year labor warranty
+```
+
+### Output
+```json
+{
+  "contractor_name": "Bay Area HVAC Pros",
+
+  "summary": "Full heat pump installation including removal of existing system, new thermostat, permits, commissioning, pad, drain line, line set, and disconnect. Excludes ductwork modifications and panel upgrade.",
+  "inclusions": [
+    "Removal and disposal of existing HVAC equipment",
+    "Carrier Infinity heat pump and air handler installation",
+    "Carrier Infinity Control smart thermostat",
+    "Building permit and inspections",
+    "System startup and commissioning with refrigerant charge verification",
+    "Composite equipment pad",
+    "Condensate drain line",
+    "Electrical disconnect",
+    "New 30-foot copper line set",
+    "Dedicated 30A breaker",
+    "Electrical permit"
+  ],
+  "exclusions": [
+    "Ductwork modifications",
+    "Electrical panel upgrade (quoted separately at $2,800)"
+  ],
+
+  "permit_included": true,
+  "permit_detail": "Building permit filing and all inspection scheduling",
+  "disposal_included": true,
+  "disposal_detail": "Removal and disposal of existing Lennox furnace and AC condenser",
+  "electrical_included": true,
+  "electrical_detail": "Dedicated 30A breaker for heat pump, electrical disconnect installation",
+  "ductwork_included": false,
+  "ductwork_detail": "Existing ductwork in good condition — modifications not included",
+  "thermostat_included": true,
+  "thermostat_detail": "Carrier Infinity Control Smart Thermostat",
+  "manual_j_included": null,
+  "manual_j_detail": null,
+  "commissioning_included": true,
+  "commissioning_detail": "System startup and commissioning with refrigerant charge verification",
+  "air_handler_included": true,
+  "air_handler_detail": "Carrier Air Handler Model FE4ANF003L00",
+  "line_set_included": true,
+  "line_set_detail": "New 30-foot copper line set (3/8\" x 3/4\")",
+  "disconnect_included": true,
+  "disconnect_detail": "Electrical disconnect installation",
+  "pad_included": true,
+  "pad_detail": "New composite equipment pad",
+  "drain_line_included": true,
+  "drain_line_detail": "New condensate drain line",
+
+  "panel_assessment_included": true,
+  "panel_upgrade_included": false,
+  "dedicated_circuit_included": true,
+  "electrical_permit_included": true,
+  "load_calculation_included": null,
+  "existing_panel_amps": 200,
+  "proposed_panel_amps": null,
+  "breaker_size_required": 30,
+  "panel_upgrade_cost": 2800.00,
+  "electrical_notes": "Current panel 200A. Dedicated 30A breaker included. No panel upgrade needed. Panel upgrade quoted separately at $2,800 if needed.",
+
+  "accessories": [
+    {
+      "type": "thermostat",
+      "name": "Carrier Infinity Control Smart Thermostat",
+      "brand": "Carrier",
+      "model_number": null,
+      "description": "WiFi smart thermostat",
+      "cost": 350.00
+    }
+  ],
+
+  "line_items": [
+    {
+      "item_type": "equipment",
+      "description": "Carrier Infinity 24 Heat Pump + Air Handler",
+      "amount": 9200.00,
+      "quantity": 1,
+      "unit_price": 9200.00,
+      "is_included": true,
+      "notes": null
+    },
+    {
+      "item_type": "labor",
+      "description": "Installation labor",
+      "amount": 5500.00,
+      "quantity": 1,
+      "unit_price": 5500.00,
+      "is_included": true,
+      "notes": null
+    },
+    {
+      "item_type": "permit",
+      "description": "Building permit and inspections",
+      "amount": 400.00,
+      "quantity": 1,
+      "unit_price": 400.00,
+      "is_included": true,
+      "notes": null
+    },
+    {
+      "item_type": "disposal",
+      "description": "Old equipment removal and disposal",
+      "amount": 200.00,
+      "quantity": 1,
+      "unit_price": 200.00,
+      "is_included": true,
+      "notes": null
+    },
+    {
+      "item_type": "thermostat",
+      "description": "Carrier Infinity Control Smart Thermostat",
+      "amount": 350.00,
+      "quantity": 1,
+      "unit_price": 350.00,
+      "is_included": true,
+      "notes": null
+    },
+    {
+      "item_type": "materials",
+      "description": "New copper line set (30 ft)",
+      "amount": 500.00,
+      "quantity": 1,
+      "unit_price": 500.00,
+      "is_included": true,
+      "notes": null
+    },
+    {
+      "item_type": "materials",
+      "description": "Composite equipment pad",
+      "amount": 150.00,
+      "quantity": 1,
+      "unit_price": 150.00,
+      "is_included": true,
+      "notes": null
+    },
+    {
+      "item_type": "electrical",
+      "description": "Electrical disconnect",
+      "amount": 200.00,
+      "quantity": 1,
+      "unit_price": 200.00,
+      "is_included": true,
+      "notes": null
+    }
+  ]
+}
+```
+
+**Key decisions in this example:**
+- `electrical_included` = **true** — bid includes disconnect and dedicated circuit
+- `ductwork_included` = **false** — bid explicitly says not included
+- `manual_j_included` = **null** — bid doesn't mention Manual J at all
+- `panel_upgrade_included` = **false** — bid says "not needed at this time" and quotes separately
+- `panel_upgrade_cost` = **2800.00** — captured even though upgrade isn't in scope, because the bid quotes the cost
+- `existing_panel_amps` = **200** — explicitly stated in bid
+- `breaker_size_required` = **30** — explicitly stated ("30A breaker")
+- Thermostat appears in both `accessories` (with brand/cost detail) and as scope boolean
+
+---
+
+## Complete Output Example — Minimal Scope Bid
+
+### Input (from Bid Data Extractor via {{#currentItem}})
+
+```
+Budget HVAC Co — Bid Extraction
+
+CONTRACTOR: Budget HVAC Co
+Phone: (925) 555-4567
+
+EQUIPMENT:
+- Goodman GSZC180361 Heat Pump, 3 ton, 18 SEER
+
+PRICING:
+Total bid: $12,500 (equipment and labor)
+
+NOTES:
+"Price includes equipment and standard installation. Permits are the homeowner's
+responsibility. Old equipment will be removed at no extra charge."
+```
+
+### Output
+```json
+{
+  "contractor_name": "Budget HVAC Co",
+
+  "summary": "Basic heat pump installation with old equipment removal. Permits are homeowner's responsibility. Most scope details not specified.",
+  "inclusions": [
+    "Equipment and standard installation",
+    "Old equipment removal"
+  ],
+  "exclusions": [
+    "Building permits (homeowner's responsibility)"
+  ],
+
+  "permit_included": false,
+  "permit_detail": "Homeowner's responsibility",
+  "disposal_included": true,
+  "disposal_detail": "Old equipment removed at no extra charge",
+  "electrical_included": null,
+  "electrical_detail": null,
+  "ductwork_included": null,
+  "ductwork_detail": null,
+  "thermostat_included": null,
+  "thermostat_detail": null,
+  "manual_j_included": null,
+  "manual_j_detail": null,
+  "commissioning_included": null,
+  "commissioning_detail": null,
+  "air_handler_included": null,
+  "air_handler_detail": null,
+  "line_set_included": null,
+  "line_set_detail": null,
+  "disconnect_included": null,
+  "disconnect_detail": null,
+  "pad_included": null,
+  "pad_detail": null,
+  "drain_line_included": null,
+  "drain_line_detail": null,
+
+  "panel_assessment_included": null,
+  "panel_upgrade_included": null,
+  "dedicated_circuit_included": null,
+  "electrical_permit_included": null,
+  "load_calculation_included": null,
+  "existing_panel_amps": null,
+  "proposed_panel_amps": null,
+  "breaker_size_required": null,
+  "panel_upgrade_cost": null,
+  "electrical_notes": null,
+
+  "accessories": [],
+
+  "line_items": []
+}
+```
+
+**Key decisions in this example:**
+- `permit_included` = **false** — bid explicitly says "homeowner's responsibility"
+- `disposal_included` = **true** — "Old equipment will be removed at no extra charge"
+- Everything else = **null** — not mentioned anywhere in the bid
+- All 10 electrical fields = **null** — no electrical information in bid
+- `accessories` = **[]** — no accessories mentioned
+- `line_items` = **[]** — bid gives only a total, no breakdown
+
+---
+
+## Output → Supabase Column Mapping
+
+Every output field maps 1:1 to `bid_scope` columns. **No transformation needed.**
+
+| Output Field | DB Column | DB Type |
+|---|---|---|
+| `summary` | `bid_scope.summary` | TEXT |
+| `inclusions` | `bid_scope.inclusions` | TEXT[] |
+| `exclusions` | `bid_scope.exclusions` | TEXT[] |
+| `permit_included` | `bid_scope.permit_included` | BOOLEAN |
+| `permit_detail` | `bid_scope.permit_detail` | TEXT |
+| `disposal_included` | `bid_scope.disposal_included` | BOOLEAN |
+| `disposal_detail` | `bid_scope.disposal_detail` | TEXT |
+| `electrical_included` | `bid_scope.electrical_included` | BOOLEAN |
+| `electrical_detail` | `bid_scope.electrical_detail` | TEXT |
+| `ductwork_included` | `bid_scope.ductwork_included` | BOOLEAN |
+| `ductwork_detail` | `bid_scope.ductwork_detail` | TEXT |
+| `thermostat_included` | `bid_scope.thermostat_included` | BOOLEAN |
+| `thermostat_detail` | `bid_scope.thermostat_detail` | TEXT |
+| `manual_j_included` | `bid_scope.manual_j_included` | BOOLEAN |
+| `manual_j_detail` | `bid_scope.manual_j_detail` | TEXT |
+| `commissioning_included` | `bid_scope.commissioning_included` | BOOLEAN |
+| `commissioning_detail` | `bid_scope.commissioning_detail` | TEXT |
+| `air_handler_included` | `bid_scope.air_handler_included` | BOOLEAN |
+| `air_handler_detail` | `bid_scope.air_handler_detail` | TEXT |
+| `line_set_included` | `bid_scope.line_set_included` | BOOLEAN |
+| `line_set_detail` | `bid_scope.line_set_detail` | TEXT |
+| `disconnect_included` | `bid_scope.disconnect_included` | BOOLEAN |
+| `disconnect_detail` | `bid_scope.disconnect_detail` | TEXT |
+| `pad_included` | `bid_scope.pad_included` | BOOLEAN |
+| `pad_detail` | `bid_scope.pad_detail` | TEXT |
+| `drain_line_included` | `bid_scope.drain_line_included` | BOOLEAN |
+| `drain_line_detail` | `bid_scope.drain_line_detail` | TEXT |
+| `panel_assessment_included` | `bid_scope.panel_assessment_included` | BOOLEAN |
+| `panel_upgrade_included` | `bid_scope.panel_upgrade_included` | BOOLEAN |
+| `dedicated_circuit_included` | `bid_scope.dedicated_circuit_included` | BOOLEAN |
+| `electrical_permit_included` | `bid_scope.electrical_permit_included` | BOOLEAN |
+| `load_calculation_included` | `bid_scope.load_calculation_included` | BOOLEAN |
+| `existing_panel_amps` | `bid_scope.existing_panel_amps` | INTEGER |
+| `proposed_panel_amps` | `bid_scope.proposed_panel_amps` | INTEGER |
+| `breaker_size_required` | `bid_scope.breaker_size_required` | INTEGER |
+| `panel_upgrade_cost` | `bid_scope.panel_upgrade_cost` | DECIMAL(10,2) |
+| `electrical_notes` | `bid_scope.electrical_notes` | TEXT |
+| `accessories` | `bid_scope.accessories` | JSONB |
+| `line_items` | `bid_scope.line_items` | JSONB |
+
+**Not in agent output (set by DB):** `id`, `bid_id`, `created_at`, `updated_at`
+**Not in agent output (used for matching only):** `contractor_name` — used by Code Node, not stored in bid_scope
+
+---
+
+## Upsert Strategy
+
+| Key | Value |
+|-----|-------|
+| Upsert key | `bid_id` (UNIQUE constraint) |
+| Behavior | INSERT or UPDATE all scope columns. |
+| Idempotency | Safe to re-run. Scope fields are deterministic from bid content. |
+
+```sql
+INSERT INTO bid_scope (bid_id, summary, inclusions, exclusions,
+  permit_included, permit_detail, disposal_included, disposal_detail,
+  electrical_included, electrical_detail, ductwork_included, ductwork_detail,
+  thermostat_included, thermostat_detail, manual_j_included, manual_j_detail,
+  commissioning_included, commissioning_detail, air_handler_included, air_handler_detail,
+  line_set_included, line_set_detail, disconnect_included, disconnect_detail,
+  pad_included, pad_detail, drain_line_included, drain_line_detail,
+  panel_assessment_included, panel_upgrade_included, dedicated_circuit_included,
+  electrical_permit_included, load_calculation_included,
+  existing_panel_amps, proposed_panel_amps, breaker_size_required,
+  panel_upgrade_cost, electrical_notes,
+  accessories, line_items)
+VALUES (...)
+ON CONFLICT (bid_id) DO UPDATE SET
+  summary = EXCLUDED.summary,
+  inclusions = EXCLUDED.inclusions,
+  exclusions = EXCLUDED.exclusions,
+  -- ... all scope columns updated ...
+  updated_at = now();
+```
+
+---
+
+## Edge Cases
+
+| Scenario | Handling |
+|----------|----------|
+| No scope section in bid | All booleans = null. All details = null. summary = "No scope information found in bid." accessories = []. line_items = []. |
+| Bid says "includes everything needed" | Set clearly mentioned items to true. Unspecified items stay null — vague language doesn't confirm specifics. |
+| Scope item in line items only | If a line item shows "Permit: $400", permit_included = true and permit_detail = "Permit: $400". |
+| "Electrical work" ambiguous | If bid says "includes electrical work" without specifying, set electrical_included = true. Electrical sub-group fields stay null unless specific panel/circuit info is given. |
+| Thermostat listed in equipment but not scope | If a thermostat appears in the equipment list, thermostat_included = true. Also add to accessories array. |
+| "Customer responsible for X" | Set that item to false — it's explicitly excluded. Detail = "Customer responsible". |
+| Bid mentions "standard installation" | Don't assume what "standard" includes. Only set true for items explicitly listed. Others stay null. |
+| Air handler in equipment list | If an air handler appears in the equipment list, air_handler_included = true. |
+| Panel upgrade quoted separately | panel_upgrade_included = false (not in main scope). panel_upgrade_cost = quoted amount. Note in electrical_notes. |
+| Multiple electrical mentions scattered throughout | Consolidate all electrical info into the electrical sub-group fields. Use electrical_notes for anything that doesn't fit the structured fields. |
+| Line item without clear category | Use item_type = "other" and describe in description field. |
+| Accessory cost not broken out | Set accessory cost = null. Still include the accessory with available info. |
+
+---
+
+## Validation Checklist (Supervised mode)
+
+- [ ] All 12 scope booleans present in output (even if null)
+- [ ] All 12 _detail fields present in output (even if null)
+- [ ] All 10 electrical fields present in output (even if null)
+- [ ] accessories array present (even if empty [])
+- [ ] line_items array present (even if empty [])
+- [ ] No scope boolean set to true without explicit mention in bid context
+- [ ] No scope boolean set to false without explicit exclusion in bid context
+- [ ] Unmentioned items are null (not false)
+- [ ] _detail fields contain actual bid text (not AI-generated summaries)
+- [ ] summary is concise (1-3 sentences)
+- [ ] inclusions array contains only items actually listed as included
+- [ ] exclusions array contains only items actually listed as excluded
+- [ ] line_items.item_type values are all valid enum values
+- [ ] All monetary values are plain numbers (no $ sign, no commas)
+- [ ] No equipment specs, pricing totals, or contractor info in output
+- [ ] JSON is valid (parseable, no trailing commas)
+- [ ] contractor_name matches what's in the bid context
+
+---
+
+## Node File Location
+
+`mindpal/nodes/scope-extractor.md` — this file is the source of truth for this node.
