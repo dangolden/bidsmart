@@ -7,15 +7,21 @@ import type { BidSmartV8Response } from "../_shared/v8Types.ts";
 const MAKE_WEBHOOK_SECRET = Deno.env.get("MAKE_WEBHOOK_SECRET");
 
 /**
- * Make.com Webhook Receiver
- * 
+ * @deprecated This edge function is replaced by `mindpal-callback`.
+ * The new pipeline is: MindPal → mindpal-callback → V2 tables (bids, bid_contractors, bid_scope, bid_scores).
+ * This legacy Make.com route writes to the V1 `contractor_bids` table and is kept only as a fallback
+ * in case the Make.com middleware route is needed again.
+ *
+ * Make.com Webhook Receiver (LEGACY V1)
+ *
  * This endpoint receives MindPal v8 responses from Make.com automation.
  * Make.com acts as a middleware layer for data transformation and validation.
- * 
- * Flow: MindPal v8 → Make.com → This endpoint → Database
+ *
+ * Flow: MindPal v8 → Make.com → This endpoint → V1 Database (contractor_bids)
  */
 Deno.serve(async (req: Request) => {
   try {
+    console.warn("[DEPRECATED] make-webhook is deprecated. Use mindpal-callback instead.");
     const corsResponse = handleCors(req);
     if (corsResponse) return corsResponse;
 

@@ -53,7 +53,7 @@ serve(async (req) => {
           updated_at,
           notification_email,
           pdf_uploads (id, filename, status, created_at),
-          contractor_bids (id, contractor_name, created_at)
+          bids (id, contractor_name, created_at)
         `)
         .order("created_at", { ascending: false })
         .limit(100);
@@ -84,7 +84,7 @@ serve(async (req) => {
           updated_at,
           notification_email,
           pdf_uploads (id, filename, status, created_at),
-          contractor_bids (id, contractor_name, created_at)
+          bids (id, contractor_name, created_at)
         `)
         .in("status", ["draft", "uploading", "analyzing"])
         .order("created_at", { ascending: false });
@@ -157,32 +157,78 @@ async function deleteProject(supabaseAdmin: any, projectId: string): Promise<{ s
   try {
     console.log(`Deleting project ${projectId} and all related data...`);
 
-    // Delete in order of dependencies (child tables first)
-    
+    // Delete in order of dependencies (child tables first, V2 schema)
+
     // 1. Delete project_qii_checklist
     await supabaseAdmin
       .from("project_qii_checklist")
       .delete()
       .eq("project_id", projectId);
 
-    // 2. Delete project_rebates
+    // 2. Delete project_incentives (replaces project_rebates)
     await supabaseAdmin
-      .from("project_rebates")
+      .from("project_incentives")
       .delete()
       .eq("project_id", projectId);
 
-    // 3. Delete bid_questions
+    // 3. Delete project_faqs
     await supabaseAdmin
-      .from("bid_questions")
+      .from("project_faqs")
       .delete()
       .eq("project_id", projectId);
 
-    // 4. Delete mindpal_extractions (via pdf_uploads)
+    // Get all bid IDs for this project (needed for bid-level child tables)
+    const { data: projectBids } = await supabaseAdmin
+      .from("bids")
+      .select("id")
+      .eq("project_id", projectId);
+    const bidIds = projectBids?.map((b: any) => b.id) || [];
+
+    // 4-9. Delete bid-level child tables (FK on bid_id, not project_id)
+    if (bidIds.length > 0) {
+      // 4. Delete contractor_questions (replaces bid_questions)
+      await supabaseAdmin
+        .from("contractor_questions")
+        .delete()
+        .in("bid_id", bidIds);
+
+      // 5. Delete bid_faqs
+      await supabaseAdmin
+        .from("bid_faqs")
+        .delete()
+        .in("bid_id", bidIds);
+
+      // 6. Delete bid_scores
+      await supabaseAdmin
+        .from("bid_scores")
+        .delete()
+        .in("bid_id", bidIds);
+
+      // 7. Delete bid_scope
+      await supabaseAdmin
+        .from("bid_scope")
+        .delete()
+        .in("bid_id", bidIds);
+
+      // 8. Delete bid_contractors
+      await supabaseAdmin
+        .from("bid_contractors")
+        .delete()
+        .in("bid_id", bidIds);
+
+      // 9. Delete bid_equipment
+      await supabaseAdmin
+        .from("bid_equipment")
+        .delete()
+        .in("bid_id", bidIds);
+    }
+
+    // 10. Delete mindpal_extractions (via pdf_uploads)
     const { data: pdfUploads } = await supabaseAdmin
       .from("pdf_uploads")
       .select("id")
       .eq("project_id", projectId);
-    
+
     if (pdfUploads && pdfUploads.length > 0) {
       const pdfIds = pdfUploads.map((p: any) => p.id);
       await supabaseAdmin
@@ -191,31 +237,31 @@ async function deleteProject(supabaseAdmin: any, projectId: string): Promise<{ s
         .in("pdf_upload_id", pdfIds);
     }
 
-    // 5. Delete pdf_uploads
+    // 11. Delete pdf_uploads
     await supabaseAdmin
       .from("pdf_uploads")
       .delete()
       .eq("project_id", projectId);
 
-    // 6. Delete contractor_bids
+    // 12. Delete bids (replaces contractor_bids)
     await supabaseAdmin
-      .from("contractor_bids")
+      .from("bids")
       .delete()
       .eq("project_id", projectId);
 
-    // 7. Delete project_requirements
+    // 13. Delete project_requirements
     await supabaseAdmin
       .from("project_requirements")
       .delete()
       .eq("project_id", projectId);
 
-    // 8. Delete analytics_events for this project
+    // 14. Delete analytics_events for this project
     await supabaseAdmin
       .from("analytics_events")
       .delete()
       .eq("project_id", projectId);
 
-    // 9. Finally delete the project itself
+    // 15. Finally delete the project itself
     const { error: projectError } = await supabaseAdmin
       .from("projects")
       .delete()

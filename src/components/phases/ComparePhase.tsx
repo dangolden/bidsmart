@@ -1,10 +1,31 @@
-import { useState } from 'react';
-import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, ChevronDown, ChevronUp, HelpCircle, FlaskConical, Download, Mail, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, ChevronDown, ChevronUp, HelpCircle, FlaskConical, Download, Mail, Loader2, Package } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { useUser } from '../../hooks/useUser';
 import { formatCurrency, formatDate } from '../../lib/utils/formatters';
+import type { BidEquipment } from '../../lib/types';
 
 type CompareTab = 'equipment' | 'contractors' | 'costs';
+
+// Accessory item shape stored in bid_scope.accessories JSONB
+interface AccessoryItem {
+  name?: string;
+  brand?: string;
+  model?: string;
+  type?: string;
+  quantity?: number;
+  cost?: number;
+  notes?: string;
+}
+
+// system_role display labels for function-based equipment mode
+const SYSTEM_ROLE_LABELS: Record<string, string> = {
+  primary_both: 'Primary Unit (Heating & Cooling)',
+  primary_heating: 'Primary Heating Unit',
+  primary_cooling: 'Primary Cooling Unit',
+  secondary: 'Secondary / Backup Unit',
+  air_distribution: 'Air Distribution',
+};
 
 interface TabConfig {
   key: CompareTab;
@@ -72,71 +93,117 @@ export function ComparePhase() {
     },
   ];
 
+  // Determine if we need function-based equipment display (mixed system types)
+  // Simple mode: all bids are heat_pump system_type
+  // Function-based mode: any bid has a non-heat_pump system_type OR uses system_role grouping
+  const isFunctionBasedMode = bids.some((b) => {
+    const systemType = b.bid.system_type;
+    if (systemType && systemType !== 'heat_pump' && systemType !== 'mini_split') return true;
+    // Also trigger if any equipment has an explicit non-primary_both system_role
+    return b.equipment.some(
+      (e) => e.system_role && e.system_role !== 'primary_both'
+    );
+  });
+
+  // Helper: pick the "primary" unit from a bid's equipment array using system_role or type fallback
+  const pickPrimaryEquipment = (equipment: BidEquipment[]): BidEquipment | undefined => {
+    return (
+      equipment.find((e) => e.system_role === 'primary_both') ||
+      equipment.find((e) => e.system_role === 'primary_heating') ||
+      equipment.find((e) => e.equipment_type === 'outdoor_unit' || e.equipment_type === 'heat_pump') ||
+      equipment[0]
+    );
+  };
+
+  const equipmentRowFromUnit = (e: BidEquipment | undefined, bidId: string, contractor: string) => ({
+    bidId,
+    contractor,
+    brand: e?.brand || '-',
+    model: e?.model_number || e?.model_name || '-',
+    seer2: e?.seer2_rating ?? e?.seer_rating,
+    hspf2: e?.hspf2_rating ?? e?.hspf_rating,
+    capacityTons: e?.capacity_tons,
+    capacityBtu: e?.capacity_btu,
+    variableSpeed: e?.variable_speed,
+    soundLevel: e?.sound_level_db,
+    energyStar: e?.energy_star_certified,
+    energyStarMostEfficient: e?.energy_star_most_efficient,
+    refrigerantType: e?.refrigerant_type,
+    voltage: e?.voltage,
+    stages: e?.stages,
+    cop: e?.cop,
+    eer: e?.eer_rating,
+    compressorWarranty: e?.compressor_warranty_years,
+    systemRole: e?.system_role,
+  });
+
   const getEquipmentData = () => {
     return bids.map((b) => {
-      const mainEquipment = b.equipment.find(
-        (e) => e.equipment_type === 'outdoor_unit' || e.equipment_type === 'heat_pump'
-      ) || b.equipment[0];
+      const contractor = b.bid.contractor_name || b.contractor?.company || 'Unknown';
+      const mainEquipment = pickPrimaryEquipment(b.equipment);
+      return equipmentRowFromUnit(mainEquipment, b.bid.id, contractor);
+    });
+  };
 
-      return {
-        bidId: b.bid.id,
-        contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
-        brand: mainEquipment?.brand || '-',
-        model: mainEquipment?.model_number || mainEquipment?.model_name || '-',
-        seer2: mainEquipment?.seer2_rating || mainEquipment?.seer_rating,
-        hspf2: mainEquipment?.hspf2_rating || mainEquipment?.hspf_rating,
-        capacityTons: mainEquipment?.capacity_tons,
-        capacityBtu: mainEquipment?.capacity_btu,
-        variableSpeed: mainEquipment?.variable_speed,
-        soundLevel: mainEquipment?.sound_level_db,
-        energyStar: mainEquipment?.energy_star_certified,
-        energyStarMostEfficient: mainEquipment?.energy_star_most_efficient,
-        refrigerantType: mainEquipment?.refrigerant_type,
-        voltage: mainEquipment?.voltage,
-        stages: mainEquipment?.stages,
-        cop: mainEquipment?.cop,
-        eer: mainEquipment?.eer_rating,
-        compressorWarranty: mainEquipment?.compressor_warranty_years,
-      };
+  // For function-based mode: collect all unique system_roles across all bids
+  const getAllSystemRoles = (): string[] => {
+    const roleOrder = ['primary_both', 'primary_heating', 'primary_cooling', 'secondary', 'air_distribution'];
+    const seenRoles = new Set<string>();
+    bids.forEach((b) => {
+      b.equipment.forEach((e) => {
+        if (e.system_role) seenRoles.add(e.system_role);
+      });
+    });
+    // If no roles at all, show a single "main unit" row
+    if (seenRoles.size === 0) return [];
+    return roleOrder.filter((r) => seenRoles.has(r));
+  };
+
+  // Get equipment for a specific system_role across all bids
+  const getEquipmentForRole = (role: string) => {
+    return bids.map((b) => {
+      const contractor = b.bid.contractor_name || b.contractor?.company || 'Unknown';
+      const eq = b.equipment.find((e) => e.system_role === role);
+      return equipmentRowFromUnit(eq, b.bid.id, contractor);
     });
   };
 
   const getContractorData = () => {
     return bids.map((b) => ({
       bidId: b.bid.id,
-      contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
-      yearsInBusiness: b.bid.contractor_years_in_business,
-      yearEstablished: b.bid.contractor_year_established,
-      googleRating: b.bid.contractor_google_rating,
-      reviewCount: b.bid.contractor_google_review_count,
-      switchRating: b.bid.contractor_switch_rating,
-      certifications: b.bid.contractor_certifications || [],
-      license: b.bid.contractor_license,
-      licenseState: b.bid.contractor_license_state,
-      insuranceVerified: b.bid.contractor_insurance_verified,
-      isSwitchPreferred: b.bid.contractor_is_switch_preferred,
-      phone: b.bid.contractor_phone,
-      email: b.bid.contractor_email,
-      website: b.bid.contractor_website,
-      totalInstalls: b.bid.contractor_total_installs,
+      contractor: b.bid.contractor_name || b.contractor?.company || 'Unknown',
+      yearsInBusiness: b.contractor?.years_in_business,
+      yearEstablished: b.contractor?.year_established,
+      googleRating: b.contractor?.google_rating,
+      reviewCount: b.contractor?.google_review_count,
+      switchRating: null as number | null,
+      certifications: b.contractor?.certifications || [],
+      license: b.contractor?.license,
+      licenseState: b.contractor?.license_state,
+      insuranceVerified: b.contractor?.insurance_verified,
+      isSwitchPreferred: null as boolean | null,
+      phone: b.contractor?.phone,
+      email: b.contractor?.email,
+      website: b.contractor?.website,
+      totalInstalls: b.contractor?.total_installs,
       // New MindPal extraction fields
-      yelpRating: b.bid.contractor_yelp_rating,
-      yelpReviewCount: b.bid.contractor_yelp_review_count,
-      bbbRating: b.bid.contractor_bbb_rating,
-      bbbAccredited: b.bid.contractor_bbb_accredited,
-      bbbComplaints: b.bid.contractor_bbb_complaints_3yr,
-      bonded: b.bid.contractor_bonded,
-      contactName: b.bid.contractor_contact_name,
-      address: b.bid.contractor_address,
-      redFlags: b.bid.red_flags || [],
-      positiveIndicators: b.bid.positive_indicators || [],
+      yelpRating: b.contractor?.yelp_rating,
+      yelpReviewCount: b.contractor?.yelp_review_count,
+      bbbRating: b.contractor?.bbb_rating,
+      bbbAccredited: b.contractor?.bbb_accredited,
+      bbbComplaints: b.contractor?.bbb_complaints_3yr,
+      bonded: b.contractor?.bonded,
+      contactName: b.contractor?.contact_name,
+      address: b.contractor?.address,
+      redFlags: (b.scores?.red_flags as Array<{ issue: string }> | null) || [],
+      positiveIndicators: (b.scores?.positive_indicators as Array<{ indicator: string }> | null) || [],
     }));
   };
 
   const getCostData = () => {
     return bids.map((b) => ({
       bidId: b.bid.id,
-      contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
+      contractor: b.bid.contractor_name || b.contractor?.company || 'Unknown',
       totalAmount: b.bid.total_bid_amount,
       equipmentCost: b.bid.equipment_cost,
       laborCost: b.bid.labor_cost,
@@ -146,7 +213,7 @@ export function ComparePhase() {
       equipmentWarranty: b.bid.equipment_warranty_years,
       financingAvailable: b.bid.financing_offered,
       financingTerms: b.bid.financing_terms,
-      exclusions: b.bid.exclusions || [],
+      exclusions: (b.scope?.exclusions as string[] | null) || [],
       estimatedDays: b.bid.estimated_days,
       startDateAvailable: b.bid.start_date_available,
       validUntil: b.bid.valid_until,
@@ -160,38 +227,57 @@ export function ComparePhase() {
   const getScopeData = () => {
     return bids.map((b) => ({
       bidId: b.bid.id,
-      contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
-      permit: b.bid.scope_permit_included,
-      permitDetail: b.bid.scope_permit_detail,
-      disposal: b.bid.scope_disposal_included,
-      disposalDetail: b.bid.scope_disposal_detail,
-      electrical: b.bid.scope_electrical_included,
-      electricalDetail: b.bid.scope_electrical_detail,
-      ductwork: b.bid.scope_ductwork_included,
-      ductworkDetail: b.bid.scope_ductwork_detail,
-      thermostat: b.bid.scope_thermostat_included,
-      thermostatDetail: b.bid.scope_thermostat_detail,
-      manualJ: b.bid.scope_manual_j_included,
-      manualJDetail: b.bid.scope_manual_j_detail,
-      commissioning: b.bid.scope_commissioning_included,
-      commissioningDetail: b.bid.scope_commissioning_detail,
-      airHandler: b.bid.scope_air_handler_included,
-      airHandlerDetail: b.bid.scope_air_handler_detail,
-      lineSet: b.bid.scope_line_set_included,
-      lineSetDetail: b.bid.scope_line_set_detail,
-      disconnect: b.bid.scope_disconnect_included,
-      disconnectDetail: b.bid.scope_disconnect_detail,
-      pad: b.bid.scope_pad_included,
-      padDetail: b.bid.scope_pad_detail,
-      drainLine: b.bid.scope_drain_line_included,
-      drainLineDetail: b.bid.scope_drain_line_detail,
+      contractor: b.bid.contractor_name || b.contractor?.company || 'Unknown',
+      permit: b.scope?.permit_included,
+      permitDetail: b.scope?.permit_detail,
+      disposal: b.scope?.disposal_included,
+      disposalDetail: b.scope?.disposal_detail,
+      electrical: b.scope?.electrical_included,
+      electricalDetail: b.scope?.electrical_detail,
+      ductwork: b.scope?.ductwork_included,
+      ductworkDetail: b.scope?.ductwork_detail,
+      thermostat: b.scope?.thermostat_included,
+      thermostatDetail: b.scope?.thermostat_detail,
+      manualJ: b.scope?.manual_j_included,
+      manualJDetail: b.scope?.manual_j_detail,
+      commissioning: b.scope?.commissioning_included,
+      commissioningDetail: b.scope?.commissioning_detail,
+      airHandler: b.scope?.air_handler_included,
+      airHandlerDetail: b.scope?.air_handler_detail,
+      lineSet: b.scope?.line_set_included,
+      lineSetDetail: b.scope?.line_set_detail,
+      disconnect: b.scope?.disconnect_included,
+      disconnectDetail: b.scope?.disconnect_detail,
+      pad: b.scope?.pad_included,
+      padDetail: b.scope?.pad_detail,
+      drainLine: b.scope?.drain_line_included,
+      drainLineDetail: b.scope?.drain_line_detail,
+      // Accessories JSONB array
+      accessories: (b.scope?.accessories as AccessoryItem[] | null) ?? [],
     }));
+  };
+
+  // Collect all unique accessory names across all bids for the accessories sub-table
+  const getAllAccessoryNames = (scopeData: ReturnType<typeof getScopeData>): string[] => {
+    const names = new Set<string>();
+    scopeData.forEach((s) => {
+      s.accessories.forEach((a) => {
+        if (a.name) names.add(a.name);
+      });
+    });
+    return Array.from(names);
   };
 
   const equipmentData = getEquipmentData();
   const contractorData = getContractorData();
   const costData = getCostData();
   const scopeData = getScopeData();
+
+  // Function-based equipment mode: roles and per-role data
+  const allSystemRoles = isFunctionBasedMode ? getAllSystemRoles() : [];
+  const roleEquipmentMap = Object.fromEntries(
+    allSystemRoles.map((role) => [role, getEquipmentForRole(role)])
+  );
 
   const bestSeer = getHighestValue(equipmentData.map((e) => e.seer2));
   const bestHspf = getHighestValue(equipmentData.map((e) => e.hspf2));
@@ -419,6 +505,91 @@ export function ComparePhase() {
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Function-based mode: group rows by system_role with section headers */}
+                  {isFunctionBasedMode && allSystemRoles.length > 0 && allSystemRoles.map((role) => {
+                    const roleData = roleEquipmentMap[role];
+                    const roleSeer = getHighestValue(roleData.map((e) => e.seer2));
+                    const roleHspf = getHighestValue(roleData.map((e) => e.hspf2));
+                    return (
+                      <React.Fragment key={role}>
+                        <tr className="bg-gray-800">
+                          <td colSpan={bids.length + 1} className="px-5 py-2">
+                            <span className="text-xs font-bold text-gray-200 uppercase tracking-wider">
+                              {SYSTEM_ROLE_LABELS[role] || role.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                        </tr>
+                        <tr className="border-b border-gray-200">
+                          <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Manufacturer & Model</td>
+                          {roleData.map((e, idx) => (
+                            <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < roleData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                              {e.brand !== '-' || e.model !== '-' ? `${e.brand} ${e.model}`.trim() : <span className="text-gray-400">Not specified</span>}
+                            </td>
+                          ))}
+                        </tr>
+                        <tr className="border-b border-gray-200 bg-gray-50/50">
+                          <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">SEER2 Rating</td>
+                          {roleData.map((e, idx) => (
+                            <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm font-semibold ${isHighlighted(e.seer2, roleSeer) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < roleData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                              <span className="flex items-center gap-2">
+                                {e.seer2 || '-'}
+                                {isHighlighted(e.seer2, roleSeer) && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                                    <Star className="w-3 h-3" /> BEST
+                                  </span>
+                                )}
+                              </span>
+                            </td>
+                          ))}
+                        </tr>
+                        <tr className="border-b border-gray-200">
+                          <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">HSPF2 Rating</td>
+                          {roleData.map((e, idx) => (
+                            <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm font-semibold ${isHighlighted(e.hspf2, roleHspf) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < roleData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                              <span className="flex items-center gap-2">
+                                {e.hspf2 || '-'}
+                                {isHighlighted(e.hspf2, roleHspf) && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
+                                    <Star className="w-3 h-3" /> BEST
+                                  </span>
+                                )}
+                              </span>
+                            </td>
+                          ))}
+                        </tr>
+                        <tr className="border-b border-gray-200 bg-gray-50/50">
+                          <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Capacity (tons)</td>
+                          {roleData.map((e, idx) => (
+                            <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm font-semibold text-gray-900 ${idx < roleData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                              {e.capacityTons || '-'}
+                            </td>
+                          ))}
+                        </tr>
+                        <tr className="border-b border-gray-200">
+                          <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Variable Speed</td>
+                          {roleData.map((e, idx) => (
+                            <td key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < roleData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                              {e.variableSpeed ? (
+                                <span className="inline-flex items-center gap-1 text-switch-green-700 font-medium">
+                                  <CheckCircle className="w-5 h-5" /> Yes
+                                </span>
+                              ) : e.variableSpeed === false ? (
+                                <span className="inline-flex items-center gap-1 text-gray-400">
+                                  <XCircle className="w-5 h-5" /> No
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      </React.Fragment>
+                    );
+                  })}
+
+                  {/* Simple mode (all heat pumps) OR function-based with no roles: flat comparison */}
+                  {(!isFunctionBasedMode || allSystemRoles.length === 0) && (
+                  <>
                   <tr className="border-b border-gray-200">
                     <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Manufacturer & Model</td>
                     {equipmentData.map((e, idx) => (
@@ -591,6 +762,8 @@ export function ComparePhase() {
                         ))}
                       </tr>
                     </>
+                  )}
+                  </> /* end simple mode */
                   )}
                 </tbody>
               </>
@@ -1195,6 +1368,60 @@ export function ComparePhase() {
                     })}
                   </tr>
                 ))}
+
+                {/* Accessories JSONB sub-table — only shown when any bid has accessories */}
+                {(() => {
+                  const accessoryNames = getAllAccessoryNames(scopeData);
+                  if (accessoryNames.length === 0) return null;
+                  return (
+                    <>
+                      <tr className="bg-gray-800">
+                        <td colSpan={bids.length + 1} className="px-5 py-2">
+                          <div className="flex items-center gap-2">
+                            <Package className="w-4 h-4 text-gray-300" />
+                            <span className="text-xs font-bold text-gray-200 uppercase tracking-wider">
+                              Accessories & Additional Equipment
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                      {accessoryNames.map((name, rowIdx) => (
+                        <tr key={name} className={`border-b border-gray-200 ${rowIdx % 2 === 0 ? 'bg-gray-50/50' : ''}`}>
+                          <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">
+                            {name}
+                          </td>
+                          {scopeData.map((s, idx) => {
+                            const acc = s.accessories.find((a) => a.name === name);
+                            return (
+                              <td key={s.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < scopeData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                                {acc ? (
+                                  <div className="space-y-0.5">
+                                    <span className="inline-flex items-center gap-1 text-switch-green-700 font-medium text-sm">
+                                      <CheckCircle className="w-4 h-4" /> Included
+                                    </span>
+                                    {acc.brand && (
+                                      <p className="text-xs text-gray-600">{acc.brand}{acc.model ? ` ${acc.model}` : ''}</p>
+                                    )}
+                                    {acc.cost != null && (
+                                      <p className="text-xs text-gray-500">{formatCurrency(acc.cost)}</p>
+                                    )}
+                                    {acc.quantity != null && acc.quantity > 1 && (
+                                      <p className="text-xs text-gray-500">Qty: {acc.quantity}</p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-gray-400 text-sm">
+                                    <XCircle className="w-4 h-4" /> Not included
+                                  </span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </>
+                  );
+                })()}
               </tbody>
             </table>
           </div>

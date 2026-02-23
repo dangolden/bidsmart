@@ -559,7 +559,7 @@ export function AdminDashboard({ onBack, userEmail }: AdminDashboardProps) {
                           {project.pdf_uploads?.length || 0}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {project.contractor_bids?.length || 0}
+                          {project.bids?.length || 0}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
                           {new Date(project.created_at).toLocaleDateString()}

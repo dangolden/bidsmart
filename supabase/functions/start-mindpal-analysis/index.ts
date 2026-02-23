@@ -3,21 +3,21 @@ import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
 import { verifyEmailAuth, verifyProjectOwnership } from "../_shared/auth.ts";
 
-// MindPal v2 API configuration
+// MindPal API configuration (v18 workflow — app.mindpal.space v2 API + data format)
 const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://app.mindpal.space/api/v2/workflow/run";
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 
 // Workflow ID for BidSmart Analyzer
-const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "697fc84945bf3484d9a860fb";
+const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "699a33ac6787d2e1b0e9ed93";
 
-// MindPal v2 field IDs for the workflow inputs (VERIFIED 2026-02-12)
-const DOCUMENT_URLS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENT_URLS_FIELD_ID") || "697fc84945bf3484d9a860fe";
-const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "697fc84945bf3484d9a86100";
-const USER_NOTES_FIELD_ID = Deno.env.get("MINDPAL_USER_NOTES_FIELD_ID") || "697fc84945bf3484d9a86101";
-const PROJECT_ID_FIELD_ID = Deno.env.get("MINDPAL_PROJECT_ID_FIELD_ID") || "698e9588cdcbe0dd8790b287";
-const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "697fc84945bf3484d9a860ff";
-const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "698e9588ff3f2d1fa1486189";
+// MindPal field IDs for the workflow inputs (v18 workflow — updated 2026-02-22)
+const DOCUMENT_URLS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENT_URLS_FIELD_ID") || "699a33ad6787d2e1b0e9ed96";
+const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "699a33ad6787d2e1b0e9ed98";
+const USER_NOTES_FIELD_ID = Deno.env.get("MINDPAL_USER_NOTES_FIELD_ID") || "699a33ad6787d2e1b0e9ed9a";
+const PROJECT_ID_FIELD_ID = Deno.env.get("MINDPAL_PROJECT_ID_FIELD_ID") || "699a33ad6787d2e1b0e9ed99";
+const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "699a33ad6787d2e1b0e9ed9b";
+const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "699a33ad6787d2e1b0e9ed97";
 
 // Request body from frontend
 interface RequestBody {
@@ -26,8 +26,8 @@ interface RequestBody {
   userPriorities: Record<string, number>;
 }
 
-// MindPal v2 payload structure
-interface MindPalV2Payload {
+// MindPal payload structure (v18 data format — same as v10)
+interface MindPalPayload {
   data: Record<string, string>;
 }
 
@@ -82,7 +82,7 @@ async function getPublicUrlsForPdfs(
   return pdfUrls;
 }
 
-async function callMindPalV2API(payload: MindPalV2Payload): Promise<{
+async function callMindPalAPI(payload: MindPalPayload): Promise<{
   workflowRunId: string;
 }> {
   if (!MINDPAL_API_KEY) {
@@ -92,10 +92,10 @@ async function callMindPalV2API(payload: MindPalV2Payload): Promise<{
     throw new Error("MindPal workflow ID not configured");
   }
 
-  // v2 API uses query parameter for workflow_id and x-api-key header
+  // v2 API uses query parameter for workflow_id
   const apiUrl = `${MINDPAL_API_ENDPOINT}?workflow_id=${WORKFLOW_ID}`;
-  
-  console.log("MindPal v2 API Request:", {
+
+  console.log("MindPal API Request:", {
     url: apiUrl,
     workflow_id: WORKFLOW_ID,
     field_ids: {
@@ -113,33 +113,32 @@ async function callMindPalV2API(payload: MindPalV2Payload): Promise<{
     method: "POST",
     headers: {
       "accept": "application/json",
-      "x-api-key": MINDPAL_API_KEY,
+      "x-api-key": MINDPAL_API_KEY!,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
   });
 
-  console.log("MindPal v2 API Response:", {
+  console.log("MindPal API Response:", {
     status: response.status,
     statusText: response.statusText
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("MindPal v2 API error:", errorText);
+    console.error("MindPal API error:", errorText);
     throw new Error(`MindPal API failed: ${response.status} - ${errorText}`);
   }
 
   const result = await response.json();
-  
-  // v2 response format
-  const workflowRunId = result.workflow_run_id || result.data?.workflow_run_id || result.id;
-  
-  console.log("✅ MindPal v2 API Success:", {
+
+  const workflowRunId = result.workflowRunId || result.workflow_run_id || result.data?.workflow_run_id || result.id;
+
+  console.log("✅ MindPal API Success:", {
     workflowRunId,
     full_response: JSON.stringify(result, null, 2)
   });
-  
+
   return { workflowRunId };
 }
 
@@ -149,7 +148,7 @@ Deno.serve(async (req: Request) => {
     if (corsResponse) return corsResponse;
 
     if (req.method !== "POST") {
-      return errorResponse("Method not allowed", 405);
+      return errorResponse("Method not allowed", 405, req);
     }
 
     const authResult = await verifyEmailAuth(req);
@@ -171,20 +170,20 @@ Deno.serve(async (req: Request) => {
 
     // Validate inputs
     if (!projectId) {
-      return errorResponse("Missing projectId");
+      return errorResponse("Missing projectId", 400, req);
     }
 
     if (!pdfUploadIds || !Array.isArray(pdfUploadIds) || pdfUploadIds.length === 0) {
-      return errorResponse("Missing or invalid pdfUploadIds array");
+      return errorResponse("Missing or invalid pdfUploadIds array", 400, req);
     }
 
     if (!userPriorities || typeof userPriorities !== "object") {
-      return errorResponse("Missing or invalid userPriorities");
+      return errorResponse("Missing or invalid userPriorities", 400, req);
     }
 
     const isOwner = await verifyProjectOwnership(userExtId, projectId);
     if (!isOwner) {
-      return errorResponse("Not authorized to access this project", 403);
+      return errorResponse("Not authorized to access this project", 403, req);
     }
 
     // Generate public URLs for the uploaded PDFs
@@ -195,7 +194,7 @@ Deno.serve(async (req: Request) => {
       console.log("Generated URLs:", documentUrls.length, documentUrls);
     } catch (urlError) {
       console.error("Failed to generate URLs:", urlError);
-      return errorResponse(`URL generation failed: ${urlError instanceof Error ? urlError.message : String(urlError)}`);
+      return errorResponse(`URL generation failed: ${urlError instanceof Error ? urlError.message : String(urlError)}`, 400, req);
     }
 
     const requestId = generateUUID();
@@ -204,27 +203,27 @@ Deno.serve(async (req: Request) => {
     // Extract user_notes from userPriorities.project_details if present
     const userNotes = String(userPriorities.project_details || '');
     
-    // Construct v2 payload with field IDs
-    const payload: MindPalV2Payload = {
+    // Construct v18 payload with data format (field ID → value map)
+    const payload: MindPalPayload = {
       data: {
         [DOCUMENT_URLS_FIELD_ID]: JSON.stringify(documentUrls),
         [USER_PRIORITIES_FIELD_ID]: JSON.stringify(userPriorities),
         [USER_NOTES_FIELD_ID]: userNotes,
         [PROJECT_ID_FIELD_ID]: projectId,
         [CALLBACK_URL_FIELD_ID]: callbackUrl,
-        [REQUEST_ID_FIELD_ID]: requestId
+        [REQUEST_ID_FIELD_ID]: requestId,
       }
     };
 
-    console.log("Calling MindPal v2 API with", documentUrls.length, "documents");
+    console.log("Calling MindPal API with", documentUrls.length, "documents");
     console.log("Full payload:", JSON.stringify(payload, null, 2));
-    
+
     let mindpalResult: { workflowRunId: string };
     try {
-      mindpalResult = await callMindPalV2API(payload);
+      mindpalResult = await callMindPalAPI(payload);
     } catch (apiError) {
       console.error("MindPal API call failed:", apiError);
-      return errorResponse(`MindPal API failed: ${apiError instanceof Error ? apiError.message : String(apiError)}`);
+      return errorResponse(`MindPal API failed: ${apiError instanceof Error ? apiError.message : String(apiError)}`, 500, req);
     }
 
     // Update project status
@@ -256,12 +255,13 @@ Deno.serve(async (req: Request) => {
       pdfCount: pdfUploadIds.length,
       mode: "url",
       message: "Analysis started successfully",
-    });
+    }, 200, req);
   } catch (error) {
     console.error("Error in start-mindpal-analysis:", error);
     return errorResponse(
       error instanceof Error ? error.message : "Internal server error",
-      500
+      500,
+      req
     );
   }
 });
