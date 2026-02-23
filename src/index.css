@@ -158,13 +158,30 @@
   .question-card {
     @apply p-4 bg-yellow-50 border border-yellow-200 rounded-lg;
   }
-  
+
   .question-card.answered {
     @apply bg-green-50 border-green-200;
   }
-  
+
   .question-card.high-priority {
     @apply border-l-4 border-l-red-400;
+  }
+
+  /* Tier question cards */
+  .tier-card-essential {
+    @apply bg-blue-50 border-l-4 border-l-blue-500;
+  }
+
+  .tier-card-clarification {
+    @apply bg-amber-50 border-l-4 border-l-amber-400;
+  }
+
+  .tier-card-detailed {
+    @apply bg-purple-50 border-l-4 border-l-purple-400;
+  }
+
+  .tier-card-expert {
+    @apply bg-gray-50 border-l-4 border-l-gray-300;
   }
   
   /* Tab navigation */

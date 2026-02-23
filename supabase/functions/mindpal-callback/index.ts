@@ -337,6 +337,7 @@ Deno.serve(async (req: Request) => {
         bid_id: bid.id,
         question_text: q.question_text,
         question_category: q.question_category,
+        question_tier: q.question_tier || "clarification",
         priority: q.priority,
         context: q.context,
         triggered_by: q.triggered_by,
@@ -351,7 +352,7 @@ Deno.serve(async (req: Request) => {
 
       const { error: questionsError } = await supabaseAdmin
         .from("contractor_questions")
-        .insert(questionRecords);
+        .upsert(questionRecords, { onConflict: "bid_id,question_text" });
 
       if (questionsError) {
         console.error("Failed to create questions:", questionsError);

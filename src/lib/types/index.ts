@@ -551,6 +551,8 @@ export interface BidEquipment {
  * V2 contractor_questions table — clarification questions per bid.
  * Renamed from bid_questions. Full v8 7-category spec restored.
  */
+export type QuestionTier = 'essential' | 'clarification' | 'detailed' | 'expert';
+
 export interface ContractorQuestion {
   id: string;
   bid_id: string;
@@ -560,6 +562,7 @@ export interface ContractorQuestion {
   question_category?: string | null;
   category?: string | null;
   priority?: string | null;
+  question_tier?: QuestionTier | null;
 
   // v8 spec fields (restored)
   context?: string | null;
@@ -580,6 +583,9 @@ export interface ContractorQuestion {
 
   created_at: string;
 }
+
+/** Backward-compat alias — staging components use BidQuestion */
+export type BidQuestion = ContractorQuestion;
 
 /**
  * V2 project_incentives table — all incentives applicable to a project.

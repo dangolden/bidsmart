@@ -252,10 +252,13 @@ export type QuestionCategory =
 
 export type QuestionPriority = "high" | "medium" | "low";
 
+export type QuestionTier = "essential" | "clarification" | "detailed" | "expert";
+
 export interface MindPalQuestionItem {
   bid_id: string;
   question_text: string;
   question_category: QuestionCategory;
+  question_tier?: QuestionTier;
   priority: QuestionPriority;
   missing_field?: string | null;
   context?: string;
