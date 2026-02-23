@@ -111,65 +111,47 @@ Deno.serve(async (req: Request) => {
 
     const confidenceLevel = mapConfidenceToLevel(payload.overall_confidence);
 
-    const bidData: Record<string, unknown> = {
-      project_id: projectId,
-      contractor_name: payload.contractor_info?.company_name || "Unknown Contractor",
-      contractor_company: payload.contractor_info?.company_name,
-      contractor_phone: payload.contractor_info?.phone,
-      contractor_email: payload.contractor_info?.email,
-      contractor_license: payload.contractor_info?.license_number,
-      contractor_license_state: payload.contractor_info?.license_state,
-      contractor_website: payload.contractor_info?.website,
-      total_bid_amount: payload.pricing?.total_amount || 0,
-      labor_cost: payload.pricing?.labor_cost,
-      equipment_cost: payload.pricing?.equipment_cost,
-      materials_cost: payload.pricing?.materials_cost,
-      permit_cost: payload.pricing?.permit_cost,
-      total_before_rebates: payload.pricing?.price_before_rebates,
-      estimated_rebates: payload.pricing?.rebates_mentioned?.reduce(
-        (sum, r) => sum + (r.amount || 0),
-        0
-      ),
-      total_after_rebates: payload.pricing?.price_after_rebates,
-      estimated_days: payload.timeline?.estimated_days,
-      start_date_available: payload.timeline?.start_date_available,
-      labor_warranty_years: payload.warranty?.labor_warranty_years,
-      equipment_warranty_years: payload.warranty?.equipment_warranty_years,
-      additional_warranty_details: payload.warranty?.warranty_details,
-      deposit_required: payload.payment_terms?.deposit_amount,
-      deposit_percentage: payload.payment_terms?.deposit_percentage,
-      payment_schedule: payload.payment_terms?.payment_schedule,
-      financing_offered: payload.payment_terms?.financing_offered || false,
-      financing_terms: payload.payment_terms?.financing_terms,
-      scope_summary: payload.scope_of_work?.summary,
-      inclusions: payload.scope_of_work?.inclusions,
-      exclusions: payload.scope_of_work?.exclusions,
-      scope_permit_included: payload.scope_of_work?.permit_included,
-      scope_disposal_included: payload.scope_of_work?.disposal_included,
-      scope_electrical_included: payload.scope_of_work?.electrical_work_included,
-      scope_ductwork_included: payload.scope_of_work?.ductwork_included,
-      scope_thermostat_included: payload.scope_of_work?.thermostat_included,
-      scope_manual_j_included: payload.scope_of_work?.manual_j_included,
-      scope_commissioning_included: payload.scope_of_work?.commissioning_included,
-      scope_air_handler_included: payload.scope_of_work?.air_handler_included,
-      scope_line_set_included: payload.scope_of_work?.line_set_included,
-      scope_disconnect_included: payload.scope_of_work?.disconnect_included,
-      scope_pad_included: payload.scope_of_work?.pad_included,
-      scope_drain_line_included: payload.scope_of_work?.drain_line_included,
-      bid_date: payload.dates?.bid_date || payload.dates?.quote_date,
-      valid_until: payload.dates?.valid_until || payload.timeline?.bid_valid_until,
-      pdf_upload_id: pdfUploadId,
-      extraction_confidence: confidenceLevel,
-      extraction_notes: payload.extraction_notes
-        ?.map((n) => `[${n.type}] ${n.message}`)
-        .join("\n"),
-      verified_by_user: false,
-      is_favorite: false,
-    };
-
+    // ── V2 Insert 1: bids (core bid record) ──
     const { data: bid, error: bidError } = await supabaseAdmin
-      .from("contractor_bids")
-      .insert(bidData)
+      .from("bids")
+      .insert({
+        project_id: projectId,
+        pdf_upload_id: pdfUploadId,
+        contractor_name: payload.contractor_info?.company_name || "Unknown Contractor",
+        system_type: "heat_pump",
+        total_bid_amount: payload.pricing?.total_amount || 0,
+        labor_cost: payload.pricing?.labor_cost,
+        equipment_cost: payload.pricing?.equipment_cost,
+        materials_cost: payload.pricing?.materials_cost,
+        permit_cost: payload.pricing?.permit_cost,
+        disposal_cost: payload.pricing?.disposal_cost,
+        electrical_cost: payload.pricing?.electrical_cost,
+        total_before_rebates: payload.pricing?.price_before_rebates,
+        estimated_rebates: payload.pricing?.rebates_mentioned?.reduce(
+          (sum, r) => sum + (r.amount || 0),
+          0
+        ),
+        total_after_rebates: payload.pricing?.price_after_rebates,
+        deposit_required: payload.payment_terms?.deposit_amount,
+        deposit_percentage: payload.payment_terms?.deposit_percentage,
+        payment_schedule: payload.payment_terms?.payment_schedule,
+        financing_offered: payload.payment_terms?.financing_offered || false,
+        financing_terms: payload.payment_terms?.financing_terms,
+        labor_warranty_years: payload.warranty?.labor_warranty_years,
+        equipment_warranty_years: payload.warranty?.equipment_warranty_years,
+        compressor_warranty_years: payload.warranty?.compressor_warranty_years,
+        additional_warranty_details: payload.warranty?.warranty_details,
+        estimated_days: payload.timeline?.estimated_days,
+        start_date_available: payload.timeline?.start_date_available,
+        bid_date: payload.dates?.bid_date || payload.dates?.quote_date,
+        valid_until: payload.dates?.valid_until || payload.timeline?.bid_valid_until,
+        extraction_confidence: confidenceLevel,
+        extraction_notes: payload.extraction_notes
+          ?.map((n) => `[${n.type}] ${n.message}`)
+          .join("\n"),
+        verified_by_user: false,
+        is_favorite: false,
+      })
       .select()
       .single();
 
@@ -188,30 +170,72 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Failed to create bid record", 500);
     }
 
-    if (payload.line_items && payload.line_items.length > 0) {
-      const lineItems = payload.line_items.map((item, index) => ({
+    // ── V2 Insert 2: bid_contractors (1:1 contractor identity) ──
+    const { error: contractorError } = await supabaseAdmin
+      .from("bid_contractors")
+      .insert({
         bid_id: bid.id,
-        item_type: mapLineItemType(item.item_type),
-        description: item.description,
-        quantity: item.quantity || 1,
-        unit_price: item.unit_price,
-        total_price: item.total_price,
-        brand: item.brand,
-        model_number: item.model_number,
-        confidence: mapConfidenceToLevel(item.confidence || payload.overall_confidence),
-        source_text: item.source_text,
-        line_order: index,
-      }));
+        name: payload.contractor_info?.company_name || "Unknown Contractor",
+        company: payload.contractor_info?.company_name,
+        contact_name: payload.contractor_info?.contact_name,
+        phone: payload.contractor_info?.phone,
+        email: payload.contractor_info?.email,
+        website: payload.contractor_info?.website,
+        license: payload.contractor_info?.license_number,
+        license_state: payload.contractor_info?.license_state,
+      });
 
-      const { error: lineItemsError } = await supabaseAdmin
-        .from("bid_line_items")
-        .insert(lineItems);
-
-      if (lineItemsError) {
-        console.error("Failed to create line items:", lineItemsError);
-      }
+    if (contractorError) {
+      console.error("Failed to create bid_contractor:", contractorError);
     }
 
+    // ── V2 Insert 3: bid_scope (1:1 scope + line_items JSONB) ──
+    const lineItemsJsonb = payload.line_items?.map((item) => ({
+      item_type: mapLineItemType(item.item_type),
+      description: item.description,
+      amount: item.total_price,
+      quantity: item.quantity || 1,
+      unit_price: item.unit_price,
+      is_included: true,
+      notes: item.source_text,
+    })) ?? [];
+
+    const { error: scopeError } = await supabaseAdmin
+      .from("bid_scope")
+      .insert({
+        bid_id: bid.id,
+        summary: payload.scope_of_work?.summary,
+        inclusions: payload.scope_of_work?.inclusions || [],
+        exclusions: payload.scope_of_work?.exclusions || [],
+        permit_included: payload.scope_of_work?.permit_included,
+        disposal_included: payload.scope_of_work?.disposal_included,
+        electrical_included: payload.scope_of_work?.electrical_work_included,
+        ductwork_included: payload.scope_of_work?.ductwork_included,
+        thermostat_included: payload.scope_of_work?.thermostat_included,
+        manual_j_included: payload.scope_of_work?.manual_j_included,
+        commissioning_included: payload.scope_of_work?.commissioning_included,
+        air_handler_included: payload.scope_of_work?.air_handler_included,
+        line_set_included: payload.scope_of_work?.line_set_included,
+        disconnect_included: payload.scope_of_work?.disconnect_included,
+        pad_included: payload.scope_of_work?.pad_included,
+        drain_line_included: payload.scope_of_work?.drain_line_included,
+        line_items: lineItemsJsonb,
+      });
+
+    if (scopeError) {
+      console.error("Failed to create bid_scope:", scopeError);
+    }
+
+    // ── V2 Insert 4: bid_scores (1:1 placeholder — populated later) ──
+    const { error: scoresError } = await supabaseAdmin
+      .from("bid_scores")
+      .insert({ bid_id: bid.id });
+
+    if (scoresError) {
+      console.error("Failed to create bid_scores:", scoresError);
+    }
+
+    // ── bid_equipment (1:N — unchanged table name) ──
     if (payload.equipment && payload.equipment.length > 0) {
       const equipment = payload.equipment.map((eq) => ({
         bid_id: bid.id,
@@ -246,14 +270,15 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // ── bid_faqs (V2 column names) ──
     if (payload.faqs && payload.faqs.length > 0) {
       const faqRecords = payload.faqs.map((faq) => ({
         bid_id: bid.id,
-        faq_key: faq.faq_key,
-        question_text: faq.question_text,
-        answer_text: faq.answer_text,
+        question: faq.question,
+        answer: faq.answer,
+        category: faq.category,
         answer_confidence: faq.answer_confidence,
-        is_answered: faq.is_answered,
+        sources: faq.sources,
         display_order: faq.display_order,
       }));
 
@@ -266,20 +291,26 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // ── contractor_questions (renamed from bid_questions, v8 fields restored) ──
     if (payload.questions && payload.questions.length > 0) {
       const questionRecords = payload.questions.map((q) => ({
         bid_id: bid.id,
         question_text: q.question_text,
         question_category: q.question_category,
         priority: q.priority,
+        context: q.context,
+        triggered_by: q.triggered_by,
+        good_answer_looks_like: q.good_answer_looks_like,
+        concerning_answer_looks_like: q.concerning_answer_looks_like,
+        missing_field: q.missing_field,
+        generation_notes: q.generation_notes,
         is_answered: false,
         auto_generated: true,
-        missing_field: q.missing_field,
         display_order: q.display_order,
       }));
 
       const { error: questionsError } = await supabaseAdmin
-        .from("bid_questions")
+        .from("contractor_questions")
         .insert(questionRecords);
 
       if (questionsError) {
@@ -315,11 +346,8 @@ Deno.serve(async (req: Request) => {
         .eq("id", extraction.id);
     }
 
-    try {
-      await supabaseAdmin.rpc("calculate_bid_scores", { p_bid_id: bid.id });
-    } catch (scoreError) {
-      console.error("Failed to calculate scores:", scoreError);
-    }
+    // TODO: V2 scoring function — bid_scores row created empty above,
+    // will be populated by a V2-compatible calculate_bid_scores RPC
 
     const { data: allProjectPdfs } = await supabaseAdmin
       .from("pdf_uploads")

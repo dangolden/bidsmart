@@ -216,7 +216,8 @@ export type QuestionCategory =
   | "equipment"
   | "timeline"
   | "scope"
-  | "credentials";
+  | "credentials"
+  | "electrical";
 
 export type QuestionPriority = "high" | "medium" | "low";
 
@@ -227,6 +228,10 @@ export interface MindPalQuestionItem {
   priority: QuestionPriority;
   missing_field?: string | null;
   context?: string;
+  triggered_by?: string;
+  good_answer_looks_like?: string;
+  concerning_answer_looks_like?: string;
+  generation_notes?: string;
   display_order: number;
 }
 
@@ -251,11 +256,11 @@ export interface MindPalQuestionsCallback {
 
 export interface MindPalFaqItem {
   bid_id: string;
-  faq_key: string;
-  question_text: string;
-  answer_text: string;
+  question: string;
+  answer: string;
+  category?: string;
   answer_confidence: ConfidenceLevel;
-  is_answered: boolean;
+  sources?: string[];
   display_order: number;
 }
 
