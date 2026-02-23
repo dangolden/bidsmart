@@ -1,5 +1,8 @@
 const ALLOWED_ORIGINS = [
   "https://bidcompare.netlify.app",
+  "https://homedocus.netlify.app",
+  "https://homedoc.us",
+  "https://www.homedoc.us",
   "https://theswitchison.org",
   "https://www.theswitchison.org",
   "https://bidsmart.theswitchison.org",
@@ -8,10 +11,11 @@ const ALLOWED_ORIGINS = [
 ];
 
 // Also allow Netlify deploy previews and staging deploys
-// Patterns: 
+// Patterns:
 // - https://deploy-preview-123--bidcompare.netlify.app
-// - https://6986568a6e66b600085be95a--bidcompare.netlify.app
-const NETLIFY_PREVIEW_PATTERN = /^https:\/\/[a-z0-9-]+--bidcompare\.netlify\.app$/;
+// - https://claude-confident-perlman--homedocus.netlify.app
+// - https://6986568a6e66b600085be95a--homedocus.netlify.app
+const NETLIFY_PREVIEW_PATTERN = /^https:\/\/[a-z0-9-]+--(?:bidcompare|homedocus)\.netlify\.app$/;
 
 export function getCorsHeaders(origin?: string | null): Record<string, string> {
   let allowedOrigin = ALLOWED_ORIGINS[0];
