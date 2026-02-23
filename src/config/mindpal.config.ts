@@ -4,34 +4,20 @@
  */
 
 export const MINDPAL_CONFIG = {
-  // Workflow identification
-  WORKFLOW_ID: '69860fd696be27d5d9cb4252',
-  API_BASE_URL: 'https://api.mindpal.io/v1',
-  
+  // Workflow identification (v18 — updated 2026-02-22)
+  WORKFLOW_ID: '699a33ac6787d2e1b0e9ed93',
+  API_BASE_URL: 'https://api-v3.mindpal.io/api/v1',
+
   // Field IDs (CRITICAL - used in API request body)
   FIELD_IDS: {
-    documents: '69860fd696be27d5d9cb4258',
-    user_priorities: '69860fd696be27d5d9cb4255',
-    request_id: '69860fd696be27d5d9cb4257',
-    callback_url: '69860fd696be27d5d9cb4256'
+    documents: '699a33ad6787d2e1b0e9ed96',
+    user_priorities: '699a33ad6787d2e1b0e9ed98',
+    request_id: '699a33ad6787d2e1b0e9ed97',
+    callback_url: '699a33ad6787d2e1b0e9ed9b',
+    user_notes: '699a33ad6787d2e1b0e9ed9a',
+    project_id: '699a33ad6787d2e1b0e9ed99'
   },
-  
-  // Node IDs (for debugging)
-  NODE_IDS: {
-    API_INPUT: '69860fd696be27d5d9cb4253',
-    DOCUMENT_NORMALIZER: '69860fdb96be27d5d9cb426d',
-    EXTRACT_ALL_BIDS: '69860fd796be27d5d9cb4259',
-    EQUIPMENT_RESEARCHER: '69860fd796be27d5d9cb425b',
-    CONTRACTOR_RESEARCHER: '69860fd796be27d5d9cb425d',
-    INCENTIVE_FINDER: '69860fd896be27d5d9cb425f',
-    SCORING_ENGINE: '69860fd996be27d5d9cb4265',
-    QUESTION_GENERATOR: '69860fd996be27d5d9cb4267',
-    PER_BID_FAQ_GENERATOR: '69860fda96be27d5d9cb4269',
-    OVERALL_FAQ_GENERATOR: '69860fda96be27d5d9cb426b',
-    JSON_ASSEMBLER: '69860fd896be27d5d9cb4261',
-    SEND_RESULTS: '69860fd996be27d5d9cb4263'
-  },
-  
+
   // Workflow constraints
   MAX_DOCUMENTS: 5,
   MAX_FILE_SIZE_MB: 20,

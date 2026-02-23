@@ -1,7 +1,12 @@
 /**
- * MindPal v8/v10 Response Mapper
- * Shared mapping logic for converting v8/v10 responses to database schema
- * 
+ * @deprecated This mapper is part of the legacy V1 Make.com pipeline (make-webhook).
+ * The V2 pipeline uses mindpal-callback with inline mapping to V2 tables
+ * (bids, bid_contractors, bid_scope, bid_scores).
+ * Kept as a fallback in case Make.com route is re-enabled.
+ *
+ * MindPal v8/v10 Response Mapper (LEGACY V1)
+ * Shared mapping logic for converting v8/v10 responses to V1 database schema (contractor_bids).
+ *
  * v10 Changes:
  * - Supports flat contractor fields (contractor_name, contractor_phone, etc.) at top level
  * - Backwards compatible with v8 nested contractor_info structure

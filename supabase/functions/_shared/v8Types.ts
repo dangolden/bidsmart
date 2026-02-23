@@ -1,6 +1,9 @@
 /**
- * MindPal v8 Response Type Definitions
- * These match the types defined in src/lib/types/index.ts
+ * @deprecated These types are part of the legacy V1 Make.com pipeline (make-webhook → v8Mapper).
+ * The V2 pipeline uses mindpal-callback with types from _shared/types.ts.
+ * Kept as a fallback in case Make.com route is re-enabled.
+ *
+ * MindPal v8 Response Type Definitions (LEGACY V1)
  */
 
 export interface BidSmartV8Response {
