@@ -33,8 +33,10 @@ export interface MindPalCallbackPayload {
   equipment?: EquipmentInfo[];
   line_items?: LineItemInfo[];
   scope_of_work?: ScopeInfo;
+  electrical?: ElectricalInfo;
   payment_terms?: PaymentTermsInfo;
   dates?: DatesInfo;
+  incentives?: IncentiveInfo[];
   field_confidences?: Record<string, number>;
   extraction_notes?: ExtractionNote[];
   error?: {
@@ -106,6 +108,7 @@ export interface EquipmentInfo {
   hspf_rating?: number;
   hspf2_rating?: number;
   eer_rating?: number;
+  afue_rating?: number;
   variable_speed?: boolean;
   stages?: "single" | "two" | "variable";
   refrigerant?: string;
@@ -163,6 +166,34 @@ export interface DatesInfo {
   bid_date?: string;
   quote_date?: string;
   valid_until?: string;
+}
+
+export interface ElectricalInfo {
+  panel_assessment_included?: boolean;
+  panel_upgrade_included?: boolean;
+  panel_upgrade_cost?: number;
+  existing_panel_amps?: number;
+  proposed_panel_amps?: number;
+  breaker_size_required?: number;
+  dedicated_circuit_included?: boolean;
+  electrical_permit_included?: boolean;
+  load_calculation_included?: boolean;
+  electrical_notes?: string;
+}
+
+export interface IncentiveInfo {
+  program_name: string;
+  program_type: "federal" | "state" | "utility" | "manufacturer" | "tax_credit";
+  amount_min?: number;
+  amount_max?: number;
+  amount_description?: string;
+  equipment_types_eligible?: string[];
+  eligibility_requirements?: string;
+  income_qualified?: boolean;
+  application_url?: string;
+  verification_source?: string;
+  can_stack?: boolean;
+  confidence?: "high" | "medium" | "low";
 }
 
 export interface ExtractionNote {
@@ -271,4 +302,39 @@ export interface MindPalFaqsCallback {
   timestamp: string;
   status: "success" | "failed";
   faqs: MindPalFaqItem[];
+}
+
+// ── Equipment classification helpers ──
+
+export type SystemRole = "primary_heating" | "primary_cooling" | "primary_both" | "secondary" | "air_distribution";
+export type FuelType = "electric" | "natural_gas" | "propane" | "oil";
+
+const ACCESSORY_TYPES = new Set([
+  "thermostat", "line_set", "disconnect", "pad", "surge_protector",
+  "uv_light", "filter", "humidifier", "dehumidifier", "zoning",
+  "drain_line", "condensate_pump", "refrigerant_line_set",
+]);
+
+/** Classify equipment_type as accessory vs major equipment */
+export function isAccessory(equipmentType: string): boolean {
+  return ACCESSORY_TYPES.has(equipmentType.toLowerCase().replace(/[\s-]/g, "_"));
+}
+
+/** Infer system_role from equipment_type */
+export function inferSystemRole(equipmentType: string): SystemRole {
+  const t = equipmentType.toLowerCase().replace(/[\s-]/g, "_");
+  if (t.includes("heat_pump") || t === "mini_split" || t === "ductless") return "primary_both";
+  if (t === "furnace" || t === "boiler") return "primary_heating";
+  if (t === "air_conditioner" || t === "condenser" || t === "ac") return "primary_cooling";
+  if (t === "air_handler" || t === "fan_coil") return "air_distribution";
+  return "secondary";
+}
+
+/** Infer fuel_type from equipment_type */
+export function inferFuelType(equipmentType: string): FuelType {
+  const t = equipmentType.toLowerCase().replace(/[\s-]/g, "_");
+  if (t === "furnace") return "natural_gas"; // most common default
+  if (t === "boiler") return "natural_gas";
+  // Heat pumps, ACs, air handlers, mini-splits are all electric
+  return "electric";
 }

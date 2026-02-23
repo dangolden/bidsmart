@@ -32,11 +32,10 @@ async function fetchProjectData(projectId: string): Promise<ProjectData> {
   }
 
   const { data: bids, error: bidsError } = await supabaseAdmin
-    .from("contractor_bids")
+    .from("bids")
     .select(`
       *,
-      bid_equipment(*),
-      bid_line_items(*)
+      bid_equipment(*)
     `)
     .eq("project_id", projectId)
     .order("total_bid_amount", { ascending: true });

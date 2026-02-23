@@ -737,116 +737,6 @@ export interface BidSummaryView {
 }
 
 // ============================================
-// ANALYSIS TYPES
-// ============================================
-
-export interface BidAnalysis {
-  id: string;
-  project_id: string;
-
-  analysis_summary?: string | null;
-  scoring_weights?: ScoringWeights | null;
-  recommended_bid_id?: string | null;
-  recommendation_reasoning?: string | null;
-
-  price_comparison?: PriceComparison | null;
-  efficiency_comparison?: EfficiencyComparison | null;
-  warranty_comparison?: WarrantyComparison | null;
-
-  red_flags?: RedFlag[] | null;
-  missing_info?: MissingInfo[] | null;
-  negotiation_points?: NegotiationPoint[] | null;
-
-  comparison_report?: string | null;
-  negotiation_email_template?: string | null;
-  questions_to_ask?: string[] | null;
-
-  analysis_version: string;
-  analyzed_at: string;
-  model_used?: string | null;
-
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ScoringWeights {
-  price: number;
-  efficiency: number;
-  warranty: number;
-  reputation: number;
-  timeline: number;
-}
-
-export interface PriceComparison {
-  lowest_bid_id: string;
-  highest_bid_id: string;
-  average_price: number;
-  median_price: number;
-  price_range: number;
-  price_spread_percentage: number;
-  by_bid: Array<{
-    bid_id: string;
-    contractor_name: string;
-    total_amount: number;
-    per_ton_cost: number;
-    deviation_from_average: number;
-  }>;
-}
-
-export interface EfficiencyComparison {
-  highest_seer_bid_id: string;
-  highest_hspf_bid_id: string;
-  by_bid: Array<{
-    bid_id: string;
-    contractor_name: string;
-    seer: number | null;
-    seer2: number | null;
-    hspf: number | null;
-    hspf2: number | null;
-    energy_star: boolean;
-    most_efficient: boolean;
-  }>;
-}
-
-export interface WarrantyComparison {
-  best_labor_warranty_bid_id: string;
-  best_equipment_warranty_bid_id: string;
-  by_bid: Array<{
-    bid_id: string;
-    contractor_name: string;
-    labor_years: number | null;
-    equipment_years: number | null;
-    compressor_years: number | null;
-    extended_available: boolean;
-    total_warranty_value: number;
-  }>;
-}
-
-export interface RedFlag {
-  bid_id: string;
-  contractor_name: string;
-  issue: string;
-  severity: 'high' | 'medium' | 'low';
-  recommendation: string;
-}
-
-export interface MissingInfo {
-  bid_id: string;
-  contractor_name: string;
-  missing_field: string;
-  importance: 'critical' | 'important' | 'nice_to_have';
-}
-
-export interface NegotiationPoint {
-  topic: string;
-  current_situation: string;
-  suggested_ask: string;
-  potential_savings: number | null;
-  leverage_points: string[];
-  talking_points: string[];
-}
-
-// ============================================
 // UI COMPONENT TYPES
 // ============================================
 
@@ -861,21 +751,6 @@ export interface BidComparisonTableRow {
     quality: number;
     value: number;
     completeness: number;
-  };
-}
-
-export interface ProjectSummary {
-  project: Project;
-  bids: BidComparisonTableRow[];
-  analysis: BidAnalysis | null;
-  incentives: ProjectIncentive[];
-  stats: {
-    totalBids: number;
-    averagePrice: number;
-    lowestPrice: number;
-    highestPrice: number;
-    bestValueBidId: string | null;
-    bestQualityBidId: string | null;
   };
 }
 
@@ -942,12 +817,6 @@ export type QuestionCategory =
 
 export type QuestionPriority = 'high' | 'medium' | 'low';
 
-/**
- * @deprecated Use ContractorQuestion instead (V2 table name).
- * Kept temporarily for Phase 2B component migration.
- */
-export type BidQuestion = ContractorQuestion;
-
 // ============================================
 // FAQ TYPES
 // ============================================
@@ -962,11 +831,6 @@ export type FaqCategory =
   | 'comparison'
   | 'decision'
   | 'general';
-
-/**
- * @deprecated Use ProjectFaq instead (V2 table name: project_faqs).
- */
-export type OverallFaq = ProjectFaq;
 
 export interface BidFaqSet {
   bid_id: string;
@@ -1465,32 +1329,10 @@ export interface MindPalExtractionResponse {
 }
 
 // ============================================
-// DEPRECATED V1 ALIASES
-// Keep until Phase 2B component migration is complete.
+// DEPRECATED V1 TYPES
+// Still used by BidCard, BidComparisonTable, ElectricalComparisonTable,
+// ElectricalInfoCard components. Remove after component migration.
 // ============================================
-
-/** @deprecated V1 type — V2 uses BidLineItem as JSONB in bid_scope.line_items */
-export interface BidLineItem {
-  id: string;
-  bid_id: string;
-
-  item_type: LineItemType;
-  description: string;
-  quantity: number;
-  unit_price?: number | null;
-  total_price: number;
-
-  brand?: string | null;
-  model_number?: string | null;
-
-  confidence: ConfidenceLevel;
-  source_text?: string | null;
-
-  line_order?: number | null;
-  notes?: string | null;
-
-  created_at: string;
-}
 
 /** @deprecated V1 red flag type used in MindPal extraction */
 export interface MindPalRedFlag {
@@ -1653,84 +1495,4 @@ export interface ContractorBid {
 
   created_at: string;
   updated_at: string;
-}
-
-// V1 rebate types (kept for backward compat)
-export interface RebateProgram {
-  id: string;
-  program_name: string;
-  program_code?: string | null;
-  description?: string | null;
-  program_type?: string | null;
-  available_states?: string[] | null;
-  available_utilities?: string[] | null;
-  available_nationwide: boolean;
-  rebate_amount?: number | null;
-  rebate_percentage?: number | null;
-  max_rebate?: number | null;
-  requirements?: Record<string, unknown> | null;
-  income_qualified: boolean;
-  income_limits?: Record<string, unknown> | null;
-  valid_from?: string | null;
-  valid_until?: string | null;
-  application_url?: string | null;
-  application_process?: string | null;
-  typical_processing_days?: number | null;
-  stackable: boolean;
-  cannot_stack_with?: string[] | null;
-  is_active: boolean;
-  last_verified?: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ProjectRebate {
-  id: string;
-  project_id: string;
-  rebate_program_id: string;
-  is_eligible: boolean;
-  eligibility_notes?: string | null;
-  estimated_amount?: number | null;
-  applied_amount?: number | null;
-  application_status?: string | null;
-  application_date?: string | null;
-  approval_date?: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-// V1 comparison types (kept for comparisonService.ts)
-export interface ContractorComparison {
-  bid_id: string;
-  contractor_name: string;
-  years_in_business: number | null;
-  total_installs: number | null;
-  switch_rating: number | null;
-  google_rating: number | null;
-  google_reviews: number | null;
-  certifications: string[];
-  is_switch_preferred: boolean;
-  license_number: string | null;
-  license_state: string | null;
-  insurance_verified: boolean;
-}
-
-export interface SpecComparison {
-  bid_id: string;
-  contractor_name: string;
-  total_price: number;
-  price_per_ton: number;
-  seer: number | null;
-  seer2: number | null;
-  hspf: number | null;
-  hspf2: number | null;
-  capacity_tons: number | null;
-  capacity_btu: number | null;
-  variable_speed: boolean;
-  sound_level_db: number | null;
-  energy_star: boolean;
-  most_efficient: boolean;
-  labor_warranty_years: number | null;
-  equipment_warranty_years: number | null;
-  estimated_days: number | null;
 }

@@ -17,7 +17,6 @@ import type {
   BidEquipment,
   BidWithChildren,
   BidSummaryView,
-  BidAnalysis,
   PdfUpload,
   MindPalExtraction,
   ProjectIncentive,
@@ -29,12 +28,7 @@ import type {
   UserExt,
   ProjectStatus,
   PdfStatus,
-  ProjectSummary,
-  BidComparisonTableRow,
   ProjectFaqData,
-  // Deprecated V1 types — kept for backward compat during migration
-  RebateProgram,
-  ProjectRebate,
 } from '../types';
 
 // ============================================
@@ -916,56 +910,6 @@ export async function upsertQIIChecklistItem(
 }
 
 // ============================================
-// BID ANALYSIS
-// ============================================
-
-export async function createAnalysis(
-  projectId: string,
-  analysisData: Partial<BidAnalysis>
-): Promise<BidAnalysis> {
-  const { data, error } = await supabase
-    .from('bid_analysis')
-    .insert({
-      project_id: projectId,
-      analysis_version: '1.0',
-      ...analysisData,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function getLatestAnalysis(projectId: string): Promise<BidAnalysis | null> {
-  const { data, error } = await supabase
-    .from('bid_analysis')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function updateAnalysis(
-  analysisId: string,
-  updates: Partial<BidAnalysis>
-): Promise<BidAnalysis | null> {
-  const { data, error } = await supabase
-    .from('bid_analysis')
-    .update(updates)
-    .eq('id', analysisId)
-    .select()
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
-
-// ============================================
 // PDF UPLOADS
 // ============================================
 
@@ -1169,61 +1113,6 @@ export async function getBidsWithChildren(projectId: string): Promise<BidWithChi
   );
 }
 
-/**
- * V2 project summary — uses normalized tables.
- */
-export async function getProjectSummary(projectId: string): Promise<ProjectSummary | null> {
-  const project = await getProject(projectId);
-  if (!project) return null;
-
-  const [bidsWithChildren, analysis, incentives] = await Promise.all([
-    getBidsWithChildren(projectId),
-    getLatestAnalysis(projectId),
-    getProjectIncentives(projectId),
-  ]);
-
-  const bidsForTable: BidComparisonTableRow[] = bidsWithChildren.map((bwc) => ({
-    bid: bwc.bid,
-    contractor: bwc.contractor,
-    scope: bwc.scope,
-    equipment: bwc.equipment,
-    scores: {
-      overall: bwc.scores?.overall_score || 0,
-      price: 0,
-      quality: bwc.scores?.quality_score || 0,
-      value: bwc.scores?.value_score || 0,
-      completeness: bwc.scores?.completeness_score || 0,
-    },
-  }));
-
-  const prices = bidsWithChildren
-    .map((bwc) => bwc.bid.total_bid_amount)
-    .filter((p) => p > 0);
-
-  const stats = {
-    totalBids: bidsWithChildren.length,
-    averagePrice: prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : 0,
-    lowestPrice: prices.length > 0 ? Math.min(...prices) : 0,
-    highestPrice: prices.length > 0 ? Math.max(...prices) : 0,
-    bestValueBidId: bidsWithChildren.reduce((best, bwc) =>
-      (bwc.scores?.value_score || 0) > (best?.scores?.value_score || 0) ? bwc : best,
-      bidsWithChildren[0]
-    )?.bid.id || null,
-    bestQualityBidId: bidsWithChildren.reduce((best, bwc) =>
-      (bwc.scores?.quality_score || 0) > (best?.scores?.quality_score || 0) ? bwc : best,
-      bidsWithChildren[0]
-    )?.bid.id || null,
-  };
-
-  return {
-    project,
-    bids: bidsForTable,
-    analysis,
-    incentives,
-    stats,
-  };
-}
-
 // ============================================
 // PROJECT REQUIREMENTS
 // ============================================
@@ -1397,55 +1286,3 @@ export async function deletePdfFromStorage(filePath: string): Promise<void> {
   if (error) throw error;
 }
 
-// ============================================
-// DEPRECATED V1 FUNCTIONS
-// Kept for backward compat during Phase 2B migration.
-// These will be removed once all components are retargeted.
-// ============================================
-
-/**
- * @deprecated V1 table no longer exists. Use getProjectIncentives instead.
- */
-export async function getActiveRebates(): Promise<RebateProgram[]> {
-  // V2 doesn't have a rebate_programs table — return empty
-  console.warn('getActiveRebates() is deprecated. Use getProjectIncentives() instead.');
-  return [];
-}
-
-/**
- * @deprecated V1 table no longer exists. Use getProjectIncentives instead.
- */
-export async function getRebatesByState(_stateCode: string): Promise<RebateProgram[]> {
-  console.warn('getRebatesByState() is deprecated. Use getProjectIncentives() instead.');
-  return [];
-}
-
-/**
- * @deprecated V1 table no longer exists. Use getProjectIncentives instead.
- */
-export async function getProjectRebates(_projectId: string): Promise<Array<{
-  program: RebateProgram;
-  projectRebate: ProjectRebate;
-}>> {
-  console.warn('getProjectRebates() is deprecated. Use getProjectIncentives() instead.');
-  return [];
-}
-
-/**
- * @deprecated V1 table no longer exists. Use createProjectIncentive instead.
- */
-export async function addProjectRebate(
-  _projectId: string,
-  _rebateProgramId: string,
-  _estimatedAmount?: number
-): Promise<ProjectRebate> {
-  throw new Error('addProjectRebate() is deprecated. Use createProjectIncentive() instead.');
-}
-
-/**
- * @deprecated V1 bid_line_items table removed. Line items are now JSONB in bid_scope.line_items.
- */
-export async function getLineItemsByBid(_bidId: string): Promise<never[]> {
-  console.warn('getLineItemsByBid() is deprecated. Line items are now in bid_scope.line_items JSONB.');
-  return [];
-}

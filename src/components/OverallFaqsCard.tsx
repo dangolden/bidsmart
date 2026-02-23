@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Lightbulb } from 'lucide-react';
-import type { OverallFaq } from '../lib/types';
+import type { ProjectFaq } from '../lib/types';
 
 interface OverallFaqsCardProps {
-  faqs: OverallFaq[];
+  faqs: ProjectFaq[];
 }
 
 export function OverallFaqsCard({ faqs }: OverallFaqsCardProps) {

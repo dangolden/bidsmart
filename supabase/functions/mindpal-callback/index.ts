@@ -8,6 +8,9 @@ import {
   type MindPalQuestionItem,
   mapConfidenceToLevel,
   mapLineItemType,
+  isAccessory,
+  inferSystemRole,
+  inferFuelType,
 } from "../_shared/types.ts";
 
 interface ExtendedCallbackPayload extends MindPalCallbackPayload {
@@ -189,7 +192,7 @@ Deno.serve(async (req: Request) => {
       console.error("Failed to create bid_contractor:", contractorError);
     }
 
-    // ── V2 Insert 3: bid_scope (1:1 scope + line_items JSONB) ──
+    // ── V2 Insert 3: bid_scope (1:1 scope + line_items + electrical + accessories JSONB) ──
     const lineItemsJsonb = payload.line_items?.map((item) => ({
       item_type: mapLineItemType(item.item_type),
       description: item.description,
@@ -199,6 +202,18 @@ Deno.serve(async (req: Request) => {
       is_included: true,
       notes: item.source_text,
     })) ?? [];
+
+    // Build accessories JSONB from equipment items classified as accessories
+    const accessoriesJsonb = payload.equipment
+      ?.filter((eq) => isAccessory(eq.equipment_type))
+      .map((eq) => ({
+        type: eq.equipment_type,
+        name: eq.model_name || eq.equipment_type,
+        brand: eq.brand,
+        model_number: eq.model_number,
+        description: eq.model_name,
+        cost: eq.equipment_cost,
+      })) ?? [];
 
     const { error: scopeError } = await supabaseAdmin
       .from("bid_scope")
@@ -219,6 +234,19 @@ Deno.serve(async (req: Request) => {
         disconnect_included: payload.scope_of_work?.disconnect_included,
         pad_included: payload.scope_of_work?.pad_included,
         drain_line_included: payload.scope_of_work?.drain_line_included,
+        // Electrical sub-fields (from payload.electrical)
+        panel_assessment_included: payload.electrical?.panel_assessment_included,
+        panel_upgrade_included: payload.electrical?.panel_upgrade_included,
+        dedicated_circuit_included: payload.electrical?.dedicated_circuit_included,
+        electrical_permit_included: payload.electrical?.electrical_permit_included,
+        load_calculation_included: payload.electrical?.load_calculation_included,
+        existing_panel_amps: payload.electrical?.existing_panel_amps,
+        proposed_panel_amps: payload.electrical?.proposed_panel_amps,
+        breaker_size_required: payload.electrical?.breaker_size_required,
+        panel_upgrade_cost: payload.electrical?.panel_upgrade_cost,
+        electrical_notes: payload.electrical?.electrical_notes,
+        // JSONB columns
+        accessories: accessoriesJsonb.length > 0 ? accessoriesJsonb : null,
         line_items: lineItemsJsonb,
       });
 
@@ -226,20 +254,31 @@ Deno.serve(async (req: Request) => {
       console.error("Failed to create bid_scope:", scopeError);
     }
 
-    // ── V2 Insert 4: bid_scores (1:1 placeholder — populated later) ──
-    const { error: scoresError } = await supabaseAdmin
-      .from("bid_scores")
-      .insert({ bid_id: bid.id });
+    // ── V2 Insert 4: bid_scores (calculated via RPC) ──
+    try {
+      const { error: scoresError } = await supabaseAdmin
+        .rpc("calculate_bid_scores", { p_bid_id: bid.id });
 
-    if (scoresError) {
-      console.error("Failed to create bid_scores:", scoresError);
+      if (scoresError) {
+        console.error("Failed to calculate bid_scores:", scoresError);
+        // Fallback: create empty row so views don't break
+        await supabaseAdmin.from("bid_scores").insert({ bid_id: bid.id });
+      }
+    } catch (scoreErr) {
+      console.error("Error calling calculate_bid_scores RPC:", scoreErr);
+      // Fallback: create empty row so views don't break
+      await supabaseAdmin.from("bid_scores").insert({ bid_id: bid.id });
     }
 
-    // ── bid_equipment (1:N — unchanged table name) ──
-    if (payload.equipment && payload.equipment.length > 0) {
-      const equipment = payload.equipment.map((eq) => ({
+    // ── bid_equipment (1:N — major equipment only, accessories go to bid_scope.accessories) ──
+    const majorEquipment = payload.equipment?.filter((eq) => !isAccessory(eq.equipment_type)) ?? [];
+
+    if (majorEquipment.length > 0) {
+      const equipment = majorEquipment.map((eq) => ({
         bid_id: bid.id,
         equipment_type: eq.equipment_type,
+        system_role: inferSystemRole(eq.equipment_type),
+        fuel_type: inferFuelType(eq.equipment_type),
         brand: eq.brand,
         model_number: eq.model_number,
         model_name: eq.model_name,
@@ -250,6 +289,7 @@ Deno.serve(async (req: Request) => {
         hspf_rating: eq.hspf_rating,
         hspf2_rating: eq.hspf2_rating,
         eer_rating: eq.eer_rating,
+        afue_rating: eq.afue_rating,
         variable_speed: eq.variable_speed,
         stages: eq.stages === "single" ? 1 : eq.stages === "two" ? 2 : eq.stages === "variable" ? 99 : null,
         refrigerant_type: eq.refrigerant,
@@ -318,6 +358,37 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // ── project_incentives (stub — populated when MindPal Incentive Finder is configured) ──
+    if (payload.incentives && payload.incentives.length > 0) {
+      const incentiveRecords = payload.incentives.map((inc) => ({
+        project_id: projectId,
+        source: "ai_discovered" as const,
+        program_name: inc.program_name,
+        program_type: inc.program_type,
+        amount_min: inc.amount_min,
+        amount_max: inc.amount_max,
+        amount_description: inc.amount_description,
+        equipment_types_eligible: inc.equipment_types_eligible || ["heat_pump"],
+        eligibility_requirements: inc.eligibility_requirements,
+        income_qualified: inc.income_qualified || false,
+        application_url: inc.application_url,
+        verification_source: inc.verification_source,
+        can_stack: inc.can_stack,
+        confidence: inc.confidence || "medium",
+      }));
+
+      const { error: incentiveError } = await supabaseAdmin
+        .from("project_incentives")
+        .insert(incentiveRecords);
+
+      if (incentiveError) {
+        console.error("Failed to create incentives:", incentiveError);
+      }
+    } else if (payload.incentives === undefined) {
+      // Incentive data not present in payload — expected until Incentive Finder node is configured
+      console.log("No incentive data in payload (Incentive Finder not configured yet)");
+    }
+
     const needsReview = payload.overall_confidence < 70 || payload.status === "partial";
 
     await supabaseAdmin
@@ -345,9 +416,6 @@ Deno.serve(async (req: Request) => {
         })
         .eq("id", extraction.id);
     }
-
-    // TODO: V2 scoring function — bid_scores row created empty above,
-    // will be populated by a V2-compatible calculate_bid_scores RPC
 
     const { data: allProjectPdfs } = await supabaseAdmin
       .from("pdf_uploads")

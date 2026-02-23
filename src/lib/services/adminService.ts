@@ -236,7 +236,7 @@ export interface AdminProject {
   updated_at: string;
   notification_email: string | null;
   pdf_uploads: Array<{ id: string; filename: string; status: string; created_at: string }>;
-  contractor_bids: Array<{ id: string; contractor_name: string; created_at: string }>;
+  bids: Array<{ id: string; contractor_name: string; created_at: string }>;
 }
 
 export interface CleanupResult {
