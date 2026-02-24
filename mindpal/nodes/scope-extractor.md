@@ -463,7 +463,39 @@ Your output must be a JSON object with this exact structure:
       "is_included": boolean,
       "notes": "string or null"
     }
-  ]
+  ],
+
+  "system_type": "heat_pump",
+
+  "total_bid_amount": number or null,
+  "labor_cost": number or null,
+  "equipment_cost": number or null,
+  "materials_cost": number or null,
+  "permit_cost": number or null,
+  "disposal_cost": number or null,
+  "electrical_cost": number or null,
+  "total_before_rebates": number or null,
+  "estimated_rebates": number or null,
+  "total_after_rebates": number or null,
+
+  "deposit_required": number or null,
+  "deposit_percentage": number or null,
+  "payment_schedule": "string or null",
+  "financing_offered": boolean (default false),
+  "financing_terms": "string or null",
+
+  "labor_warranty_years": integer or null,
+  "equipment_warranty_years": integer or null,
+  "compressor_warranty_years": integer or null,
+  "additional_warranty_details": "string or null",
+
+  "estimated_days": integer or null,
+  "start_date_available": "YYYY-MM-DD or null",
+  "bid_date": "YYYY-MM-DD or null",
+  "valid_until": "YYYY-MM-DD or null",
+
+  "extraction_confidence": "high|medium|low",
+  "extraction_notes": "string or null"
 }
 
 FIELD REQUIREMENTS:
@@ -478,8 +510,19 @@ FIELD REQUIREMENTS:
 - line_items: [] if no pricing breakdown in bid. Each item needs: item_type, description.
   item_type MUST be one of: equipment, labor, materials, permit, disposal, electrical, ductwork, thermostat, rebate_processing, warranty, other.
 
+V2 MIGRATED FIELDS (REQUIRED):
+- system_type: ALWAYS "heat_pump" for this workflow.
+- total_bid_amount: REQUIRED — the main bid price. Flag in extraction_notes if missing.
+- All other pricing fields: null if bid doesn't itemize.
+- deposit_required/deposit_percentage: null if not mentioned. If only one form given, calculate the other from total_bid_amount.
+- financing_offered: false if not mentioned (NOT null).
+- All warranty fields: integer years. null if not specified. Do NOT confuse labor vs equipment vs compressor.
+- estimated_days: integer. If range ("1-2 days"), use upper bound. null if not specified.
+- Dates: YYYY-MM-DD format. null if not specific ("2-3 weeks" = null for start_date_available).
+- extraction_confidence: REQUIRED. "high" = clear PDF, all key fields found. "medium" = some fields unclear or missing. "low" = poor scan, major gaps.
+- extraction_notes: Describe any extraction issues, assumptions, or missing sections. null if clean.
+
 Do NOT include id, bid_id, created_at, or updated_at — those are set by the database.
-Do NOT include any fields outside of scope (no equipment specs, pricing totals, contractor info, etc.).
 </output_schema>
 ```
 
@@ -640,15 +683,51 @@ STEPS:
 
 6. Write summary (1-3 sentences) and compile inclusions/exclusions arrays.
 
+7. Extract PRICING (V2 — 10 fields):
+   - total_bid_amount: REQUIRED — the main bottom-line price. Flag if missing.
+   - labor_cost, equipment_cost, materials_cost, permit_cost, disposal_cost, electrical_cost: Only if bid itemizes these separately. null if lump sum only.
+   - total_before_rebates: Same as total_bid_amount unless bid shows a separate pre-rebate total.
+   - estimated_rebates: Sum of any rebate amounts the contractor mentions in the bid. null if no rebates mentioned.
+   - total_after_rebates: total_before_rebates minus estimated_rebates. null if no rebates.
+   NOTE: equipment_cost here is the bid-stated cost — NEVER use web-researched pricing.
+
+8. Extract PAYMENT TERMS (V2 — 5 fields):
+   - deposit_required: Dollar amount. If only percentage given, calculate from total_bid_amount.
+   - deposit_percentage: Percentage (e.g. 50.0 for 50%). If only dollar amount given, calculate.
+   - payment_schedule: Free-form text (e.g. "50% deposit, 50% on completion").
+   - financing_offered: true if mentioned, false if not mentioned (use false, NOT null).
+   - financing_terms: Description of terms. Only if financing_offered = true.
+
+9. Extract WARRANTY (V2 — 4 fields):
+   - labor_warranty_years: Installer's labor warranty in years. SEPARATE from equipment warranty.
+   - equipment_warranty_years: Manufacturer's parts warranty in years.
+   - compressor_warranty_years: Compressor-specific warranty if stated separately (often longer). null if not separately stated.
+   - additional_warranty_details: Registration requirements, limitations, transferability, extended options.
+
+10. Extract TIMELINE (V2 — 4 fields):
+    - estimated_days: Installation duration in days. If range ("1-2 days"), use upper bound.
+    - start_date_available: YYYY-MM-DD format. Must be specific date. null for vague ("2-3 weeks").
+    - bid_date: YYYY-MM-DD. Date the proposal was issued.
+    - valid_until: YYYY-MM-DD. Expiration date. If stated as duration ("30 days"), calculate from bid_date.
+
+11. Set EXTRACTION METADATA (V2 — 2 fields):
+    - extraction_confidence: REQUIRED. "high" = clear PDF, all key fields found. "medium" = some unclear. "low" = poor quality, major gaps.
+    - extraction_notes: Describe any issues, assumptions, missing sections. null if clean extraction.
+
+12. Set system_type = "heat_pump" (always for this workflow).
+
 CRITICAL REMINDERS:
 - null != false. Null means "not mentioned." False means "explicitly excluded."
 - Do NOT use web search — everything comes from the bid context
-- Do NOT output equipment specs, contractor info, or pricing totals — scope fields only
+- Do NOT output equipment specs (brand, model, SEER) or contractor info (phone, license)
 - Look for scope info EVERYWHERE in the bid, not just labeled "Scope" sections
 - _detail fields should contain ACTUAL text from the bid, not AI-generated summaries
 - For electrical fields: NEVER assume or estimate values — only extract what's explicitly stated
 - All monetary values as plain numbers: 400.00 not "$400"
+- All dates as YYYY-MM-DD: "2026-03-15" not "March 15, 2026"
 - For line_items.item_type: MUST be one of the allowed enum values
+- financing_offered defaults to false (NOT null) when not mentioned
+- extraction_confidence is REQUIRED — always assess document quality
 
 Return ONLY the JSON object. No other text.
 ```
@@ -707,6 +786,12 @@ ELECTRICAL NOTES:
 WARRANTY:
 10-year parts, 12-year compressor (with registration)
 1-year labor warranty
+
+PAYMENT:
+No deposit mentioned. No financing mentioned.
+
+TIMELINE:
+No specific start date mentioned. No bid date or expiration found.
 ```
 
 ### Output
@@ -853,7 +938,39 @@ WARRANTY:
       "is_included": true,
       "notes": null
     }
-  ]
+  ],
+
+  "system_type": "heat_pump",
+
+  "total_bid_amount": 18500.00,
+  "labor_cost": 5500.00,
+  "equipment_cost": 9200.00,
+  "materials_cost": 650.00,
+  "permit_cost": 400.00,
+  "disposal_cost": 200.00,
+  "electrical_cost": 200.00,
+  "total_before_rebates": 18500.00,
+  "estimated_rebates": null,
+  "total_after_rebates": null,
+
+  "deposit_required": null,
+  "deposit_percentage": null,
+  "payment_schedule": null,
+  "financing_offered": false,
+  "financing_terms": null,
+
+  "labor_warranty_years": 1,
+  "equipment_warranty_years": 10,
+  "compressor_warranty_years": 12,
+  "additional_warranty_details": "Compressor warranty requires registration",
+
+  "estimated_days": null,
+  "start_date_available": null,
+  "bid_date": null,
+  "valid_until": null,
+
+  "extraction_confidence": "high",
+  "extraction_notes": null
 }
 ```
 
@@ -942,7 +1059,39 @@ responsibility. Old equipment will be removed at no extra charge."
 
   "accessories": [],
 
-  "line_items": []
+  "line_items": [],
+
+  "system_type": "heat_pump",
+
+  "total_bid_amount": 12500.00,
+  "labor_cost": null,
+  "equipment_cost": null,
+  "materials_cost": null,
+  "permit_cost": null,
+  "disposal_cost": null,
+  "electrical_cost": null,
+  "total_before_rebates": 12500.00,
+  "estimated_rebates": null,
+  "total_after_rebates": null,
+
+  "deposit_required": null,
+  "deposit_percentage": null,
+  "payment_schedule": null,
+  "financing_offered": false,
+  "financing_terms": null,
+
+  "labor_warranty_years": null,
+  "equipment_warranty_years": null,
+  "compressor_warranty_years": null,
+  "additional_warranty_details": null,
+
+  "estimated_days": null,
+  "start_date_available": null,
+  "bid_date": null,
+  "valid_until": null,
+
+  "extraction_confidence": "medium",
+  "extraction_notes": "Bid provides only a lump sum total with no line-item breakdown. No warranty, payment terms, timeline, or electrical information found."
 }
 ```
 
@@ -953,6 +1102,11 @@ responsibility. Old equipment will be removed at no extra charge."
 - All 10 electrical fields = **null** — no electrical information in bid
 - `accessories` = **[]** — no accessories mentioned
 - `line_items` = **[]** — bid gives only a total, no breakdown
+- `total_bid_amount` = **12500.00** — extracted from "Total bid: $12,500"
+- `total_before_rebates` = **12500.00** — same as total (no rebates mentioned)
+- `financing_offered` = **false** — not mentioned, so default false
+- `extraction_confidence` = **"medium"** — price found but many fields missing
+- All warranty/timeline/payment fields = **null** — nothing in bid
 
 ---
 
@@ -1001,6 +1155,33 @@ Every output field maps 1:1 to `bid_scope` columns. **No transformation needed.*
 | `electrical_notes` | `bid_scope.electrical_notes` | TEXT |
 | `accessories` | `bid_scope.accessories` | JSONB |
 | `line_items` | `bid_scope.line_items` | JSONB |
+| **V2 Migrated Columns** | | |
+| `system_type` | `bid_scope.system_type` | TEXT |
+| `total_bid_amount` | `bid_scope.total_bid_amount` | DECIMAL |
+| `labor_cost` | `bid_scope.labor_cost` | DECIMAL |
+| `equipment_cost` | `bid_scope.equipment_cost` | DECIMAL |
+| `materials_cost` | `bid_scope.materials_cost` | DECIMAL |
+| `permit_cost` | `bid_scope.permit_cost` | DECIMAL |
+| `disposal_cost` | `bid_scope.disposal_cost` | DECIMAL |
+| `electrical_cost` | `bid_scope.electrical_cost` | DECIMAL |
+| `total_before_rebates` | `bid_scope.total_before_rebates` | DECIMAL |
+| `estimated_rebates` | `bid_scope.estimated_rebates` | DECIMAL |
+| `total_after_rebates` | `bid_scope.total_after_rebates` | DECIMAL |
+| `deposit_required` | `bid_scope.deposit_required` | DECIMAL |
+| `deposit_percentage` | `bid_scope.deposit_percentage` | DECIMAL(5,2) |
+| `payment_schedule` | `bid_scope.payment_schedule` | TEXT |
+| `financing_offered` | `bid_scope.financing_offered` | BOOLEAN |
+| `financing_terms` | `bid_scope.financing_terms` | TEXT |
+| `labor_warranty_years` | `bid_scope.labor_warranty_years` | INTEGER |
+| `equipment_warranty_years` | `bid_scope.equipment_warranty_years` | INTEGER |
+| `compressor_warranty_years` | `bid_scope.compressor_warranty_years` | INTEGER |
+| `additional_warranty_details` | `bid_scope.additional_warranty_details` | TEXT |
+| `estimated_days` | `bid_scope.estimated_days` | INTEGER |
+| `start_date_available` | `bid_scope.start_date_available` | DATE |
+| `bid_date` | `bid_scope.bid_date` | DATE |
+| `valid_until` | `bid_scope.valid_until` | DATE |
+| `extraction_confidence` | `bid_scope.extraction_confidence` | confidence_level ENUM |
+| `extraction_notes` | `bid_scope.extraction_notes` | TEXT |
 
 **Not in agent output (set by DB):** `id`, `bid_id`, `created_at`, `updated_at`
 **Not in agent output (used for matching only):** `contractor_name` — used by Code Node, not stored in bid_scope
@@ -1016,24 +1197,48 @@ Every output field maps 1:1 to `bid_scope` columns. **No transformation needed.*
 | Idempotency | Safe to re-run. Scope fields are deterministic from bid content. |
 
 ```sql
-INSERT INTO bid_scope (bid_id, summary, inclusions, exclusions,
+INSERT INTO bid_scope (bid_id,
+  -- Summary
+  summary, inclusions, exclusions,
+  -- 12 scope boolean+detail pairs (24 columns)
   permit_included, permit_detail, disposal_included, disposal_detail,
   electrical_included, electrical_detail, ductwork_included, ductwork_detail,
   thermostat_included, thermostat_detail, manual_j_included, manual_j_detail,
   commissioning_included, commissioning_detail, air_handler_included, air_handler_detail,
   line_set_included, line_set_detail, disconnect_included, disconnect_detail,
   pad_included, pad_detail, drain_line_included, drain_line_detail,
+  -- Electrical sub-group (10 columns)
   panel_assessment_included, panel_upgrade_included, dedicated_circuit_included,
   electrical_permit_included, load_calculation_included,
   existing_panel_amps, proposed_panel_amps, breaker_size_required,
   panel_upgrade_cost, electrical_notes,
-  accessories, line_items)
+  -- JSONB arrays
+  accessories, line_items,
+  -- V2 Migrated: System type
+  system_type,
+  -- V2 Migrated: Pricing (10)
+  total_bid_amount, labor_cost, equipment_cost, materials_cost,
+  permit_cost, disposal_cost, electrical_cost,
+  total_before_rebates, estimated_rebates, total_after_rebates,
+  -- V2 Migrated: Payment (5)
+  deposit_required, deposit_percentage, payment_schedule,
+  financing_offered, financing_terms,
+  -- V2 Migrated: Warranty (4)
+  labor_warranty_years, equipment_warranty_years,
+  compressor_warranty_years, additional_warranty_details,
+  -- V2 Migrated: Timeline (4)
+  estimated_days, start_date_available, bid_date, valid_until,
+  -- V2 Migrated: Extraction (2)
+  extraction_confidence, extraction_notes
+)
 VALUES (...)
 ON CONFLICT (bid_id) DO UPDATE SET
   summary = EXCLUDED.summary,
   inclusions = EXCLUDED.inclusions,
   exclusions = EXCLUDED.exclusions,
-  -- ... all scope columns updated ...
+  -- ... all 65 agent-output columns updated ...
+  extraction_confidence = EXCLUDED.extraction_confidence,
+  extraction_notes = EXCLUDED.extraction_notes,
   updated_at = now();
 ```
 
@@ -1060,6 +1265,7 @@ ON CONFLICT (bid_id) DO UPDATE SET
 
 ## Validation Checklist (Supervised mode)
 
+### Original Scope Columns (43)
 - [ ] All 12 scope booleans present in output (even if null)
 - [ ] All 12 _detail fields present in output (even if null)
 - [ ] All 10 electrical fields present in output (even if null)
@@ -1073,10 +1279,23 @@ ON CONFLICT (bid_id) DO UPDATE SET
 - [ ] inclusions array contains only items actually listed as included
 - [ ] exclusions array contains only items actually listed as excluded
 - [ ] line_items.item_type values are all valid enum values
+
+### V2 Migrated Columns (26)
+- [ ] system_type present and set to "heat_pump"
+- [ ] total_bid_amount present (flag in extraction_notes if null)
+- [ ] All 10 pricing fields present (null when not itemized)
+- [ ] All 5 payment fields present (financing_offered = false when not mentioned, NOT null)
+- [ ] All 4 warranty fields present (null when not specified — do NOT confuse labor vs equipment vs compressor)
+- [ ] All 4 timeline fields present (dates in YYYY-MM-DD, null for vague timeframes)
+- [ ] extraction_confidence present and is one of: "high", "medium", "low"
+- [ ] extraction_notes present (null if clean extraction, descriptive text if issues)
+
+### General
 - [ ] All monetary values are plain numbers (no $ sign, no commas)
-- [ ] No equipment specs, pricing totals, or contractor info in output
+- [ ] No equipment specs (brand, model, SEER) or contractor info in output
 - [ ] JSON is valid (parseable, no trailing commas)
 - [ ] contractor_name matches what's in the bid context
+- [ ] Total field count: 65 agent-output fields + contractor_name = 66 keys in JSON
 
 ---
 

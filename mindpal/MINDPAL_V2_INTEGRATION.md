@@ -4,6 +4,13 @@
 > **Date**: February 2026
 > **Workflow ID**: `699a33ac6787d2e1b0e9ed93` (v18)
 > **Status**: Database restructure COMPLETE and LIVE. MindPal workflow needs these changes.
+>
+> **Architecture**: Path A — inline Supabase POST agents (matches current v18 pattern).
+> Each agent writes directly to Supabase via MindPal's HTTP integration tool.
+> No callback webhook required during MindPal processing.
+>
+> **Nodes NOT in v18 yet (will be added later)**: Incentive Finder, Scoring Engine, Per-Bid FAQ, Overall FAQ.
+> Focus on getting the existing nodes working with V2 schema first.
 
 ---
 
@@ -15,8 +22,22 @@ The old workflow had MindPal's callback edge function **creating bid rows** at c
 ### The Fix
 1. **Bids are pre-created by the frontend** at PDF upload time (`status: 'pending'`). The `bid_id` UUID exists before MindPal ever runs.
 2. **MindPal receives `bid_id` paired with each document URL** via a new `documents_json` field (instead of a flat URL array).
-3. **The callback UPDATEs existing bid rows** (not INSERT) and UPSERTs child records using the pre-existing `bid_id`.
+3. **Inline Supabase POST agents** (already in v18) write directly to Supabase via HTTP integration. They UPDATE existing bid rows and UPSERT child records using the pre-existing `bid_id`.
 4. **26 columns moved from `bids` → `bid_scope`**: pricing, payment, warranty, timeline, extraction metadata now live in `bid_scope` (69 columns total). `bids` is a slim 18-column identity stub.
+
+### Current v18 Workflow (10 nodes)
+```
+1. API Input (HUMAN_INPUT)
+  → 2. Extract All Bid Info (LOOP — Bid Data Extractor per PDF)
+    → 3. Equipment Analyzer (LOOP — Equipment Researcher per bid)
+      → 4. Supabase Post (bid_equipment) — AGENT writes to Supabase directly
+        → 5. Contractor Research (LOOP — Contractor Researcher per bid)
+          → 6. Supabase Post (bid_contractor) — AGENT writes to Supabase directly
+            → 7. Scope Extractor (LOOP — Scope Extractor per bid)
+              → 8. Supabase Post (bid_scope) — AGENT writes to Supabase directly
+                → 9. Contractor Questions (AGENT — cross-bid analysis)
+                  → 10. Supabase Post (Contractor Questions) — AGENT (not yet configured)
+```
 
 ### Database Architecture (V2)
 ```
@@ -174,15 +195,20 @@ Include bid_id in your output exactly as received: @[item - bid_id]
 
 ---
 
-### B6: Verify Scope Extractor Outputs All bid_scope Fields
+### B6: Update Scope Extractor Agent for 69 Columns
 
-The `bid_scope` table now has **69 columns** (expanded from 43). The Scope Extractor agent's output must cover all of them.
+**THIS IS THE MAIN CHANGE.** The `bid_scope` table now has **69 columns** (expanded from 43). The Scope Extractor agent's output must cover all of them including the 26 migrated columns.
 
-**New columns that MUST be in the output** (moved from old `bids` table):
+**Full updated prompt**: Copy from `mindpal/nodes/scope-extractor.md` — it has:
+- **Agent Background**: Updated `<scope>` section listing all 69 columns
+- **Desired Output Format**: Full JSON schema with all 26 V2 migrated columns added
+- **Task Prompt**: Steps 7-12 added for extracting pricing, payment, warranty, timeline, extraction metadata
+
+**New columns that MUST be in the Scope Extractor output** (moved from old `bids` table):
 
 | Group | Columns | Count |
 |-------|---------|-------|
-| System Type | `system_type` | 1 |
+| System Type | `system_type` (always "heat_pump") | 1 |
 | Pricing | `total_bid_amount`, `labor_cost`, `equipment_cost`, `materials_cost`, `permit_cost`, `disposal_cost`, `electrical_cost`, `total_before_rebates`, `estimated_rebates`, `total_after_rebates` | 10 |
 | Payment Terms | `deposit_required`, `deposit_percentage`, `payment_schedule`, `financing_offered`, `financing_terms` | 5 |
 | Warranty | `labor_warranty_years`, `equipment_warranty_years`, `compressor_warranty_years`, `additional_warranty_details` | 4 |
@@ -190,67 +216,33 @@ The `bid_scope` table now has **69 columns** (expanded from 43). The Scope Extra
 | Extraction Metadata | `extraction_confidence`, `extraction_notes` | 2 |
 | **Total new** | | **26** |
 
-**Architecture note**: The current callback expects a single `MindPalBidResult` per bid with all sub-objects (pricing, payment_terms, warranty, timeline, dates, scope_of_work, equipment). If the Bid Data Extractor already outputs all of these in a single pass, the Scope Extractor may not need changes — but verify this is the case.
+**After updating the Scope Extractor prompt**, also update the **"Supabase Post (bid_scope)" agent** (node 8) to include the new columns in its Supabase REST API call.
 
 ---
 
-### B7: Update/Create "Format Callback Payload" CODE Node
+### B7: Update "Supabase Post (bid_scope)" Agent Tool
 
-**Position**: After the Loop completes
-**Node Type**: CODE
-**Inputs**: Loop results, `@[request_id]`, `@[project_id]`, `@[callback_url]`
+The "Supabase Post (bid_scope)" agent uses MindPal's HTTP integration to POST directly to Supabase. Its Custom API tool must be updated to include the 26 new columns.
 
-**Code** (paste this exactly):
-```javascript
-const loopOutputs = @[loop_results]; // array of per-bid JSON strings
-const requestId = @[request_id];
-const projectId = @[project_id];
-const callbackUrl = @[callback_url];
-
-let bids = [];
-for (const output of loopOutputs) {
-  let parsed;
-  try {
-    let cleaned = output;
-    if (typeof cleaned === 'string') {
-      cleaned = cleaned.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
-    }
-    parsed = JSON.parse(cleaned);
-  } catch (e) {
-    console.error('Failed to parse bid output:', e.message);
-    continue;
-  }
-  bids.push(parsed);
-}
-
-const payload = {
-  request_id: requestId,
-  project_id: projectId,
-  status: bids.length > 0 ? 'success' : 'failed',
-  timestamp: new Date().toISOString(),
-  bids: bids
-};
-
-// HMAC signature would be added here or by the webhook node
-
-return JSON.stringify(payload);
-```
-
-> **Note**: The `@[loop_results]` variable name must match your actual Loop node output. Check that it shows purple.
+**What to update in the Supabase REST API tool configuration:**
+- The request body schema must include all 26 new fields (system_type, pricing, payment, warranty, timeline, extraction metadata)
+- Field descriptions: copy from `docs/FIELD_DESCRIPTIONS.md` (bid_scope section)
+- The UPSERT endpoint: `POST /rest/v1/bid_scope` with `Prefer: resolution=merge-duplicates` header and `on_conflict=bid_id`
 
 ---
 
-### B8: Configure Webhook Node
+### B8: Update "Supabase Post (Contractor Questions)" Agent
 
-**Position**: Final node in the workflow
-**Node Type**: Webhook
+Node 10 exists but has an empty prompt. Configure it to:
+1. Receive output from the Contractor Questions agent (node 9)
+2. Parse the JSON questions array
+3. For each question, POST to `contractor_questions` table via Supabase REST API
+4. Include ALL fields: question_text, question_category, question_tier, priority, context, triggered_by, good_answer_looks_like, concerning_answer_looks_like, missing_field, display_order
+5. Set `auto_generated = true` and `is_answered = false` for all
 
-| Setting | Value |
-|---------|-------|
-| **URL** | `@[callback_url]` (from workflow input — must show purple) |
-| **Method** | POST |
-| **Headers** | `Content-Type: application/json` |
-| **Body** | Output of the Format Callback Payload CODE node |
+**Field descriptions**: Copy from `docs/FIELD_DESCRIPTIONS.md` (contractor_questions section)
+
+> **Note**: The Question Generator outputs `bid_index` (0-based) not `bid_id`. The Supabase Post agent needs to resolve bid_index → bid_id. If this is complex, consider having the Question Generator include `bid_id` directly by adding bid_id passthrough from the upstream loop.
 
 ---
 
@@ -575,6 +567,23 @@ This is the exact structure the `mindpal-callback` edge function expects:
 | **Bid Data Extractor Background** | `bid_id` passthrough instruction — Step B4 |
 | **Bid Data Extractor Output** | Add `bid_id` as first field — Step B4 |
 | **All Loop Agent Prompts** | `bid_id` passthrough — Step B5 |
-| **Scope Extractor Output** | Verify all 69 fields covered — Step B6 |
-| **Post-Loop CODE Node** | Format Callback Payload code — Step B7 |
-| **Webhook Node** | `@[callback_url]`, POST, JSON body — Step B8 |
+| **Scope Extractor Prompt** | Update for 69 columns (copy from `mindpal/nodes/scope-extractor.md`) — Step B6 |
+| **Supabase Post (bid_scope) Tool** | Add 26 V2 columns to API tool schema — Step B7 |
+| **Supabase Post (Questions) Agent** | Configure empty agent with full question schema — Step B8 |
+
+### What's NOT changing (keep as-is)
+| Node | Status |
+|---|---|
+| Equipment Analyzer (JSON Output) | ✅ Already outputs correct bid_equipment schema |
+| Supabase Post (bid_equipment) | ✅ Already writes directly to Supabase |
+| Contractor Research (JSON Output) | ✅ Already outputs bid_contractors schema |
+| Supabase Post (bid_contractor) | ✅ Already writes directly to Supabase |
+| Contractor Questions agent | ✅ Already has 4-tier system, full output schema |
+
+### What's NOT in v18 yet (add later)
+| Node | Target Table | Priority |
+|---|---|---|
+| Incentive Finder | `project_incentives` | Deferred — using static DB |
+| Scoring Engine | `bid_scores` | Deferred |
+| Per-Bid FAQ Generator | `bid_faqs` | Deferred |
+| Overall FAQ Generator | `project_faqs` | Deferred |
