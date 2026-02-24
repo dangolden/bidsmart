@@ -896,6 +896,16 @@ export interface BidComparisonTableRow {
   lineItems: BidLineItem[];
 }
 
+/** Bid with all child records loaded — used by VerifyPhase, ContractorQuestionsPanel */
+export interface BidWithChildren {
+  bid: Bid;
+  scope?: BidScope | null;
+  contractor?: BidContractor | null;
+  scores?: BidScore | null;
+  equipment: BidEquipment[];
+  questions: BidQuestion[];
+}
+
 export interface ProjectSummary {
   project: Project;
   bids: BidComparisonTableRow[];
@@ -998,6 +1008,9 @@ export interface QIIChecklistItem {
   created_at: string;
 }
 
+/** For hardcoded constant items that don't have DB-generated id/created_at */
+export type QIIChecklistItemDef = Omit<QIIChecklistItem, 'id' | 'created_at'>;
+
 export interface ProjectQIIChecklist {
   id: string;
   project_id: string;
@@ -1019,15 +1032,18 @@ export interface QIIChecklistWithItem extends ProjectQIIChecklist {
 // BID QUESTIONS TYPES
 // ============================================
 
-export type QuestionCategory = 
+export type QuestionCategory =
   | 'pricing'
   | 'warranty'
   | 'equipment'
   | 'timeline'
   | 'scope'
-  | 'credentials';
+  | 'credentials'
+  | 'electrical';
 
 export type QuestionPriority = 'high' | 'medium' | 'low';
+
+export type QuestionTier = 'essential' | 'clarification' | 'detailed' | 'expert';
 
 export interface BidQuestion {
   id: string;
@@ -1036,6 +1052,7 @@ export interface BidQuestion {
   question_category?: QuestionCategory | null;
   category?: QuestionCategory | null;
   priority: QuestionPriority;
+  question_tier?: QuestionTier | null;
   is_answered: boolean;
   answer_text?: string | null;
   answered_at?: string | null;
@@ -1203,6 +1220,35 @@ export interface ClarificationQuestion {
   concerning_answer_looks_like: string | null;
   display_order: number;
 }
+
+// IncentiveProgramDB — full rebate_programs table row with extra display fields
+export interface IncentiveProgramDB extends RebateProgram {
+  program_type_display?: string | null;
+  discovery_source_url?: string | null;
+}
+
+// ProjectIncentive — project-specific incentive used by IncentivesTable
+export interface ProjectIncentive {
+  id: string;
+  program_name: string;
+  program_type?: string | null;
+  amount_min?: number | null;
+  amount_max?: number | null;
+  amount_description?: string | null;
+  income_qualified?: boolean;
+  still_active?: boolean;
+  eligibility_requirements?: string | null;
+  income_limits?: string | null;
+  equipment_types_eligible?: string[] | null;
+  application_process?: string | null;
+  stacking_notes?: string | null;
+  confidence?: string | null;
+  verification_source?: string | null;
+  application_url?: string | null;
+}
+
+// ProjectFaq — alias for OverallFaq used by OverallFaqsCard
+export type ProjectFaq = OverallFaq;
 
 export interface IncentiveProgram {
   program_name: string;

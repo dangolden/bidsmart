@@ -1,40 +1,210 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  ArrowUpDown, Check, X, AlertTriangle, Award, Star, HelpCircle,
+  ArrowUpDown, Check, X, AlertTriangle, Star, HelpCircle,
   Zap, Shield, Clock, DollarSign, ThermometerSun, Target, ClipboardList,
   Plug, Building2, MapPin, ThumbsUp
 } from 'lucide-react';
-import * as db from '../lib/database/bidsmartService';
-import type { ContractorBid, BidEquipment, ProjectRequirements } from '../lib/types';
+import type {
+  BidComparisonTableRow,
+  BidEquipment,
+  BidScope,
+  BidContractor,
+  BidScore,
+  ProjectRequirements,
+  MindPalRedFlag,
+  MindPalPositiveIndicator,
+} from '../lib/types';
 import { formatCurrency } from '../lib/utils/formatters';
+
+// ---------------------------------------------------------------------------
+// Flattened row type — gives the JSX a single flat object per bid so we don't
+// have to sprinkle `row.scope?.` / `row.contractor?.` everywhere.
+// ---------------------------------------------------------------------------
+
+interface FlatBidRow {
+  // From Bid
+  id: string;
+  contractor_name: string;
+  is_favorite: boolean;
+
+  // From BidScope — pricing
+  total_bid_amount?: number | null;
+  equipment_cost?: number | null;
+  labor_cost?: number | null;
+  materials_cost?: number | null;
+  permit_cost?: number | null;
+  disposal_cost?: number | null;
+  electrical_cost?: number | null;
+  estimated_rebates?: number | null;
+  total_after_rebates?: number | null;
+
+  // From BidScope — warranty / timeline
+  labor_warranty_years?: number | null;
+  equipment_warranty_years?: number | null;
+  estimated_days?: number | null;
+  financing_offered?: boolean | null;
+
+  // From BidScope — electrical sub-group
+  panel_assessment_included?: boolean | null;
+  panel_upgrade_included?: boolean | null;
+  panel_upgrade_cost?: number | null;
+  existing_panel_amps?: number | null;
+  proposed_panel_amps?: number | null;
+  breaker_size_required?: number | null;
+  dedicated_circuit_included?: boolean | null;
+  electrical_permit_included?: boolean | null;
+  load_calculation_included?: boolean | null;
+  electrical_notes?: string | null;
+
+  // From BidScope — scope booleans
+  permit_included?: boolean | null;
+  disposal_included?: boolean | null;
+  electrical_included?: boolean | null;
+  disconnect_included?: boolean | null;
+  ductwork_included?: boolean | null;
+  thermostat_included?: boolean | null;
+  manual_j_included?: boolean | null;
+  commissioning_included?: boolean | null;
+  air_handler_included?: boolean | null;
+  line_set_included?: boolean | null;
+  pad_included?: boolean | null;
+  drain_line_included?: boolean | null;
+
+  // From BidContractor
+  years_in_business?: number | null;
+  google_rating?: number | null;
+  google_review_count?: number | null;
+  license?: string | null;
+  license_state?: string | null;
+  certifications?: string[] | null;
+  insurance_verified?: boolean | null;
+  yelp_rating?: number | null;
+  yelp_review_count?: number | null;
+  bbb_rating?: string | null;
+  bbb_accredited?: boolean | null;
+  bonded?: boolean | null;
+  employee_count?: number | null;
+  service_area?: string | null;
+
+  // From BidScore
+  overall_score?: number | null;
+  red_flags?: MindPalRedFlag[] | null;
+  positive_indicators?: MindPalPositiveIndicator[] | null;
+}
+
+function flattenRow(row: BidComparisonTableRow): FlatBidRow {
+  const s: BidScope | null | undefined = row.scope;
+  const c: BidContractor | null | undefined = row.contractor;
+  const sc: BidScore | null | undefined = row.scores;
+
+  return {
+    // Bid identity
+    id: row.bid.id,
+    contractor_name: row.bid.contractor_name,
+    is_favorite: row.bid.is_favorite,
+
+    // Scope — pricing
+    total_bid_amount: s?.total_bid_amount ?? null,
+    equipment_cost: s?.equipment_cost ?? null,
+    labor_cost: s?.labor_cost ?? null,
+    materials_cost: s?.materials_cost ?? null,
+    permit_cost: s?.permit_cost ?? null,
+    disposal_cost: s?.disposal_cost ?? null,
+    electrical_cost: s?.electrical_cost ?? null,
+    estimated_rebates: s?.estimated_rebates ?? null,
+    total_after_rebates: s?.total_after_rebates ?? null,
+
+    // Scope — warranty / timeline
+    labor_warranty_years: s?.labor_warranty_years ?? null,
+    equipment_warranty_years: s?.equipment_warranty_years ?? null,
+    estimated_days: s?.estimated_days ?? null,
+    financing_offered: s?.financing_offered ?? null,
+
+    // Scope — electrical sub-group
+    panel_assessment_included: s?.panel_assessment_included ?? null,
+    panel_upgrade_included: s?.panel_upgrade_included ?? null,
+    panel_upgrade_cost: s?.panel_upgrade_cost ?? null,
+    existing_panel_amps: s?.existing_panel_amps ?? null,
+    proposed_panel_amps: s?.proposed_panel_amps ?? null,
+    breaker_size_required: s?.breaker_size_required ?? null,
+    dedicated_circuit_included: s?.dedicated_circuit_included ?? null,
+    electrical_permit_included: s?.electrical_permit_included ?? null,
+    load_calculation_included: s?.load_calculation_included ?? null,
+    electrical_notes: s?.electrical_notes ?? null,
+
+    // Scope — booleans
+    permit_included: s?.permit_included ?? null,
+    disposal_included: s?.disposal_included ?? null,
+    electrical_included: s?.electrical_included ?? null,
+    disconnect_included: s?.disconnect_included ?? null,
+    ductwork_included: s?.ductwork_included ?? null,
+    thermostat_included: s?.thermostat_included ?? null,
+    manual_j_included: s?.manual_j_included ?? null,
+    commissioning_included: s?.commissioning_included ?? null,
+    air_handler_included: s?.air_handler_included ?? null,
+    line_set_included: s?.line_set_included ?? null,
+    pad_included: s?.pad_included ?? null,
+    drain_line_included: s?.drain_line_included ?? null,
+
+    // Contractor
+    years_in_business: c?.years_in_business ?? null,
+    google_rating: c?.google_rating ?? null,
+    google_review_count: c?.google_review_count ?? null,
+    license: c?.license ?? null,
+    license_state: c?.license_state ?? null,
+    certifications: c?.certifications ?? null,
+    insurance_verified: c?.insurance_verified ?? null,
+    yelp_rating: c?.yelp_rating ?? null,
+    yelp_review_count: c?.yelp_review_count ?? null,
+    bbb_rating: c?.bbb_rating ?? null,
+    bbb_accredited: c?.bbb_accredited ?? null,
+    bonded: c?.bonded ?? null,
+    employee_count: c?.employee_count ?? null,
+    service_area: c?.service_area ?? null,
+
+    // Scores
+    overall_score: sc?.overall_score ?? null,
+    red_flags: sc?.red_flags ?? null,
+    positive_indicators: sc?.positive_indicators ?? null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Component props
+// ---------------------------------------------------------------------------
 
 interface BidComparisonTableProps {
   projectId: string;
-  bids: ContractorBid[];
+  rows: BidComparisonTableRow[];
   requirements?: ProjectRequirements | null;
 }
 
 type CompareView = 'specs' | 'contractor' | 'pricing' | 'scope' | 'electrical';
 
-export function BidComparisonTable({ projectId: _projectId, bids, requirements }: BidComparisonTableProps) {
-  const [equipment, setEquipment] = useState<Record<string, BidEquipment[]>>({});
-  const [loading, setLoading] = useState(true);
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function BidComparisonTable({ projectId: _projectId, rows, requirements }: BidComparisonTableProps) {
   const [view, setView] = useState<CompareView>('specs');
   const [sortBy, setSortBy] = useState<string>('overall_score');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-  useEffect(() => {
-    loadEquipment();
-  }, [bids]);
+  // Flatten once per render-cycle
+  const bids = useMemo(() => rows.map(flattenRow), [rows]);
 
-  async function loadEquipment() {
-    const equipMap: Record<string, BidEquipment[]> = {};
-    for (const bid of bids) {
-      equipMap[bid.id] = await db.getEquipmentByBid(bid.id);
+  // Pre-compute equipment lookup keyed by bid id
+  const equipmentMap = useMemo(() => {
+    const m: Record<string, BidEquipment[]> = {};
+    for (const row of rows) {
+      m[row.bid.id] = row.equipment;
     }
-    setEquipment(equipMap);
-    setLoading(false);
-  }
+    return m;
+  }, [rows]);
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
 
   function getBestValue(values: (number | null | undefined)[], higherIsBetter = true): number | null {
     const valid = values.filter((v): v is number => v != null && v > 0);
@@ -58,8 +228,8 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
         bVal = b.overall_score ?? null;
         break;
       case 'total_bid_amount':
-        aVal = a.total_bid_amount;
-        bVal = b.total_bid_amount;
+        aVal = a.total_bid_amount ?? null;
+        bVal = b.total_bid_amount ?? null;
         break;
       case 'warranty':
         aVal = (a.labor_warranty_years || 0) + (a.equipment_warranty_years || 0);
@@ -93,66 +263,69 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
   const bestTimeline = getBestValue(bids.map(b => b.estimated_days), false);
   const bestScore = getBestValue(bids.map(b => b.overall_score));
 
-  // Get SEER ratings from equipment
+  // ---------------------------------------------------------------------------
+  // Equipment helpers (use equipmentMap instead of async DB calls)
+  // ---------------------------------------------------------------------------
+
   function getSeerRating(bidId: string): number | null {
-    const equip = equipment[bidId]?.find(e => e.equipment_type === 'outdoor_unit' || e.seer_rating || e.seer2_rating);
+    const equip = equipmentMap[bidId]?.find(e => e.equipment_type === 'outdoor_unit' || e.seer_rating || e.seer2_rating);
     return equip?.seer2_rating || equip?.seer_rating || null;
   }
 
   function getHspfRating(bidId: string): number | null {
-    const equip = equipment[bidId]?.find(e => e.equipment_type === 'outdoor_unit' || e.hspf_rating || e.hspf2_rating);
+    const equip = equipmentMap[bidId]?.find(e => e.equipment_type === 'outdoor_unit' || e.hspf_rating || e.hspf2_rating);
     return equip?.hspf2_rating || equip?.hspf_rating || null;
   }
 
   function getCapacity(bidId: string): number | null {
-    const equip = equipment[bidId]?.find(e => e.capacity_tons || e.capacity_btu);
+    const equip = equipmentMap[bidId]?.find(e => e.capacity_tons || e.capacity_btu);
     return equip?.capacity_tons || (equip?.capacity_btu ? equip.capacity_btu / 12000 : null);
   }
 
   function isVariableSpeed(bidId: string): boolean {
-    return equipment[bidId]?.some(e => e.variable_speed) || false;
+    return equipmentMap[bidId]?.some(e => e.variable_speed) || false;
   }
 
   function isEnergyStar(bidId: string): boolean {
-    return equipment[bidId]?.some(e => e.energy_star_certified) || false;
+    return equipmentMap[bidId]?.some(e => e.energy_star_certified) || false;
   }
 
   function getRefrigerantType(bidId: string): string | null {
-    const equip = equipment[bidId]?.find(e => e.refrigerant_type);
+    const equip = equipmentMap[bidId]?.find(e => e.refrigerant_type);
     return equip?.refrigerant_type || null;
   }
 
   function getSoundLevel(bidId: string): number | null {
-    const equip = equipment[bidId]?.find(e => e.sound_level_db);
+    const equip = equipmentMap[bidId]?.find(e => e.sound_level_db);
     return equip?.sound_level_db || null;
   }
 
   function getEerRating(bidId: string): number | null {
-    const equip = equipment[bidId]?.find(e => e.eer_rating);
+    const equip = equipmentMap[bidId]?.find(e => e.eer_rating);
     return equip?.eer_rating || null;
   }
 
   function getCop(bidId: string): number | null {
-    const equip = equipment[bidId]?.find(e => e.cop);
+    const equip = equipmentMap[bidId]?.find(e => e.cop);
     return equip?.cop || null;
   }
 
   function getAmperageDraw(bidId: string): number | null {
-    const equip = equipment[bidId]?.find(e => e.amperage_draw);
+    const equip = equipmentMap[bidId]?.find(e => e.amperage_draw);
     return equip?.amperage_draw || null;
   }
 
   function getMinCircuitAmperage(bidId: string): number | null {
-    const equip = equipment[bidId]?.find(e => e.minimum_circuit_amperage);
+    const equip = equipmentMap[bidId]?.find(e => e.minimum_circuit_amperage);
     return equip?.minimum_circuit_amperage || null;
   }
 
   const bestSeer = getBestValue(bids.map(b => getSeerRating(b.id)));
   const bestHspf = getBestValue(bids.map(b => getHspfRating(b.id)));
 
-  if (loading) {
-    return <div className="text-center py-8 text-gray-500">Loading comparison...</div>;
-  }
+  // ---------------------------------------------------------------------------
+  // Early returns
+  // ---------------------------------------------------------------------------
 
   if (bids.length < 2) {
     return (
@@ -163,6 +336,10 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
       </div>
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Priority helpers
+  // ---------------------------------------------------------------------------
 
   function getTopPriorities(): { label: string; icon: typeof DollarSign }[] {
     if (!requirements) return [];
@@ -180,6 +357,10 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
   }
 
   const topPriorities = getTopPriorities();
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <div className="space-y-6">
@@ -251,7 +432,6 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <div className="flex items-center gap-2">
                       {bid.contractor_name}
                       {bid.is_favorite && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
-                      {bid.contractor_is_switch_preferred && <Award className="w-4 h-4 text-switch-green-600" />}
                     </div>
                   </th>
                 ))}
@@ -274,9 +454,9 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                         bid.overall_score >= 60 ? 'score-medium' : 'score-low'
                       }`}>
                         {bid.overall_score.toFixed(0)}/100
-                        {isBestValue(bid.overall_score, bestScore) && ' ★'}
+                        {isBestValue(bid.overall_score, bestScore) && ' \u2605'}
                       </span>
-                    ) : '—'}
+                    ) : '\u2014'}
                   </td>
                 ))}
               </tr>
@@ -322,7 +502,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                                 <span className="ml-2 text-xs text-green-600 font-medium">BEST</span>
                               )}
                             </>
-                          ) : '—'}
+                          ) : '\u2014'}
                         </td>
                       );
                     })}
@@ -348,7 +528,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                                 <span className="ml-2 text-xs text-green-600 font-medium">BEST</span>
                               )}
                             </>
-                          ) : '—'}
+                          ) : '\u2014'}
                         </td>
                       );
                     })}
@@ -359,7 +539,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Capacity (tons)</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {getCapacity(bid.id)?.toFixed(1) || '—'}
+                        {getCapacity(bid.id)?.toFixed(1) || '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -401,7 +581,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                       Advanced Specs
                     </td>
                     {sortedBids.map((bid) => (
-                      <td key={bid.id} className="text-gray-400 text-sm pt-4">—</td>
+                      <td key={bid.id} className="text-gray-400 text-sm pt-4">{'\u2014'}</td>
                     ))}
                   </tr>
 
@@ -410,7 +590,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Refrigerant</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {getRefrigerantType(bid.id) || '—'}
+                        {getRefrigerantType(bid.id) || '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -422,7 +602,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                       const sound = getSoundLevel(bid.id);
                       return (
                         <td key={bid.id}>
-                          {sound ? `${sound} dB` : '—'}
+                          {sound ? `${sound} dB` : '\u2014'}
                         </td>
                       );
                     })}
@@ -438,7 +618,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                       const eer = getEerRating(bid.id);
                       return (
                         <td key={bid.id}>
-                          {eer ? eer.toFixed(1) : '—'}
+                          {eer ? eer.toFixed(1) : '\u2014'}
                         </td>
                       );
                     })}
@@ -454,7 +634,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                       const cop = getCop(bid.id);
                       return (
                         <td key={bid.id}>
-                          {cop ? cop.toFixed(1) : '—'}
+                          {cop ? cop.toFixed(1) : '\u2014'}
                         </td>
                       );
                     })}
@@ -467,7 +647,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                       const amps = getAmperageDraw(bid.id);
                       return (
                         <td key={bid.id}>
-                          {amps ? `${amps}A` : '—'}
+                          {amps ? `${amps}A` : '\u2014'}
                         </td>
                       );
                     })}
@@ -480,7 +660,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                       const minAmps = getMinCircuitAmperage(bid.id);
                       return (
                         <td key={bid.id}>
-                          {minAmps ? `${minAmps}A` : '—'}
+                          {minAmps ? `${minAmps}A` : '\u2014'}
                         </td>
                       );
                     })}
@@ -495,11 +675,11 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Years in Business</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.contractor_years_in_business ? (
-                          <span className={bid.contractor_years_in_business >= 10 ? 'text-green-600 font-medium' : ''}>
-                            {bid.contractor_years_in_business} years
+                        {bid.years_in_business ? (
+                          <span className={bid.years_in_business >= 10 ? 'text-green-600 font-medium' : ''}>
+                            {bid.years_in_business} years
                           </span>
-                        ) : '—'}
+                        ) : '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -509,16 +689,16 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Google Rating</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.contractor_google_rating ? (
-                          <span className={bid.contractor_google_rating >= 4.5 ? 'text-green-600 font-medium' : ''}>
-                            {bid.contractor_google_rating.toFixed(1)} ⭐
-                            {bid.contractor_google_review_count && (
+                        {bid.google_rating ? (
+                          <span className={bid.google_rating >= 4.5 ? 'text-green-600 font-medium' : ''}>
+                            {bid.google_rating.toFixed(1)} \u2B50
+                            {bid.google_review_count && (
                               <span className="text-gray-400 text-sm ml-1">
-                                ({bid.contractor_google_review_count})
+                                ({bid.google_review_count})
                               </span>
                             )}
                           </span>
-                        ) : '—'}
+                        ) : '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -528,10 +708,10 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">License #</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.contractor_license ? (
+                        {bid.license ? (
                           <>
-                            {bid.contractor_license}
-                            {bid.contractor_license_state && ` (${bid.contractor_license_state})`}
+                            {bid.license}
+                            {bid.license_state && ` (${bid.license_state})`}
                           </>
                         ) : (
                           <span className="text-amber-600 flex items-center gap-1">
@@ -548,15 +728,15 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Certifications</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.contractor_certifications && bid.contractor_certifications.length > 0 ? (
+                        {bid.certifications && bid.certifications.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
-                            {bid.contractor_certifications.map((cert, i) => (
+                            {bid.certifications.map((cert, i) => (
                               <span key={i} className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
                                 {cert}
                               </span>
                             ))}
                           </div>
-                        ) : '—'}
+                        ) : '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -566,7 +746,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Insurance Verified</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.contractor_insurance_verified ? (
+                        {bid.insurance_verified ? (
                           <Check className="w-5 h-5 text-green-600" />
                         ) : (
                           <span className="text-gray-400">Unknown</span>
@@ -580,16 +760,16 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Yelp Rating</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.contractor_yelp_rating ? (
-                          <span className={bid.contractor_yelp_rating >= 4.5 ? 'text-green-600 font-medium' : ''}>
-                            {bid.contractor_yelp_rating.toFixed(1)} ⭐
-                            {bid.contractor_yelp_review_count && (
+                        {bid.yelp_rating ? (
+                          <span className={bid.yelp_rating >= 4.5 ? 'text-green-600 font-medium' : ''}>
+                            {bid.yelp_rating.toFixed(1)} \u2B50
+                            {bid.yelp_review_count && (
                               <span className="text-gray-400 text-sm ml-1">
-                                ({bid.contractor_yelp_review_count})
+                                ({bid.yelp_review_count})
                               </span>
                             )}
                           </span>
-                        ) : '—'}
+                        ) : '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -599,14 +779,14 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">BBB Rating</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.contractor_bbb_rating ? (
+                        {bid.bbb_rating ? (
                           <span className="flex items-center gap-1">
-                            <span className="font-medium">{bid.contractor_bbb_rating}</span>
-                            {bid.contractor_bbb_accredited && (
+                            <span className="font-medium">{bid.bbb_rating}</span>
+                            {bid.bbb_accredited && (
                               <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Accredited</span>
                             )}
                           </span>
-                        ) : '—'}
+                        ) : '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -616,7 +796,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Bonded</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.contractor_bonded ? (
+                        {bid.bonded ? (
                           <Check className="w-5 h-5 text-green-600" />
                         ) : (
                           <span className="text-gray-400">Unknown</span>
@@ -658,7 +838,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                             {bid.positive_indicators.length} positive{bid.positive_indicators.length !== 1 ? 's' : ''}
                           </span>
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-gray-400">{'\u2014'}</span>
                         )}
                       </td>
                     ))}
@@ -674,7 +854,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     </td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.contractor_employee_count || '—'}
+                        {bid.employee_count || '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -689,11 +869,11 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     </td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.contractor_service_area ? (
-                          <span className="text-sm truncate max-w-[150px] block" title={bid.contractor_service_area}>
-                            {bid.contractor_service_area.length > 30 ? `${bid.contractor_service_area.substring(0, 30)}...` : bid.contractor_service_area}
+                        {bid.service_area ? (
+                          <span className="text-sm truncate max-w-[150px] block" title={bid.service_area}>
+                            {bid.service_area.length > 30 ? `${bid.service_area.substring(0, 30)}...` : bid.service_area}
                           </span>
-                        ) : '—'}
+                        ) : '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -755,7 +935,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium text-green-600">Est. Rebates</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id} className="text-green-600">
-                        {bid.estimated_rebates ? `-${formatCurrency(bid.estimated_rebates)}` : '—'}
+                        {bid.estimated_rebates ? `-${formatCurrency(bid.estimated_rebates)}` : '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -774,24 +954,24 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
 
               {view === 'scope' && (
                 <>
-                  {[
-                    { key: 'scope_permit_included', label: 'Permits & Filing' },
-                    { key: 'scope_disposal_included', label: 'Old Equipment Disposal' },
-                    { key: 'scope_electrical_included', label: 'Electrical Work' },
-                    { key: 'scope_disconnect_included', label: 'Electrical Disconnect' },
-                    { key: 'scope_ductwork_included', label: 'Ductwork Modifications' },
-                    { key: 'scope_thermostat_included', label: 'Thermostat' },
-                    { key: 'scope_manual_j_included', label: 'Manual J Calculation' },
-                    { key: 'scope_commissioning_included', label: 'System Commissioning' },
-                    { key: 'scope_air_handler_included', label: 'Air Handler' },
-                    { key: 'scope_line_set_included', label: 'Refrigerant Line Set' },
-                    { key: 'scope_pad_included', label: 'Equipment Pad' },
-                    { key: 'scope_drain_line_included', label: 'Condensate Drain Line' },
-                  ].map((item) => (
+                  {([
+                    { key: 'permit_included', label: 'Permits & Filing' },
+                    { key: 'disposal_included', label: 'Old Equipment Disposal' },
+                    { key: 'electrical_included', label: 'Electrical Work' },
+                    { key: 'disconnect_included', label: 'Electrical Disconnect' },
+                    { key: 'ductwork_included', label: 'Ductwork Modifications' },
+                    { key: 'thermostat_included', label: 'Thermostat' },
+                    { key: 'manual_j_included', label: 'Manual J Calculation' },
+                    { key: 'commissioning_included', label: 'System Commissioning' },
+                    { key: 'air_handler_included', label: 'Air Handler' },
+                    { key: 'line_set_included', label: 'Refrigerant Line Set' },
+                    { key: 'pad_included', label: 'Equipment Pad' },
+                    { key: 'drain_line_included', label: 'Condensate Drain Line' },
+                  ] as const).map((item) => (
                     <tr key={item.key}>
                       <td className="sticky left-0 bg-white font-medium">{item.label}</td>
                       {sortedBids.map((bid) => {
-                        const value = bid[item.key as keyof ContractorBid];
+                        const value = bid[item.key];
                         return (
                           <td key={bid.id}>
                             {value === true ? (
@@ -823,9 +1003,9 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     </td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.electrical_panel_assessment_included === true ? (
+                        {bid.panel_assessment_included === true ? (
                           <Check className="w-5 h-5 text-green-600" />
-                        ) : bid.electrical_panel_assessment_included === false ? (
+                        ) : bid.panel_assessment_included === false ? (
                           <X className="w-5 h-5 text-red-400" />
                         ) : (
                           <HelpCircle className="w-5 h-5 text-gray-300" />
@@ -839,9 +1019,9 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Panel Upgrade Needed</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.electrical_panel_upgrade_included === true ? (
+                        {bid.panel_upgrade_included === true ? (
                           <span className="text-amber-600 font-medium">Yes</span>
-                        ) : bid.electrical_panel_upgrade_included === false ? (
+                        ) : bid.panel_upgrade_included === false ? (
                           <span className="text-green-600">No</span>
                         ) : (
                           <HelpCircle className="w-5 h-5 text-gray-300" />
@@ -855,9 +1035,9 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Upgrade Cost</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.electrical_panel_upgrade_cost ? (
-                          formatCurrency(bid.electrical_panel_upgrade_cost)
-                        ) : '—'}
+                        {bid.panel_upgrade_cost ? (
+                          formatCurrency(bid.panel_upgrade_cost)
+                        ) : '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -867,9 +1047,9 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Current Panel</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.electrical_existing_panel_amps ? (
-                          <span>{bid.electrical_existing_panel_amps}A</span>
-                        ) : '—'}
+                        {bid.existing_panel_amps ? (
+                          <span>{bid.existing_panel_amps}A</span>
+                        ) : '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -879,9 +1059,9 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Required Panel</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.electrical_proposed_panel_amps ? (
-                          <span>{bid.electrical_proposed_panel_amps}A</span>
-                        ) : '—'}
+                        {bid.proposed_panel_amps ? (
+                          <span>{bid.proposed_panel_amps}A</span>
+                        ) : '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -891,9 +1071,9 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Breaker Size</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.electrical_breaker_size_required ? (
-                          <span>{bid.electrical_breaker_size_required}A</span>
-                        ) : '—'}
+                        {bid.breaker_size_required ? (
+                          <span>{bid.breaker_size_required}A</span>
+                        ) : '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -903,9 +1083,9 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Dedicated Circuit</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.electrical_dedicated_circuit_included === true ? (
+                        {bid.dedicated_circuit_included === true ? (
                           <Check className="w-5 h-5 text-green-600" />
-                        ) : bid.electrical_dedicated_circuit_included === false ? (
+                        ) : bid.dedicated_circuit_included === false ? (
                           <X className="w-5 h-5 text-red-400" />
                         ) : (
                           <HelpCircle className="w-5 h-5 text-gray-300" />
@@ -935,9 +1115,9 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                     <td className="sticky left-0 bg-white font-medium">Load Calculation</td>
                     {sortedBids.map((bid) => (
                       <td key={bid.id}>
-                        {bid.electrical_load_calculation_included === true ? (
+                        {bid.load_calculation_included === true ? (
                           <Check className="w-5 h-5 text-green-600" />
-                        ) : bid.electrical_load_calculation_included === false ? (
+                        ) : bid.load_calculation_included === false ? (
                           <X className="w-5 h-5 text-red-400" />
                         ) : (
                           <HelpCircle className="w-5 h-5 text-gray-300" />
@@ -955,7 +1135,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                           <span className="text-sm text-gray-600 truncate max-w-[200px] block" title={bid.electrical_notes}>
                             {bid.electrical_notes.length > 50 ? `${bid.electrical_notes.substring(0, 50)}...` : bid.electrical_notes}
                           </span>
-                        ) : '—'}
+                        ) : '\u2014'}
                       </td>
                     ))}
                   </tr>
@@ -984,7 +1164,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                             <span className="ml-2 text-xs text-green-600 font-medium">BEST</span>
                           )}
                         </>
-                      ) : '—'}
+                      ) : '\u2014'}
                     </td>
                   );
                 })}
@@ -1008,7 +1188,7 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
                           <span className="ml-2 text-xs text-green-600 font-medium">FASTEST</span>
                         )}
                       </>
-                    ) : '—'}
+                    ) : '\u2014'}
                   </td>
                 ))}
               </tr>
@@ -1043,10 +1223,6 @@ export function BidComparisonTable({ projectId: _projectId, bids, requirements }
         <div className="flex items-center gap-2">
           <Star className="w-4 h-4 text-yellow-500 fill-current" />
           <span>Your favorite</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Award className="w-4 h-4 text-switch-green-600" />
-          <span>Switch Preferred Contractor</span>
         </div>
       </div>
     </div>

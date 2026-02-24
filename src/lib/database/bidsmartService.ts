@@ -24,7 +24,10 @@ import type {
   PdfStatus,
   ProjectSummary,
   BidComparisonTableRow,
+  BidWithChildren,
   BidFaq,
+  BidQuestion,
+  IncentiveProgramDB,
 } from '../types';
 
 // ============================================
@@ -372,6 +375,29 @@ export async function deleteBid(bidId: string): Promise<void> {
     .eq('id', bidId);
 
   if (error) throw error;
+}
+
+export async function getBidWithChildren(bidId: string): Promise<BidWithChildren> {
+  const bid = await getBid(bidId);
+  if (!bid) throw new Error(`Bid not found: ${bidId}`);
+
+  const [scope, contractor, scores, equipment, questions] = await Promise.all([
+    getBidScope(bidId),
+    getBidContractor(bidId),
+    getBidScore(bidId),
+    getEquipmentByBid(bidId),
+    (async () => {
+      const { data, error } = await supabase
+        .from('contractor_questions')
+        .select('*')
+        .eq('bid_id', bidId)
+        .order('display_order', { ascending: true });
+      if (error) throw error;
+      return (data || []) as BidQuestion[];
+    })(),
+  ]);
+
+  return { bid, scope, contractor, scores, equipment, questions };
 }
 
 export async function toggleBidFavorite(bidId: string): Promise<Bid | null> {
@@ -825,6 +851,32 @@ export async function getRebatesByState(stateCode: string): Promise<RebateProgra
 
   if (error) throw error;
   return data || [];
+}
+
+export async function getIncentivesByZip(_zip: string, stateCode?: string): Promise<IncentiveProgramDB[]> {
+  // If we have a state, filter by it; otherwise return all active nationwide programs
+  if (stateCode) {
+    const { data, error } = await supabase
+      .from('rebate_programs')
+      .select('*')
+      .eq('is_active', true)
+      .or(`available_nationwide.eq.true,available_states.cs.{${stateCode}}`)
+      .order('program_name');
+
+    if (error) throw error;
+    return (data || []) as IncentiveProgramDB[];
+  }
+
+  // Fallback: return nationwide programs
+  const { data, error } = await supabase
+    .from('rebate_programs')
+    .select('*')
+    .eq('is_active', true)
+    .eq('available_nationwide', true)
+    .order('program_name');
+
+  if (error) throw error;
+  return (data || []) as IncentiveProgramDB[];
 }
 
 interface ProjectRebateWithProgram {

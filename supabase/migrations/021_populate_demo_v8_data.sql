@@ -13,6 +13,15 @@ DECLARE
   demo_project_id UUID;
   bid_record RECORD;
 BEGIN
+  -- V2 schema guard: skip if contractor_bids table doesn't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'contractor_bids'
+  ) THEN
+    RAISE NOTICE 'Skipping V1 demo migration (021) - contractor_bids table does not exist (V2 schema)';
+    RETURN;
+  END IF;
+
   -- Get demo projects
   FOR demo_project_id IN 
     SELECT id FROM projects WHERE is_demo = true
@@ -137,24 +146,35 @@ BEGIN
   END LOOP;
 END $$;
 
--- Add amperage data to demo equipment
-UPDATE bid_equipment
-SET
-  amperage_draw = CASE 
-    WHEN capacity_tons <= 2 THEN (ARRAY[15, 18, 20])[floor(random() * 3 + 1)]
-    WHEN capacity_tons <= 3 THEN (ARRAY[25, 28, 30])[floor(random() * 3 + 1)]
-    WHEN capacity_tons <= 4 THEN (ARRAY[35, 38, 40])[floor(random() * 3 + 1)]
-    ELSE (ARRAY[45, 48, 50])[floor(random() * 3 + 1)]
-  END,
-  minimum_circuit_amperage = CASE 
-    WHEN capacity_tons <= 2 THEN (ARRAY[20, 25, 30])[floor(random() * 3 + 1)]
-    WHEN capacity_tons <= 3 THEN (ARRAY[30, 35, 40])[floor(random() * 3 + 1)]
-    WHEN capacity_tons <= 4 THEN (ARRAY[40, 45, 50])[floor(random() * 3 + 1)]
-    ELSE (ARRAY[50, 55, 60])[floor(random() * 3 + 1)]
-  END
-WHERE bid_id IN (
-  SELECT cb.id 
-  FROM contractor_bids cb
-  JOIN projects p ON cb.project_id = p.id
-  WHERE p.is_demo = true
-);
+-- Add amperage data to demo equipment (wrapped in guard for V2 compatibility)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'contractor_bids'
+  ) THEN
+    RAISE NOTICE 'Skipping V1 demo equipment update (021) - contractor_bids table does not exist (V2 schema)';
+    RETURN;
+  END IF;
+
+  UPDATE bid_equipment
+  SET
+    amperage_draw = CASE
+      WHEN capacity_tons <= 2 THEN (ARRAY[15, 18, 20])[floor(random() * 3 + 1)]
+      WHEN capacity_tons <= 3 THEN (ARRAY[25, 28, 30])[floor(random() * 3 + 1)]
+      WHEN capacity_tons <= 4 THEN (ARRAY[35, 38, 40])[floor(random() * 3 + 1)]
+      ELSE (ARRAY[45, 48, 50])[floor(random() * 3 + 1)]
+    END,
+    minimum_circuit_amperage = CASE
+      WHEN capacity_tons <= 2 THEN (ARRAY[20, 25, 30])[floor(random() * 3 + 1)]
+      WHEN capacity_tons <= 3 THEN (ARRAY[30, 35, 40])[floor(random() * 3 + 1)]
+      WHEN capacity_tons <= 4 THEN (ARRAY[40, 45, 50])[floor(random() * 3 + 1)]
+      ELSE (ARRAY[50, 55, 60])[floor(random() * 3 + 1)]
+    END
+  WHERE bid_id IN (
+    SELECT cb.id
+    FROM contractor_bids cb
+    JOIN projects p ON cb.project_id = p.id
+    WHERE p.is_demo = true
+  );
+END $$;
