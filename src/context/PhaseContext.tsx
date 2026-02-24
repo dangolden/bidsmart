@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import type { Project, ContractorBid, BidEquipment, BidScope, BidContractor, BidScore, ProjectRequirements, BidQuestion } from '../lib/types';
 import {
   createProject,
@@ -38,6 +38,7 @@ interface PhaseState {
   bids: BidWithEquipment[];
   requirements: ProjectRequirements | null;
   questions: BidQuestion[];
+  questionsLoading: boolean;
   loading: boolean;
   error: string | null;
   isDemoMode: boolean;
@@ -102,6 +103,7 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
     bids: [],
     requirements: null,
     questions: [],
+    questionsLoading: false,
     loading: true,
     error: null,
     isDemoMode: false,
@@ -188,6 +190,7 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
           bids: bidsWithEquipment,
           requirements,
           questions: questions || [],
+          questionsLoading: false,
           loading: false,
           error: null,
           isDemoMode: project?.is_public_demo ?? false,
@@ -324,6 +327,68 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
 
     return project.id;
   }, [state.projectId, state.currentPhase, state.phaseStatus, userId]);
+
+  // Background question polling — starts after phase 1 completes, polls until questions arrive
+  const bidIdsRef = useRef<string[]>([]);
+  useEffect(() => {
+    bidIdsRef.current = state.bids.map(b => b.bid.id);
+  }, [state.bids]);
+
+  useEffect(() => {
+    if (state.phaseStatus[1] !== 'completed') return;
+    if (!state.projectId || state.bids.length === 0) return;
+    if (state.questions.length > 0) return;
+
+    setState(prev => ({ ...prev, questionsLoading: true }));
+
+    let attempts = 0;
+    const maxAttempts = 60; // 5 minutes at 5s intervals
+
+    const interval = setInterval(async () => {
+      attempts++;
+      const currentBidIds = bidIdsRef.current;
+      if (currentBidIds.length === 0) return;
+
+      try {
+        const { data: questions } = await supabase
+          .from('contractor_questions')
+          .select('*')
+          .in('bid_id', currentBidIds)
+          .order('display_order', { ascending: true });
+
+        if (questions && questions.length > 0) {
+          setState(prev => ({
+            ...prev,
+            questions,
+            questionsLoading: false,
+          }));
+          clearInterval(interval);
+        } else if (attempts >= maxAttempts) {
+          setState(prev => ({ ...prev, questionsLoading: false }));
+          clearInterval(interval);
+        }
+      } catch {
+        if (attempts >= maxAttempts) {
+          setState(prev => ({ ...prev, questionsLoading: false }));
+          clearInterval(interval);
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [state.phaseStatus[1], state.projectId, state.bids.length, state.questions.length]);
+
+  // Delayed bid re-fetch — picks up late-arriving enrichment data (contractor, scores)
+  useEffect(() => {
+    if (state.phaseStatus[1] !== 'completed') return;
+    if (!state.projectId) return;
+
+    const timer = setTimeout(() => {
+      refreshBids();
+    }, 15000);
+
+    return () => clearTimeout(timer);
+  }, [state.phaseStatus[1], state.projectId]);
 
   const value: PhaseContextValue = {
     ...state,

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Mail, Clock, Upload, Zap, CheckCircle2, Loader2, Bell, BellOff, FlaskConical } from 'lucide-react';
+import { Mail, Clock, Upload, Zap, CheckCircle2, Loader2, Bell, BellOff, FlaskConical, MapPin } from 'lucide-react';
 
 interface AnalysisSubmissionInterstitialProps {
   email: string;
   onEmailChange: (email: string) => void;
+  zip: string;
+  onZipChange: (zip: string) => void;
   notifyOnCompletion: boolean;
   onNotifyChange: (notify: boolean) => void;
   enableSound: boolean;
@@ -18,6 +20,8 @@ interface AnalysisSubmissionInterstitialProps {
 export function AnalysisSubmissionInterstitial({
   email,
   onEmailChange,
+  zip,
+  onZipChange,
   notifyOnCompletion,
   onNotifyChange,
   enableSound,
@@ -164,6 +168,31 @@ export function AnalysisSubmissionInterstitial({
               {emailError && (
                 <p className="text-sm text-red-600 mt-1">{emailError}</p>
               )}
+            </div>
+
+            {/* Zip Code Input */}
+            <div>
+              <label htmlFor="property-zip" className="block text-sm font-semibold text-gray-900 mb-2">
+                Property Zip Code
+                <span className="text-gray-400 font-normal ml-1">(optional)</span>
+              </label>
+              <p className="text-xs text-gray-600 mb-3">
+                Used to find available rebates and incentives in your area
+              </p>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  id="property-zip"
+                  type="text"
+                  inputMode="numeric"
+                  value={zip}
+                  onChange={(e) => onZipChange(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                  placeholder="e.g. 90210"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
+                  maxLength={5}
+                  disabled={isSaving}
+                />
+              </div>
             </div>
 
             {/* Notification Preferences */}
