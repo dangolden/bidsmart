@@ -76,7 +76,7 @@ export function DecidePhase() {
 
   const toggleQuestionAnswered = async (question: BidQuestion) => {
     await supabase
-      .from('bid_questions')
+      .from('contractor_questions')
       .update({
         is_answered: !question.is_answered,
         answered_at: !question.is_answered ? new Date().toISOString() : null,

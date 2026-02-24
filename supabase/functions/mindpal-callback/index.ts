@@ -375,7 +375,7 @@ Deno.serve(async (req: Request) => {
       }));
 
       const { error: questionsError } = await supabaseAdmin
-        .from("bid_questions")
+        .from("contractor_questions")
         .insert(questionRecords);
 
       if (questionsError) {

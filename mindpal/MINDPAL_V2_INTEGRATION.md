@@ -587,3 +587,15 @@ This is the exact structure the `mindpal-callback` edge function expects:
 | Scoring Engine | `bid_scores` | Deferred |
 | Per-Bid FAQ Generator | `bid_faqs` | Deferred |
 | Overall FAQ Generator | `project_faqs` | Deferred |
+
+### Frontend impact of deferred nodes
+
+The frontend gracefully handles missing data from deferred nodes — no crashes, just empty/fallback states:
+
+| Missing Table | Frontend Behavior |
+|---|---|
+| `bid_scores` | BidCard score badge shows "—". BidComparisonTable "Overall Score" row shows "—". Red Flags row shows "None". Positive Indicators shows "—". DecidePhase red flags / positive indicators alerts don't render. |
+| `bid_faqs` + `project_faqs` | DecidePhase "FAQs" tab shows "No Common Questions Data Available Yet — check back soon!" |
+| `contractor_questions` (if node 10 not configured yet) | DecidePhase "Contractor Questions" tab shows empty list. |
+
+All of these are guarded with optional chaining (`?.`) and explicit empty-state UI. No code changes needed — just be aware these sections will be blank until the deferred nodes are added.

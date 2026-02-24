@@ -154,7 +154,7 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
           requirements = await getProjectRequirements(projectId);
 
           const { data: questionsData } = await supabase
-            .from('bid_questions')
+            .from('contractor_questions')
             .select('*')
             .in('bid_id', bids.map(b => b.id))
             .order('display_order', { ascending: true });
@@ -288,7 +288,7 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
     if (!state.projectId || state.bids.length === 0) return;
 
     const { data: questions } = await supabase
-      .from('bid_questions')
+      .from('contractor_questions')
       .select('*')
       .in('bid_id', state.bids.map(b => b.bid.id))
       .order('display_order', { ascending: true });

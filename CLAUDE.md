@@ -113,10 +113,11 @@ User uploads PDFs via frontend
 
 ### Key Tables
 ```
-contractor_bids       — one row per bid per job
+bids                  — identity stub (status, request_id, storage_key)
+bid_scope             — all extracted data (69 columns)
 bid_equipment         — normalized equipment records
-bid_questions         — generated questions for homeowner
-bid_line_items        — scope items, inclusions/exclusions
+bid_contractors       — company info, contact, license, ratings
+contractor_questions  — generated questions for homeowner
 mindpal_extractions   — raw extraction data + debug info
 ```
 
@@ -209,14 +210,15 @@ Tables populated by user input (job creation, file uploads, priority settings) a
 ### Build Order (Planned)
 
 ```
-1. Bid Data Extractor (subflow)     → contractor_bids (raw extraction)
-2. Equipment Researcher              → bid_equipment (enriched specs)
-3. Contractor Researcher             → contractor_bids (reputation fields)
-4. Incentive Finder                  → incentives table (job-level)
-5. Scoring Engine                    → bid scores / comparison fields
-6. Question Generator ⚠️ RESTORE    → bid_questions (7 categories, full schema)
-7. FAQ Generator                     → faqs table (job-level)
-8. JSON Assembler (Code Node)        → validates, merges, emits final payload
+1. Bid Data Extractor (LOOP)         → raw extraction per PDF
+2. Equipment Analyzer (LOOP)         → bid_equipment (enriched specs)
+3. Supabase Post (bid_equipment)     → writes directly to Supabase
+4. Contractor Research (LOOP)        → bid_contractors (reputation fields)
+5. Supabase Post (bid_contractor)    → writes directly to Supabase
+6. Scope Extractor (LOOP)            → bid_scope (69 columns)
+7. Supabase Post (bid_scope)         → writes directly to Supabase
+8. Contractor Questions (AGENT)      → contractor_questions (cross-bid analysis)
+9. Supabase Post (Questions)         → writes directly to Supabase
 ```
 
 ### Immediate Priority: Restore Question Generator
