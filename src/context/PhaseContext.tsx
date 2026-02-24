@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import type { Project, ContractorBid, BidEquipment, BidScope, BidContractor, BidScore, ProjectRequirements, BidQuestion } from '../lib/types';
 import {
   createProject,
-  getProjectsByUser,
+  getProjectsWithPublicDemos,
   getBidsByProject,
   getEquipmentByBid,
   getProjectRequirements,
@@ -111,7 +111,7 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
     async function initializeProject() {
       try {
         const storedState = loadStoredState();
-        const existingProjects = await getProjectsByUser(userId);
+        const existingProjects = await getProjectsWithPublicDemos(userId);
 
         let projectId: string | null = null;
         let project: Project | null = null;
