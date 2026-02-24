@@ -3,22 +3,22 @@ import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
 import { verifyEmailAuth, verifyProjectOwnership } from "../_shared/auth.ts";
 
-// MindPal v2 API configuration
+// MindPal API configuration (v18 workflow — app.mindpal.space v2 API + data format)
 const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://app.mindpal.space/api/v2/workflow/run";
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 
 // Workflow ID for BidSmart Analyzer
-const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "697fc84945bf3484d9a860fb";
+const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "699a33ac6787d2e1b0e9ed93";
 
-// MindPal v2 field IDs for the workflow inputs (VERIFIED 2026-02-12)
-const DOCUMENT_URLS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENT_URLS_FIELD_ID") || "697fc84945bf3484d9a860fe";
-const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "697fc84945bf3484d9a86100";
-const USER_NOTES_FIELD_ID = Deno.env.get("MINDPAL_USER_NOTES_FIELD_ID") || "697fc84945bf3484d9a86101";
-const PROJECT_ID_FIELD_ID = Deno.env.get("MINDPAL_PROJECT_ID_FIELD_ID") || "698e9588cdcbe0dd8790b287";
-const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "697fc84945bf3484d9a860ff";
-const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "698e9588ff3f2d1fa1486189";
-// NEW: documents_json field — paired bid_id + doc_url for MindPal Loop Node
+// MindPal field IDs for the workflow inputs (v18 workflow — updated 2026-02-22)
+const DOCUMENT_URLS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENT_URLS_FIELD_ID") || "699a33ad6787d2e1b0e9ed96";
+const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "699a33ad6787d2e1b0e9ed98";
+const USER_NOTES_FIELD_ID = Deno.env.get("MINDPAL_USER_NOTES_FIELD_ID") || "699a33ad6787d2e1b0e9ed9a";
+const PROJECT_ID_FIELD_ID = Deno.env.get("MINDPAL_PROJECT_ID_FIELD_ID") || "699a33ad6787d2e1b0e9ed99";
+const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "699a33ad6787d2e1b0e9ed9b";
+const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "699a33ad6787d2e1b0e9ed97";
+// V2: documents_json field — paired bid_id + doc_url for MindPal Loop Node
 const DOCUMENTS_JSON_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENTS_JSON_FIELD_ID") || "699d42f8f6f83a173c0b6d4a";
 
 // V2 request body: accepts documents array with bid_ids
