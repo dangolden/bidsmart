@@ -1,12 +1,10 @@
 # Scope Extractor — Full Node Spec
 
-> **Source of truth:** `bid_scope` table in SCHEMA_V2_COMPLETE.html (69 columns)
+> **Source of truth:** `bid_scope` table (69 columns)
 > Node Key: `scope-extractor`
 > Type: **LOOP**
 > Target Table: `bid_scope` (dedicated table, 1:1 with bids)
 > Agent: **New agent** — built from scratch, not reusing any existing agent
->
-> **V2 UPDATE (Feb 2026):** `bid_scope` expanded from 43 → 69 columns. 26 columns migrated from old `bids` table: system_type (1), pricing (10), payment terms (5), warranty (4), timeline (4), extraction metadata (2). The Scope Extractor now outputs ALL bid_scope fields including these migrated columns. The `bids` table is now a slim 18-column identity stub — all extracted data lives in `bid_scope`.
 
 ---
 
@@ -17,7 +15,7 @@ What goes where when configuring this node in MindPal:
 | MindPal Section | What Belongs There | Examples from This Spec |
 |---|---|---|
 | **Agent Background** | Role definition, scope boundaries, HVAC scope item expertise (what each item means), boolean interpretation rules (null vs true vs false), electrical sub-group field definitions, anti-hallucination rules | `<role>`, `<scope>`, `<expertise>`, `<extraction_behavior>`, `<data_integrity>`, `<rules>` — permanent knowledge about HVAC bid scope items |
-| **Desired Output Format** | JSON schema with all 69 fields + types + valid values, field requirement notes, accessories and line_items array schemas, V2 migrated column schemas (pricing, payment, warranty, timeline, extraction) | `<output_schema>` — the exact JSON contract with every boolean pair, electrical field, JSONB structure, and V2 migrated columns |
+| **Desired Output Format** | JSON schema with all 69 fields + types + valid values, field requirement notes, accessories and line_items array schemas, pricing/payment/warranty/timeline/extraction schemas | `<output_schema>` — the exact JSON contract with every boolean pair, electrical field, JSONB structure, and all pricing/warranty/timeline fields |
 | **Task Prompt** | Variable reference (`{{#currentItem}}` — must show purple), step-by-step extraction instructions (scan → booleans → electrical → accessories → line items → summary), critical reminders | Task-specific extraction workflow — walks through parsing the bid context |
 
 **Key principle:** What each scope item means (permit = filing + fees + inspections) goes in Background as permanent domain knowledge. The step-by-step extraction flow goes in Task Prompt. The boolean interpretation rule (null = not mentioned, true = explicitly included, false = explicitly excluded) is so critical it belongs in BOTH.
@@ -85,9 +83,7 @@ What goes where when configuring this node in MindPal:
 | `accessories` | JSONB. Array of `{type, name, brand, model_number, description, cost}`. Types: thermostat, surge_protector, uv_light, condensate_pump, line_set_cover, other. Only include items explicitly mentioned in bid. | `[]` — empty array, not null |
 | `line_items` | JSONB. Array of `{item_type, description, amount, quantity, unit_price, is_included, notes}`. item_type MUST be one of: `equipment`, `labor`, `materials`, `permit`, `disposal`, `electrical`, `ductwork`, `thermostat`, `rebate_processing`, `warranty`, `other`. All amounts as plain numbers (no $). | `[]` — empty array if bid has no pricing breakdown |
 
-### V2 Migrated Columns (26 columns — moved from old `bids` table)
-
-> **V2 CHANGE:** These columns were previously on the `bids` table. They have been moved to `bid_scope` so all extracted data lives in one place. The `bids` table is now a slim 18-column identity stub.
+### System Type, Pricing, Payment, Warranty, Timeline & Extraction (26 columns)
 
 #### System Type (1 column)
 
@@ -223,13 +219,12 @@ You output ALL fields for the bid_scope table (69 columns total):
 - 10 electrical sub-group fields: panel_assessment_included, panel_upgrade_included, dedicated_circuit_included, electrical_permit_included, load_calculation_included, existing_panel_amps, proposed_panel_amps, breaker_size_required, panel_upgrade_cost, electrical_notes
 - accessories JSONB array
 - line_items JSONB array
-- V2 MIGRATED COLUMNS (26 fields):
-  - system_type (always "heat_pump")
-  - Pricing: total_bid_amount, labor_cost, equipment_cost, materials_cost, permit_cost, disposal_cost, electrical_cost, total_before_rebates, estimated_rebates, total_after_rebates
-  - Payment: deposit_required, deposit_percentage, payment_schedule, financing_offered, financing_terms
-  - Warranty: labor_warranty_years, equipment_warranty_years, compressor_warranty_years, additional_warranty_details
-  - Timeline: estimated_days, start_date_available, bid_date, valid_until
-  - Extraction: extraction_confidence, extraction_notes
+- system_type (always "heat_pump")
+- Pricing (10 fields): total_bid_amount, labor_cost, equipment_cost, materials_cost, permit_cost, disposal_cost, electrical_cost, total_before_rebates, estimated_rebates, total_after_rebates
+- Payment terms (5 fields): deposit_required, deposit_percentage, payment_schedule, financing_offered, financing_terms
+- Warranty (4 fields): labor_warranty_years, equipment_warranty_years, compressor_warranty_years, additional_warranty_details
+- Timeline (4 fields): estimated_days, start_date_available, bid_date, valid_until
+- Extraction metadata (2 fields): extraction_confidence, extraction_notes
 
 You do NOT output: equipment specs (brand, model, SEER), contractor info, or any fields belonging to other tables (bids, bid_contractors, bid_equipment, bid_scores).
 </scope>
@@ -377,7 +372,7 @@ valid source. No web search. No general knowledge. No assumptions.
 3. Do NOT use web search — all scope data comes from the bid document only.
 4. summary should be 1-3 sentences summarizing what the bid covers.
 5. inclusions and exclusions are arrays of strings — each string is a brief description of one item.
-6. Do NOT output equipment specs, pricing totals, contractor info, or other non-scope fields.
+6. Do NOT output equipment specs (brand, model, SEER) or contractor contact info (phone, license, email) — those belong to other tables.
 7. Look for scope information in ALL parts of the bid — not just sections labeled "scope." Scope items may appear in proposals, line items, fine print, terms & conditions, or footnotes.
 8. If a bid mentions "permits" in a line item with a cost, that implies permit_included = true.
 9. If a bid mentions "customer responsible for permits," that means permit_included = false.
@@ -510,7 +505,7 @@ FIELD REQUIREMENTS:
 - line_items: [] if no pricing breakdown in bid. Each item needs: item_type, description.
   item_type MUST be one of: equipment, labor, materials, permit, disposal, electrical, ductwork, thermostat, rebate_processing, warranty, other.
 
-V2 MIGRATED FIELDS (REQUIRED):
+PRICING, PAYMENT, WARRANTY, TIMELINE, EXTRACTION FIELDS:
 - system_type: ALWAYS "heat_pump" for this workflow.
 - total_bid_amount: REQUIRED — the main bid price. Flag in extraction_notes if missing.
 - All other pricing fields: null if bid doesn't itemize.
@@ -545,7 +540,7 @@ Do NOT include id, bid_id, created_at, or updated_at — those are set by the da
 
 ## What This Node Does
 
-The Scope Extractor receives unstructured bid context from the Bid Data Extractor and parses ALL scope-of-work information into a structured JSON object matching the `bid_scope` table schema (69 columns — original 43 scope columns + 26 V2 migrated columns for pricing, payment, warranty, timeline, and extraction metadata).
+The Scope Extractor receives unstructured bid context from the Bid Data Extractor and parses ALL scope-of-work information into a structured JSON object matching the `bid_scope` table schema (69 columns: scope booleans, electrical details, accessories, line items, pricing, payment terms, warranty, timeline, and extraction metadata).
 
 **Rule:** All scope information comes exclusively from the bid document. No web research. No assumptions. No AI general knowledge.
 
@@ -683,7 +678,7 @@ STEPS:
 
 6. Write summary (1-3 sentences) and compile inclusions/exclusions arrays.
 
-7. Extract PRICING (V2 — 10 fields):
+7. Extract PRICING (10 fields):
    - total_bid_amount: REQUIRED — the main bottom-line price. Flag if missing.
    - labor_cost, equipment_cost, materials_cost, permit_cost, disposal_cost, electrical_cost: Only if bid itemizes these separately. null if lump sum only.
    - total_before_rebates: Same as total_bid_amount unless bid shows a separate pre-rebate total.
@@ -691,26 +686,26 @@ STEPS:
    - total_after_rebates: total_before_rebates minus estimated_rebates. null if no rebates.
    NOTE: equipment_cost here is the bid-stated cost — NEVER use web-researched pricing.
 
-8. Extract PAYMENT TERMS (V2 — 5 fields):
+8. Extract PAYMENT TERMS (5 fields):
    - deposit_required: Dollar amount. If only percentage given, calculate from total_bid_amount.
    - deposit_percentage: Percentage (e.g. 50.0 for 50%). If only dollar amount given, calculate.
    - payment_schedule: Free-form text (e.g. "50% deposit, 50% on completion").
    - financing_offered: true if mentioned, false if not mentioned (use false, NOT null).
    - financing_terms: Description of terms. Only if financing_offered = true.
 
-9. Extract WARRANTY (V2 — 4 fields):
+9. Extract WARRANTY (4 fields):
    - labor_warranty_years: Installer's labor warranty in years. SEPARATE from equipment warranty.
    - equipment_warranty_years: Manufacturer's parts warranty in years.
    - compressor_warranty_years: Compressor-specific warranty if stated separately (often longer). null if not separately stated.
    - additional_warranty_details: Registration requirements, limitations, transferability, extended options.
 
-10. Extract TIMELINE (V2 — 4 fields):
+10. Extract TIMELINE (4 fields):
     - estimated_days: Installation duration in days. If range ("1-2 days"), use upper bound.
     - start_date_available: YYYY-MM-DD format. Must be specific date. null for vague ("2-3 weeks").
     - bid_date: YYYY-MM-DD. Date the proposal was issued.
     - valid_until: YYYY-MM-DD. Expiration date. If stated as duration ("30 days"), calculate from bid_date.
 
-11. Set EXTRACTION METADATA (V2 — 2 fields):
+11. Set EXTRACTION METADATA (2 fields):
     - extraction_confidence: REQUIRED. "high" = clear PDF, all key fields found. "medium" = some unclear. "low" = poor quality, major gaps.
     - extraction_notes: Describe any issues, assumptions, missing sections. null if clean extraction.
 
@@ -1155,7 +1150,7 @@ Every output field maps 1:1 to `bid_scope` columns. **No transformation needed.*
 | `electrical_notes` | `bid_scope.electrical_notes` | TEXT |
 | `accessories` | `bid_scope.accessories` | JSONB |
 | `line_items` | `bid_scope.line_items` | JSONB |
-| **V2 Migrated Columns** | | |
+| **Pricing, Payment, Warranty, Timeline, Extraction** | | |
 | `system_type` | `bid_scope.system_type` | TEXT |
 | `total_bid_amount` | `bid_scope.total_bid_amount` | DECIMAL |
 | `labor_cost` | `bid_scope.labor_cost` | DECIMAL |
@@ -1214,21 +1209,21 @@ INSERT INTO bid_scope (bid_id,
   panel_upgrade_cost, electrical_notes,
   -- JSONB arrays
   accessories, line_items,
-  -- V2 Migrated: System type
+  -- System type
   system_type,
-  -- V2 Migrated: Pricing (10)
+  -- Pricing (10)
   total_bid_amount, labor_cost, equipment_cost, materials_cost,
   permit_cost, disposal_cost, electrical_cost,
   total_before_rebates, estimated_rebates, total_after_rebates,
-  -- V2 Migrated: Payment (5)
+  -- Payment (5)
   deposit_required, deposit_percentage, payment_schedule,
   financing_offered, financing_terms,
-  -- V2 Migrated: Warranty (4)
+  -- Warranty (4)
   labor_warranty_years, equipment_warranty_years,
   compressor_warranty_years, additional_warranty_details,
-  -- V2 Migrated: Timeline (4)
+  -- Timeline (4)
   estimated_days, start_date_available, bid_date, valid_until,
-  -- V2 Migrated: Extraction (2)
+  -- Extraction metadata (2)
   extraction_confidence, extraction_notes
 )
 VALUES (...)
@@ -1265,7 +1260,7 @@ ON CONFLICT (bid_id) DO UPDATE SET
 
 ## Validation Checklist (Supervised mode)
 
-### Original Scope Columns (43)
+### Scope & Electrical (43 columns)
 - [ ] All 12 scope booleans present in output (even if null)
 - [ ] All 12 _detail fields present in output (even if null)
 - [ ] All 10 electrical fields present in output (even if null)
@@ -1280,7 +1275,7 @@ ON CONFLICT (bid_id) DO UPDATE SET
 - [ ] exclusions array contains only items actually listed as excluded
 - [ ] line_items.item_type values are all valid enum values
 
-### V2 Migrated Columns (26)
+### Pricing, Payment, Warranty, Timeline & Extraction (26 columns)
 - [ ] system_type present and set to "heat_pump"
 - [ ] total_bid_amount present (flag in extraction_notes if null)
 - [ ] All 10 pricing fields present (null when not itemized)
