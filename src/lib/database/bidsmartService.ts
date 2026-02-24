@@ -321,31 +321,215 @@ export async function createBid(
   return data;
 }
 
-export async function getBid(bidId: string): Promise<Bid | null> {
-  const { data, error } = await supabase
-    .from('bids')
-    .select('*')
-    .eq('id', bidId)
-    .maybeSingle();
+// ============================================
+// V1 COMPATIBILITY LAYER
+// Production DB still uses V1 schema (contractor_bids monolith).
+// These helpers detect V2 table availability and fall back to V1.
+// Remove once the V2 migration is applied to production.
+// ============================================
 
-  if (error) throw error;
-  return data;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function v1ToBid(row: any): Bid {
+  return {
+    id: row.id,
+    project_id: row.project_id,
+    pdf_upload_id: row.pdf_upload_id ?? null,
+    bid_index: row.bid_index ?? null,
+    status: row.status ?? 'complete',
+    request_id: row.request_id ?? row.id,
+    storage_key: null,
+    source_doc_url: null,
+    source_doc_mime: null,
+    processing_attempts: 0,
+    last_error: null,
+    contractor_name: row.contractor_name ?? 'Unknown',
+    verified_by_user: row.verified_by_user ?? false,
+    verified_at: row.verified_at ?? null,
+    user_notes: row.user_notes ?? null,
+    is_favorite: row.is_favorite ?? false,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
 }
 
-export async function getBidsByProject(projectId: string): Promise<Bid[]> {
-  const { data, error } = await supabase
+function v1ToScope(row: any): BidScope {
+  return {
+    id: row.id, // reuse bid id as pseudo-scope id
+    bid_id: row.id,
+    total_bid_amount: row.total_bid_amount,
+    labor_cost: row.labor_cost,
+    equipment_cost: row.equipment_cost,
+    materials_cost: row.materials_cost,
+    permit_cost: row.permit_cost,
+    disposal_cost: row.disposal_cost,
+    electrical_cost: row.electrical_cost,
+    total_before_rebates: row.total_before_rebates,
+    estimated_rebates: row.estimated_rebates,
+    total_after_rebates: row.total_after_rebates,
+    deposit_required: row.deposit_required,
+    deposit_percentage: row.deposit_percentage,
+    payment_schedule: row.payment_schedule,
+    financing_offered: row.financing_offered,
+    financing_terms: row.financing_terms,
+    labor_warranty_years: row.labor_warranty_years,
+    equipment_warranty_years: row.equipment_warranty_years,
+    compressor_warranty_years: row.compressor_warranty_years,
+    additional_warranty_details: row.additional_warranty_details,
+    estimated_days: row.estimated_days,
+    start_date_available: row.start_date_available,
+    bid_date: row.bid_date,
+    valid_until: row.valid_until,
+    extraction_confidence: row.extraction_confidence,
+    extraction_notes: row.extraction_notes,
+    summary: row.scope_summary ?? null,
+    inclusions: row.inclusions,
+    exclusions: row.exclusions,
+    // V1 scope booleans have scope_ prefix
+    permit_included: row.scope_permit_included,
+    disposal_included: row.scope_disposal_included,
+    electrical_included: row.scope_electrical_included,
+    ductwork_included: row.scope_ductwork_included,
+    thermostat_included: row.scope_thermostat_included,
+    manual_j_included: row.scope_manual_j_included,
+    commissioning_included: row.scope_commissioning_included,
+    air_handler_included: row.scope_air_handler_included,
+    line_set_included: row.scope_line_set_included,
+    disconnect_included: row.scope_disconnect_included,
+    pad_included: row.scope_pad_included,
+    drain_line_included: row.scope_drain_line_included,
+    // V1 electrical fields keep electrical_ prefix
+    panel_assessment_included: row.electrical_panel_assessment_included,
+    panel_upgrade_included: row.electrical_panel_upgrade_included,
+    dedicated_circuit_included: row.electrical_dedicated_circuit_included,
+    electrical_permit_included: row.electrical_permit_included,
+    load_calculation_included: row.electrical_load_calculation_included,
+    existing_panel_amps: row.electrical_existing_panel_amps,
+    proposed_panel_amps: row.electrical_proposed_panel_amps,
+    breaker_size_required: row.electrical_breaker_size_required,
+    panel_upgrade_cost: row.electrical_panel_upgrade_cost,
+    electrical_notes: row.electrical_notes,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+function v1ToContractor(row: any): BidContractor {
+  return {
+    id: row.id, // reuse bid id as pseudo-contractor id
+    bid_id: row.id,
+    name: row.contractor_name,
+    company: row.contractor_company,
+    phone: row.contractor_phone,
+    email: row.contractor_email,
+    website: row.contractor_website,
+    license: row.contractor_license,
+    license_state: row.contractor_license_state,
+    insurance_verified: row.contractor_insurance_verified,
+    bonded: row.contractor_bonded ?? null,
+    years_in_business: row.contractor_years_in_business,
+    year_established: row.contractor_year_established,
+    total_installs: row.contractor_total_installs,
+    certifications: row.contractor_certifications,
+    employee_count: row.contractor_employee_count ? Number(row.contractor_employee_count) : null,
+    service_area: row.contractor_service_area,
+    google_rating: row.contractor_google_rating,
+    google_review_count: row.contractor_google_review_count,
+    yelp_rating: row.contractor_yelp_rating,
+    yelp_review_count: row.contractor_yelp_review_count,
+    bbb_rating: row.contractor_bbb_rating,
+    bbb_accredited: row.contractor_bbb_accredited,
+    bbb_complaints_3yr: row.contractor_bbb_complaints_3yr,
+    contact_name: row.contractor_contact_name ?? null,
+    address: row.contractor_address ?? null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+function v1ToScore(row: any): BidScore {
+  return {
+    id: row.id, // reuse bid id as pseudo-score id
+    bid_id: row.id,
+    overall_score: row.overall_score ?? row.mindpal_overall_score,
+    value_score: row.value_score ?? row.mindpal_value_score,
+    quality_score: row.quality_score ?? row.mindpal_quality_score,
+    completeness_score: row.completeness_score,
+    ranking_recommendation: row.ranking_recommendation,
+    red_flags: row.red_flags ?? [],
+    positive_indicators: row.positive_indicators ?? [],
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+// Cache whether V2 bids table exists to avoid repeated failed queries
+let _v2Available: boolean | null = null;
+
+async function isV2Schema(): Promise<boolean> {
+  if (_v2Available !== null) return _v2Available;
+  const { error } = await supabase
     .from('bids')
+    .select('id', { count: 'exact', head: true })
+    .limit(0);
+  _v2Available = !error;
+  return _v2Available;
+}
+
+async function getV1BidsByProject(projectId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('contractor_bids')
     .select('*')
     .eq('project_id', projectId)
     .order('created_at', { ascending: true });
-
   if (error) throw error;
   return data || [];
 }
 
+async function getV1BidById(bidId: string): Promise<any | null> {
+  const { data, error } = await supabase
+    .from('contractor_bids')
+    .select('*')
+    .eq('id', bidId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+// ============================================
+
+export async function getBid(bidId: string): Promise<Bid | null> {
+  if (await isV2Schema()) {
+    const { data, error } = await supabase
+      .from('bids')
+      .select('*')
+      .eq('id', bidId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+  const row = await getV1BidById(bidId);
+  return row ? v1ToBid(row) : null;
+}
+
+export async function getBidsByProject(projectId: string): Promise<Bid[]> {
+  if (await isV2Schema()) {
+    const { data, error } = await supabase
+      .from('bids')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+  const rows = await getV1BidsByProject(projectId);
+  return rows.map(v1ToBid);
+}
+
 export async function getBidCountByProject(projectId: string): Promise<number> {
+  const table = (await isV2Schema()) ? 'bids' : 'contractor_bids';
   const { count, error } = await supabase
-    .from('bids')
+    .from(table)
     .select('*', { count: 'exact', head: true })
     .eq('project_id', projectId);
 
@@ -419,28 +603,36 @@ export async function verifyBid(bidId: string): Promise<Bid | null> {
 // ============================================
 
 export async function getBidScope(bidId: string): Promise<BidScope | null> {
-  const { data, error } = await supabase
-    .from('bid_scope')
-    .select('*')
-    .eq('bid_id', bidId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
+  if (await isV2Schema()) {
+    const { data, error } = await supabase
+      .from('bid_scope')
+      .select('*')
+      .eq('bid_id', bidId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+  // V1 fallback: scope fields live on contractor_bids
+  const row = await getV1BidById(bidId);
+  return row ? v1ToScope(row) : null;
 }
 
 export async function getBidScopesByProject(projectId: string): Promise<BidScope[]> {
-  // Join through bids to filter by project
-  const { data, error } = await supabase
-    .from('bid_scope')
-    .select('*, bids!inner(project_id)')
-    .eq('bids.project_id', projectId);
-
-  if (error) throw error;
-  return (data || []).map((row: Record<string, unknown>) => {
-    const { bids: _, ...scope } = row;
-    return scope as unknown as BidScope;
-  });
+  if (await isV2Schema()) {
+    // Join through bids to filter by project
+    const { data, error } = await supabase
+      .from('bid_scope')
+      .select('*, bids!inner(project_id)')
+      .eq('bids.project_id', projectId);
+    if (error) throw error;
+    return (data || []).map((row: Record<string, unknown>) => {
+      const { bids: _, ...scope } = row;
+      return scope as unknown as BidScope;
+    });
+  }
+  // V1 fallback
+  const rows = await getV1BidsByProject(projectId);
+  return rows.map(v1ToScope);
 }
 
 // ============================================
@@ -448,14 +640,18 @@ export async function getBidScopesByProject(projectId: string): Promise<BidScope
 // ============================================
 
 export async function getBidContractor(bidId: string): Promise<BidContractor | null> {
-  const { data, error } = await supabase
-    .from('bid_contractors')
-    .select('*')
-    .eq('bid_id', bidId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
+  if (await isV2Schema()) {
+    const { data, error } = await supabase
+      .from('bid_contractors')
+      .select('*')
+      .eq('bid_id', bidId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+  // V1 fallback: contractor fields live on contractor_bids
+  const row = await getV1BidById(bidId);
+  return row ? v1ToContractor(row) : null;
 }
 
 // ============================================
@@ -463,14 +659,18 @@ export async function getBidContractor(bidId: string): Promise<BidContractor | n
 // ============================================
 
 export async function getBidScore(bidId: string): Promise<BidScore | null> {
-  const { data, error } = await supabase
-    .from('bid_scores')
-    .select('*')
-    .eq('bid_id', bidId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
+  if (await isV2Schema()) {
+    const { data, error } = await supabase
+      .from('bid_scores')
+      .select('*')
+      .eq('bid_id', bidId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+  // V1 fallback: score fields live on contractor_bids
+  const row = await getV1BidById(bidId);
+  return row ? v1ToScore(row) : null;
 }
 
 // ============================================
