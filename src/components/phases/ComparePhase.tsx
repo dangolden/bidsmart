@@ -80,7 +80,7 @@ export function ComparePhase() {
 
       return {
         bidId: b.bid.id,
-        contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
+        contractor: b.bid.contractor_name || 'Unknown',
         brand: mainEquipment?.brand || '-',
         model: mainEquipment?.model_number || mainEquipment?.model_name || '-',
         seer2: mainEquipment?.seer2_rating || mainEquipment?.seer_rating,
@@ -102,90 +102,97 @@ export function ComparePhase() {
   };
 
   const getContractorData = () => {
-    return bids.map((b) => ({
-      bidId: b.bid.id,
-      contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
-      yearsInBusiness: b.bid.contractor_years_in_business,
-      yearEstablished: b.bid.contractor_year_established,
-      googleRating: b.bid.contractor_google_rating,
-      reviewCount: b.bid.contractor_google_review_count,
-      switchRating: b.bid.contractor_switch_rating,
-      certifications: b.bid.contractor_certifications || [],
-      license: b.bid.contractor_license,
-      licenseState: b.bid.contractor_license_state,
-      insuranceVerified: b.bid.contractor_insurance_verified,
-      isSwitchPreferred: b.bid.contractor_is_switch_preferred,
-      phone: b.bid.contractor_phone,
-      email: b.bid.contractor_email,
-      website: b.bid.contractor_website,
-      totalInstalls: b.bid.contractor_total_installs,
-      // New MindPal extraction fields
-      yelpRating: b.bid.contractor_yelp_rating,
-      yelpReviewCount: b.bid.contractor_yelp_review_count,
-      bbbRating: b.bid.contractor_bbb_rating,
-      bbbAccredited: b.bid.contractor_bbb_accredited,
-      bbbComplaints: b.bid.contractor_bbb_complaints_3yr,
-      bonded: b.bid.contractor_bonded,
-      contactName: b.bid.contractor_contact_name,
-      address: b.bid.contractor_address,
-      redFlags: b.bid.red_flags || [],
-      positiveIndicators: b.bid.positive_indicators || [],
-    }));
+    return bids.map((b) => {
+      const c = b.contractor;
+      const sc = b.scores;
+      return {
+        bidId: b.bid.id,
+        contractor: b.bid.contractor_name || 'Unknown',
+        yearsInBusiness: c?.years_in_business,
+        yearEstablished: c?.year_established,
+        googleRating: c?.google_rating,
+        reviewCount: c?.google_review_count,
+        certifications: c?.certifications || [],
+        license: c?.license,
+        licenseState: c?.license_state,
+        insuranceVerified: c?.insurance_verified,
+        phone: c?.phone,
+        email: c?.email,
+        website: c?.website,
+        totalInstalls: c?.total_installs,
+        yelpRating: c?.yelp_rating,
+        yelpReviewCount: c?.yelp_review_count,
+        bbbRating: c?.bbb_rating,
+        bbbAccredited: c?.bbb_accredited,
+        bbbComplaints: c?.bbb_complaints_3yr,
+        bonded: c?.bonded,
+        contactName: c?.contact_name,
+        address: c?.address,
+        redFlags: sc?.red_flags || [],
+        positiveIndicators: sc?.positive_indicators || [],
+      };
+    });
   };
 
   const getCostData = () => {
-    return bids.map((b) => ({
-      bidId: b.bid.id,
-      contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
-      totalAmount: b.bid.total_bid_amount,
-      equipmentCost: b.bid.equipment_cost,
-      laborCost: b.bid.labor_cost,
-      materialsCost: b.bid.materials_cost,
-      permitCost: b.bid.permit_cost,
-      laborWarranty: b.bid.labor_warranty_years,
-      equipmentWarranty: b.bid.equipment_warranty_years,
-      financingAvailable: b.bid.financing_offered,
-      financingTerms: b.bid.financing_terms,
-      exclusions: b.bid.exclusions || [],
-      estimatedDays: b.bid.estimated_days,
-      startDateAvailable: b.bid.start_date_available,
-      validUntil: b.bid.valid_until,
-      bidDate: b.bid.bid_date,
-      depositRequired: b.bid.deposit_required,
-      depositPercentage: b.bid.deposit_percentage,
-      paymentSchedule: b.bid.payment_schedule,
-    }));
+    return bids.map((b) => {
+      const sc = b.scope;
+      return {
+        bidId: b.bid.id,
+        contractor: b.bid.contractor_name || 'Unknown',
+        totalAmount: sc?.total_bid_amount ?? 0,
+        equipmentCost: sc?.equipment_cost,
+        laborCost: sc?.labor_cost,
+        materialsCost: sc?.materials_cost,
+        permitCost: sc?.permit_cost,
+        laborWarranty: sc?.labor_warranty_years,
+        equipmentWarranty: sc?.equipment_warranty_years,
+        financingAvailable: sc?.financing_offered,
+        financingTerms: sc?.financing_terms,
+        exclusions: sc?.exclusions || [],
+        estimatedDays: sc?.estimated_days,
+        startDateAvailable: sc?.start_date_available,
+        validUntil: sc?.valid_until,
+        bidDate: sc?.bid_date,
+        depositRequired: sc?.deposit_required,
+        depositPercentage: sc?.deposit_percentage,
+        paymentSchedule: sc?.payment_schedule,
+      };
+    });
   };
 
   const getScopeData = () => {
-    return bids.map((b) => ({
-      bidId: b.bid.id,
-      contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
-      permit: b.bid.scope_permit_included,
-      permitDetail: b.bid.scope_permit_detail,
-      disposal: b.bid.scope_disposal_included,
-      disposalDetail: b.bid.scope_disposal_detail,
-      electrical: b.bid.scope_electrical_included,
-      electricalDetail: b.bid.scope_electrical_detail,
-      ductwork: b.bid.scope_ductwork_included,
-      ductworkDetail: b.bid.scope_ductwork_detail,
-      thermostat: b.bid.scope_thermostat_included,
-      thermostatDetail: b.bid.scope_thermostat_detail,
-      manualJ: b.bid.scope_manual_j_included,
-      manualJDetail: b.bid.scope_manual_j_detail,
-      commissioning: b.bid.scope_commissioning_included,
-      commissioningDetail: b.bid.scope_commissioning_detail,
-      airHandler: b.bid.scope_air_handler_included,
-      airHandlerDetail: b.bid.scope_air_handler_detail,
-      lineSet: b.bid.scope_line_set_included,
-      lineSetDetail: b.bid.scope_line_set_detail,
-      disconnect: b.bid.scope_disconnect_included,
-      disconnectDetail: b.bid.scope_disconnect_detail,
-      pad: b.bid.scope_pad_included,
-      padDetail: b.bid.scope_pad_detail,
-      drainLine: b.bid.scope_drain_line_included,
-      drainLineDetail: b.bid.scope_drain_line_detail,
-    }));
+    return bids.map((b) => {
+      const sc = b.scope;
+      return {
+        bidId: b.bid.id,
+        contractor: b.bid.contractor_name || 'Unknown',
+        permit: sc?.permit_included,
+        permitDetail: sc?.permit_detail,
+        disposal: sc?.disposal_included,
+        disposalDetail: sc?.disposal_detail,
+        electrical: sc?.electrical_included,
+        electricalDetail: sc?.electrical_detail,
+        ductwork: sc?.ductwork_included,
+        ductworkDetail: sc?.ductwork_detail,
+        thermostat: sc?.thermostat_included,
+        thermostatDetail: sc?.thermostat_detail,
+        manualJ: sc?.manual_j_included,
+        manualJDetail: sc?.manual_j_detail,
+        commissioning: sc?.commissioning_included,
+        commissioningDetail: sc?.commissioning_detail,
+        airHandler: sc?.air_handler_included,
+        airHandlerDetail: sc?.air_handler_detail,
+        lineSet: sc?.line_set_included,
+        lineSetDetail: sc?.line_set_detail,
+        disconnect: sc?.disconnect_included,
+        disconnectDetail: sc?.disconnect_detail,
+        pad: sc?.pad_included,
+        padDetail: sc?.pad_detail,
+        drainLine: sc?.drain_line_included,
+        drainLineDetail: sc?.drain_line_detail,
+      };
+    });
   };
 
   const equipmentData = getEquipmentData();
@@ -662,40 +669,7 @@ export function ComparePhase() {
                       </td>
                     ))}
                   </tr>
-                  <tr className="border-b border-gray-200 bg-gray-50/50">
-                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">
-                      <div className="flex items-center gap-2">
-                        <span>Switch Rating</span>
-                        <span className="text-xs text-gray-500 font-normal">(verified homeowners)</span>
-                      </div>
-                    </td>
-                    {contractorData.map((c, idx) => {
-                      const bestSwitchRating = getHighestValue(contractorData.map((cd) => cd.switchRating), true);
-                      return (
-                        <td
-                          key={c.bidId}
-                          style={bidCellStyle}
-                          className={`px-5 py-4 text-sm font-semibold ${isHighlighted(c.switchRating, bestSwitchRating) ? 'text-switch-green-700 bg-gradient-to-r from-switch-green-50 to-switch-green-100' : 'text-gray-900'} ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}
-                        >
-                          {c.switchRating ? (
-                            <span className="flex items-center gap-2">
-                              <span className="flex items-center gap-1">
-                                {c.switchRating.toFixed(1)}
-                                <Star className="w-4 h-4 text-switch-green-600 fill-switch-green-600" />
-                              </span>
-                              {isHighlighted(c.switchRating, bestSwitchRating) && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-switch-green-600 text-white text-xs font-medium rounded-full">
-                                  TOP
-                                </span>
-                              )}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 text-xs">No reviews yet</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
+                  {/* Switch Rating row removed — requires Switch.com integration */}
                   <tr className="border-b border-gray-200">
                     <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Certifications</td>
                     {contractorData.map((c, idx) => (
@@ -727,20 +701,7 @@ export function ComparePhase() {
                       </td>
                     ))}
                   </tr>
-                  <tr className={showMoreContractors ? 'border-b border-gray-200 bg-gray-50/50' : ''}>
-                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Switch Preferred</td>
-                    {contractorData.map((c, idx) => (
-                      <td key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm ${idx < contractorData.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                        {c.isSwitchPreferred ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-switch-green-500 to-switch-green-600 text-white rounded-full text-xs font-semibold shadow-sm">
-                            <CheckCircle className="w-3.5 h-3.5" /> Preferred Partner
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
+                  {/* Switch Preferred row removed — requires Switch.com integration */}
 
                   {showMoreContractors && (
                     <>

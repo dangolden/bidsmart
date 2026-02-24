@@ -7,7 +7,10 @@
 import { supabase } from '../supabaseClient';
 import type {
   Project,
-  ContractorBid,
+  Bid,
+  BidScope,
+  BidContractor,
+  BidScore,
   BidLineItem,
   BidEquipment,
   BidAnalysis,
@@ -258,23 +261,54 @@ export async function createDraftProject(
 }
 
 // ============================================
-// CONTRACTOR BIDS
+// BIDS (V2 — thin identity stubs)
 // ============================================
 
+/**
+ * Create a bid stub at PDF upload time.
+ * The stub is updated by the MindPal callback with status='completed'.
+ */
+export async function createBidStub(
+  projectId: string,
+  pdfUploadId: string,
+  requestId: string,
+  storageKey?: string
+): Promise<Bid> {
+  const { data, error } = await supabase
+    .from('bids')
+    .insert({
+      project_id: projectId,
+      pdf_upload_id: pdfUploadId,
+      request_id: requestId,
+      storage_key: storageKey || null,
+      status: 'pending',
+      contractor_name: 'TBD',
+      verified_by_user: false,
+      is_favorite: false,
+      processing_attempts: 0,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/** @deprecated Use createBidStub for V2 flow. Kept for backward compat. */
 export async function createBid(
   projectId: string,
-  bidData: Partial<ContractorBid>
-): Promise<ContractorBid> {
+  bidData: Partial<Bid>
+): Promise<Bid> {
   const { data, error } = await supabase
-    .from('contractor_bids')
+    .from('bids')
     .insert({
       project_id: projectId,
       contractor_name: bidData.contractor_name || 'Unknown Contractor',
-      total_bid_amount: bidData.total_bid_amount || 0,
-      extraction_confidence: bidData.extraction_confidence || 'manual',
-      financing_offered: bidData.financing_offered || false,
+      request_id: bidData.request_id || '',
+      status: bidData.status || 'pending',
       verified_by_user: bidData.verified_by_user || false,
       is_favorite: bidData.is_favorite || false,
+      processing_attempts: 0,
       ...bidData,
     })
     .select()
@@ -284,9 +318,9 @@ export async function createBid(
   return data;
 }
 
-export async function getBid(bidId: string): Promise<ContractorBid | null> {
+export async function getBid(bidId: string): Promise<Bid | null> {
   const { data, error } = await supabase
-    .from('contractor_bids')
+    .from('bids')
     .select('*')
     .eq('id', bidId)
     .maybeSingle();
@@ -295,12 +329,12 @@ export async function getBid(bidId: string): Promise<ContractorBid | null> {
   return data;
 }
 
-export async function getBidsByProject(projectId: string): Promise<ContractorBid[]> {
+export async function getBidsByProject(projectId: string): Promise<Bid[]> {
   const { data, error } = await supabase
-    .from('contractor_bids')
+    .from('bids')
     .select('*')
     .eq('project_id', projectId)
-    .order('overall_score', { ascending: false, nullsFirst: false });
+    .order('created_at', { ascending: true });
 
   if (error) throw error;
   return data || [];
@@ -308,7 +342,7 @@ export async function getBidsByProject(projectId: string): Promise<ContractorBid
 
 export async function getBidCountByProject(projectId: string): Promise<number> {
   const { count, error } = await supabase
-    .from('contractor_bids')
+    .from('bids')
     .select('*', { count: 'exact', head: true })
     .eq('project_id', projectId);
 
@@ -318,10 +352,10 @@ export async function getBidCountByProject(projectId: string): Promise<number> {
 
 export async function updateBid(
   bidId: string,
-  updates: Partial<ContractorBid>
-): Promise<ContractorBid | null> {
+  updates: Partial<Bid>
+): Promise<Bid | null> {
   const { data, error } = await supabase
-    .from('contractor_bids')
+    .from('bids')
     .update(updates)
     .eq('id', bidId)
     .select()
@@ -333,25 +367,84 @@ export async function updateBid(
 
 export async function deleteBid(bidId: string): Promise<void> {
   const { error } = await supabase
-    .from('contractor_bids')
+    .from('bids')
     .delete()
     .eq('id', bidId);
 
   if (error) throw error;
 }
 
-export async function toggleBidFavorite(bidId: string): Promise<ContractorBid | null> {
+export async function toggleBidFavorite(bidId: string): Promise<Bid | null> {
   const bid = await getBid(bidId);
   if (!bid) return null;
 
   return updateBid(bidId, { is_favorite: !bid.is_favorite });
 }
 
-export async function verifyBid(bidId: string): Promise<ContractorBid | null> {
+export async function verifyBid(bidId: string): Promise<Bid | null> {
   return updateBid(bidId, {
     verified_by_user: true,
     verified_at: new Date().toISOString(),
   });
+}
+
+// ============================================
+// BID SCOPE (V2 — all extracted data)
+// ============================================
+
+export async function getBidScope(bidId: string): Promise<BidScope | null> {
+  const { data, error } = await supabase
+    .from('bid_scope')
+    .select('*')
+    .eq('bid_id', bidId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getBidScopesByProject(projectId: string): Promise<BidScope[]> {
+  // Join through bids to filter by project
+  const { data, error } = await supabase
+    .from('bid_scope')
+    .select('*, bids!inner(project_id)')
+    .eq('bids.project_id', projectId);
+
+  if (error) throw error;
+  return (data || []).map((row: Record<string, unknown>) => {
+    const { bids: _, ...scope } = row;
+    return scope as unknown as BidScope;
+  });
+}
+
+// ============================================
+// BID CONTRACTORS (V2)
+// ============================================
+
+export async function getBidContractor(bidId: string): Promise<BidContractor | null> {
+  const { data, error } = await supabase
+    .from('bid_contractors')
+    .select('*')
+    .eq('bid_id', bidId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+// ============================================
+// BID SCORES (V2)
+// ============================================
+
+export async function getBidScore(bidId: string): Promise<BidScore | null> {
+  const { data, error } = await supabase
+    .from('bid_scores')
+    .select('*')
+    .eq('bid_id', bidId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
 }
 
 // ============================================
@@ -812,26 +905,25 @@ export async function getProjectSummary(projectId: string): Promise<ProjectSumma
   const project = await getProject(projectId);
   if (!project) return null;
 
-  // Get bids with their line items and equipment
+  // Get bids with their scope, contractor, scores, line items, and equipment
   const bids = await getBidsByProject(projectId);
   const bidsWithDetails: BidComparisonTableRow[] = await Promise.all(
     bids.map(async (bid) => {
-      const [lineItems, equipment] = await Promise.all([
+      const [scope, contractor, scores, lineItems, equipment] = await Promise.all([
+        getBidScope(bid.id),
+        getBidContractor(bid.id),
+        getBidScore(bid.id),
         getLineItemsByBid(bid.id),
         getEquipmentByBid(bid.id),
       ]);
 
       return {
         bid,
+        scope,
+        contractor,
+        scores,
         equipment,
         lineItems,
-        scores: {
-          overall: bid.overall_score || 0,
-          price: 0, // Calculated from price comparison
-          quality: bid.quality_score || 0,
-          value: bid.value_score || 0,
-          completeness: bid.completeness_score || 0,
-        },
       };
     })
   );
@@ -842,21 +934,24 @@ export async function getProjectSummary(projectId: string): Promise<ProjectSumma
   // Get rebates
   const rebates = await getProjectRebates(projectId);
 
-  // Calculate stats
-  const prices = bids.map((b) => b.total_bid_amount).filter((p) => p > 0);
+  // Calculate stats from bid_scope pricing
+  const prices = bidsWithDetails
+    .map((b) => b.scope?.total_bid_amount)
+    .filter((p): p is number => p != null && p > 0);
+
   const stats = {
     totalBids: bids.length,
     averagePrice: prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : 0,
     lowestPrice: prices.length > 0 ? Math.min(...prices) : 0,
     highestPrice: prices.length > 0 ? Math.max(...prices) : 0,
-    bestValueBidId: bids.reduce((best, bid) =>
-      (bid.value_score || 0) > (best?.value_score || 0) ? bid : best,
-      bids[0]
-    )?.id || null,
-    bestQualityBidId: bids.reduce((best, bid) =>
-      (bid.quality_score || 0) > (best?.quality_score || 0) ? bid : best,
-      bids[0]
-    )?.id || null,
+    bestValueBidId: bidsWithDetails.reduce((best, row) =>
+      (row.scores?.value_score || 0) > (best?.scores?.value_score || 0) ? row : best,
+      bidsWithDetails[0]
+    )?.bid.id || null,
+    bestQualityBidId: bidsWithDetails.reduce((best, row) =>
+      (row.scores?.quality_score || 0) > (best?.scores?.quality_score || 0) ? row : best,
+      bidsWithDetails[0]
+    )?.bid.id || null,
   };
 
   return {
@@ -1120,7 +1215,7 @@ export async function deleteBidFaq(faqId: string): Promise<void> {
 
 export async function getFaqsByProject(
   projectId: string,
-  bids: Array<{ bid: ContractorBid }>
+  bids: Array<{ bid: Bid }>
 ): Promise<import('../types').ProjectFaqData> {
   const overallFaqsPromise = supabase
     .from('project_faqs')
@@ -1133,7 +1228,7 @@ export async function getFaqsByProject(
     return {
       bid_id: bidData.bid.id,
       bid_index: index,
-      contractor_name: bidData.bid.contractor_name || bidData.bid.contractor_company || `Bid ${index + 1}`,
+      contractor_name: bidData.bid.contractor_name || `Bid ${index + 1}`,
       faqs,
     };
   });

@@ -188,154 +188,189 @@ export interface ContractorCertificationsDetailed {
   other_certifications?: string[];
 }
 
-export interface ContractorBid {
+// ============================================
+// V2 SCHEMA: Bid is a thin identity/status stub.
+// All extracted data lives in BidScope.
+// ============================================
+
+export type BidStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface Bid {
   id: string;
   project_id: string;
-  
-  // Contractor information
+  pdf_upload_id?: string | null;
+  bid_index?: number | null;
+
+  // Lifecycle
+  status: BidStatus;
+  request_id: string;
+  storage_key?: string | null;
+  source_doc_url?: string | null;
+  source_doc_mime?: string | null;
+
+  // Observability
+  processing_attempts: number;
+  last_error?: string | null;
+
+  // Display name (set to 'TBD' at creation, updated by callback)
   contractor_name: string;
-  contractor_company?: string | null;
-  contractor_phone?: string | null;
-  contractor_email?: string | null;
-  contractor_license?: string | null;
-  contractor_license_state?: string | null;
-  contractor_insurance_verified?: boolean | null;
-  contractor_website?: string | null;
-  
-  // Contractor qualitative data (for side-by-side comparison)
-  contractor_years_in_business?: number | null;
-  contractor_year_established?: number | null;
-  contractor_total_installs?: number | null;
-  contractor_switch_rating?: number | null; // TheSwitchIsOn rating (1-5)
-  contractor_google_rating?: number | null;
-  contractor_google_review_count?: number | null;
-  contractor_certifications?: string[] | null;
-  contractor_is_switch_preferred?: boolean;
-  
-  // Additional contractor ratings (from MindPal extraction)
-  contractor_yelp_rating?: number | null;
-  contractor_yelp_review_count?: number | null;
-  contractor_bbb_rating?: string | null;
-  contractor_bbb_accredited?: boolean | null;
-  contractor_bbb_complaints_3yr?: number | null;
-  contractor_bonded?: boolean | null;
-  contractor_contact_name?: string | null;
-  contractor_address?: string | null;
-  contractor_employee_count?: string | null;
-  contractor_service_area?: string | null;
-  contractor_certifications_detailed?: ContractorCertificationsDetailed | null;
-  
-  // Contractor researcher metadata (from MindPal Contractor Researcher)
-  contractor_license_status?: string | null;
-  contractor_license_expiration_date?: string | null;
-  contractor_research_confidence?: number | null;
-  contractor_verification_date?: string | null;
-  contractor_research_notes?: string | null;
-  
-  // Bid totals
-  total_bid_amount: number;
+
+  // User actions (stay on bids — user interactions, not extraction data)
+  verified_by_user: boolean;
+  verified_at?: string | null;
+  user_notes?: string | null;
+  is_favorite: boolean;
+
+  created_at: string;
+  updated_at: string;
+}
+
+// Backward-compatible alias — old code references ContractorBid
+export type ContractorBid = Bid;
+
+export interface BidScope {
+  id: string;
+  bid_id: string;
+
+  // System type
+  system_type?: string | null;
+
+  // Pricing (all nullable — populated by MindPal callback)
+  total_bid_amount?: number | null;
   labor_cost?: number | null;
   equipment_cost?: number | null;
   materials_cost?: number | null;
   permit_cost?: number | null;
   disposal_cost?: number | null;
   electrical_cost?: number | null;
-  
-  // Pre-rebate vs post-rebate
   total_before_rebates?: number | null;
   estimated_rebates?: number | null;
   total_after_rebates?: number | null;
-  
-  // Timeline
-  estimated_days?: number | null;
-  start_date_available?: string | null;
-  
+
+  // Payment terms
+  deposit_required?: number | null;
+  deposit_percentage?: number | null;
+  payment_schedule?: string | null;
+  financing_offered?: boolean | null;
+  financing_terms?: string | null;
+
   // Warranty
   labor_warranty_years?: number | null;
   equipment_warranty_years?: number | null;
   compressor_warranty_years?: number | null;
   additional_warranty_details?: string | null;
-  
-  // Payment terms
-  deposit_required?: number | null;
-  deposit_required_flag?: boolean | null;
-  deposit_percentage?: number | null;
-  payment_schedule?: string | null;
-  financing_offered: boolean;
-  financing_terms?: string | null;
-  
-  // Scope
-  scope_summary?: string | null;
+
+  // Timeline
+  estimated_days?: number | null;
+  start_date_available?: string | null;
+  bid_date?: string | null;
+  valid_until?: string | null;
+
+  // Extraction metadata
+  extraction_confidence?: ConfidenceLevel | null;
+  extraction_notes?: string | null;
+
+  // Summary & free-form
+  summary?: string | null;
   inclusions?: string[] | null;
   exclusions?: string[] | null;
 
-  // Structured scope booleans (for comparison grid)
-  scope_permit_included?: boolean | null;
-  scope_disposal_included?: boolean | null;
-  scope_electrical_included?: boolean | null;
-  scope_ductwork_included?: boolean | null;
-  scope_thermostat_included?: boolean | null;
-  scope_manual_j_included?: boolean | null;
-  scope_commissioning_included?: boolean | null;
-  scope_air_handler_included?: boolean | null;
-  scope_line_set_included?: boolean | null;
-  scope_disconnect_included?: boolean | null;
-  scope_pad_included?: boolean | null;
-  scope_drain_line_included?: boolean | null;
+  // Scope booleans + details
+  permit_included?: boolean | null;
+  permit_detail?: string | null;
+  disposal_included?: boolean | null;
+  disposal_detail?: string | null;
+  electrical_included?: boolean | null;
+  electrical_detail?: string | null;
+  ductwork_included?: boolean | null;
+  ductwork_detail?: string | null;
+  thermostat_included?: boolean | null;
+  thermostat_detail?: string | null;
+  manual_j_included?: boolean | null;
+  manual_j_detail?: string | null;
+  commissioning_included?: boolean | null;
+  commissioning_detail?: string | null;
+  air_handler_included?: boolean | null;
+  air_handler_detail?: string | null;
+  line_set_included?: boolean | null;
+  line_set_detail?: string | null;
+  disconnect_included?: boolean | null;
+  disconnect_detail?: string | null;
+  pad_included?: boolean | null;
+  pad_detail?: string | null;
+  drain_line_included?: boolean | null;
+  drain_line_detail?: string | null;
 
-  // Scope details (specific info like "Smart Thermostat" instead of just boolean)
-  scope_permit_detail?: string | null;
-  scope_disposal_detail?: string | null;
-  scope_electrical_detail?: string | null;
-  scope_ductwork_detail?: string | null;
-  scope_thermostat_detail?: string | null;
-  scope_manual_j_detail?: string | null;
-  scope_commissioning_detail?: string | null;
-  scope_air_handler_detail?: string | null;
-  scope_line_set_detail?: string | null;
-  scope_disconnect_detail?: string | null;
-  scope_pad_detail?: string | null;
-  scope_drain_line_detail?: string | null;
-
-  // Electrical work details (v8 fields)
-  electrical_panel_assessment_included?: boolean | null;
-  electrical_panel_upgrade_included?: boolean | null;
-  electrical_panel_upgrade_cost?: number | null;
-  electrical_existing_panel_amps?: number | null;
-  electrical_proposed_panel_amps?: number | null;
-  electrical_breaker_size_required?: number | null;
-  electrical_dedicated_circuit_included?: boolean | null;
+  // Electrical work sub-group
+  panel_assessment_included?: boolean | null;
+  panel_upgrade_included?: boolean | null;
+  dedicated_circuit_included?: boolean | null;
   electrical_permit_included?: boolean | null;
-  electrical_load_calculation_included?: boolean | null;
+  load_calculation_included?: boolean | null;
+  existing_panel_amps?: number | null;
+  proposed_panel_amps?: number | null;
+  breaker_size_required?: number | null;
+  panel_upgrade_cost?: number | null;
   electrical_notes?: string | null;
 
-  // Source tracking
-  bid_date?: string | null;
-  quote_date?: string | null;
-  valid_until?: string | null;
-  pdf_upload_id?: string | null;
-  
-  // Quality metrics
+  // Accessories & Line Items (JSONB)
+  accessories?: Record<string, unknown>[] | null;
+  line_items?: Record<string, unknown>[] | null;
+
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BidContractor {
+  id: string;
+  bid_id: string;
+
+  name?: string | null;
+  company?: string | null;
+  contact_name?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  license?: string | null;
+  license_state?: string | null;
+  license_status?: string | null;
+  license_expiration_date?: string | null;
+  insurance_verified?: boolean | null;
+  bonded?: boolean | null;
+  years_in_business?: number | null;
+  year_established?: number | null;
+  total_installs?: number | null;
+  certifications?: string[] | null;
+  employee_count?: number | null;
+  service_area?: string | null;
+  google_rating?: number | null;
+  google_review_count?: number | null;
+  yelp_rating?: number | null;
+  yelp_review_count?: number | null;
+  bbb_rating?: string | null;
+  bbb_accredited?: boolean | null;
+  bbb_complaints_3yr?: number | null;
+  research_confidence?: number | null;
+  verification_date?: string | null;
+  research_notes?: string | null;
+
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BidScore {
+  id: string;
+  bid_id: string;
+
   overall_score?: number | null;
   value_score?: number | null;
   quality_score?: number | null;
   completeness_score?: number | null;
-  
-  // Extraction metadata
-  extraction_confidence: ConfidenceLevel;
-  extraction_notes?: string | null;
-  verified_by_user: boolean;
-  verified_at?: string | null;
-  
-  // User notes
-  user_notes?: string | null;
-  is_favorite: boolean;
-  
-  // Additional bid metadata (from MindPal extraction)
-  rebates_mentioned?: string[] | null;
+  ranking_recommendation?: string | null;
   red_flags?: MindPalRedFlag[] | null;
   positive_indicators?: MindPalPositiveIndicator[] | null;
-  
+
   created_at: string;
   updated_at: string;
 }
@@ -853,16 +888,12 @@ export interface MindPalExtractionResponse {
 // ============================================
 
 export interface BidComparisonTableRow {
-  bid: ContractorBid;
+  bid: Bid;
+  scope?: BidScope | null;
+  contractor?: BidContractor | null;
+  scores?: BidScore | null;
   equipment: BidEquipment[];
   lineItems: BidLineItem[];
-  scores: {
-    overall: number;
-    price: number;
-    quality: number;
-    value: number;
-    completeness: number;
-  };
 }
 
 export interface ProjectSummary {
@@ -883,6 +914,49 @@ export interface ProjectSummary {
   };
 }
 
+// ============================================
+// V2 VIEW TYPES (match SQL views)
+// ============================================
+
+/** Matches v_bid_summary SQL view */
+export interface BidSummaryView {
+  id: string;
+  project_id: string;
+  contractor_name: string;
+  status: BidStatus;
+  is_favorite: boolean;
+  created_at: string;
+
+  // From bid_scope
+  system_type?: string | null;
+  total_bid_amount?: number | null;
+  estimated_rebates?: number | null;
+  total_after_rebates?: number | null;
+  labor_warranty_years?: number | null;
+  equipment_warranty_years?: number | null;
+  estimated_days?: number | null;
+
+  // From bid_contractors
+  contractor_company?: string | null;
+  google_rating?: number | null;
+  google_review_count?: number | null;
+  bbb_rating?: string | null;
+  bbb_accredited?: boolean | null;
+  years_in_business?: number | null;
+  certifications?: string[] | null;
+  license_status?: string | null;
+  insurance_verified?: boolean | null;
+
+  // From bid_scores
+  overall_score?: number | null;
+  value_score?: number | null;
+  quality_score?: number | null;
+  completeness_score?: number | null;
+  ranking_recommendation?: string | null;
+  red_flags?: MindPalRedFlag[] | null;
+  positive_indicators?: MindPalPositiveIndicator[] | null;
+}
+
 export interface WeightedScoreConfig {
   price: { weight: number; label: string };
   efficiency: { weight: number; label: string };
@@ -891,12 +965,12 @@ export interface WeightedScoreConfig {
   timeline: { weight: number; label: string };
 }
 
-export type SortField = 
+export type SortField =
   | 'overall_score'
-  | 'total_bid_amount'
+  | 'total_bid_amount'    // lives on bid_scope / v_bid_summary
   | 'contractor_name'
   | 'created_at'
-  | 'equipment_warranty_years';
+  | 'equipment_warranty_years'; // lives on bid_scope / v_bid_summary
 
 export type SortDirection = 'asc' | 'desc';
 

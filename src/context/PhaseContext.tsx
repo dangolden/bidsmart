@@ -1,11 +1,14 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import type { Project, ContractorBid, BidEquipment, ProjectRequirements, BidQuestion } from '../lib/types';
+import type { Project, ContractorBid, BidEquipment, BidScope, BidContractor, BidScore, ProjectRequirements, BidQuestion } from '../lib/types';
 import {
   createProject,
   getProjectsByUser,
   getBidsByProject,
   getEquipmentByBid,
   getProjectRequirements,
+  getBidScope,
+  getBidContractor,
+  getBidScore,
 } from '../lib/database/bidsmartService';
 import { supabase } from '../lib/supabaseClient';
 
@@ -22,6 +25,9 @@ const PHASE_LABELS: Record<Phase, string> = {
 interface BidWithEquipment {
   bid: ContractorBid;
   equipment: BidEquipment[];
+  scope?: BidScope | null;
+  contractor?: BidContractor | null;
+  scores?: BidScore | null;
 }
 
 interface PhaseState {
@@ -139,6 +145,9 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
             bids.map(async (bid) => ({
               bid,
               equipment: await getEquipmentByBid(bid.id),
+              scope: await getBidScope(bid.id).catch(() => null),
+              contractor: await getBidContractor(bid.id).catch(() => null),
+              scores: await getBidScore(bid.id).catch(() => null),
             }))
           );
 
@@ -259,6 +268,9 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
       bids.map(async (bid) => ({
         bid,
         equipment: await getEquipmentByBid(bid.id),
+        scope: await getBidScope(bid.id).catch(() => null),
+        contractor: await getBidContractor(bid.id).catch(() => null),
+        scores: await getBidScore(bid.id).catch(() => null),
       }))
     );
 

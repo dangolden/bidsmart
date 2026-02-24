@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, BookOpen, Award, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock, FlaskConical, Download, FileCheck2, AlertTriangle } from 'lucide-react';
+import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, BookOpen, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock, FlaskConical, Download, FileCheck2, AlertTriangle } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { supabase } from '../../lib/supabaseClient';
 import { IncentivesTable } from '../IncentivesTable';
@@ -149,44 +149,45 @@ export function DecidePhase() {
         (e) => e.equipment_type === 'outdoor_unit' || e.equipment_type === 'heat_pump'
       ) || b.equipment[0];
 
-      const netCost = b.bid.total_bid_amount - totalSelectedRebates;
+      const sc = b.scope;
+      const totalAmount = sc?.total_bid_amount ?? 0;
+      const netCost = totalAmount - totalSelectedRebates;
 
       return {
         bidId: b.bid.id,
-        contractor: b.bid.contractor_name || b.bid.contractor_company || 'Unknown',
-        totalAmount: b.bid.total_bid_amount,
+        contractor: b.bid.contractor_name || 'Unknown',
+        totalAmount,
         estimatedRebates: totalSelectedRebates,
         netCost,
         equipmentBrand: mainEquipment?.brand || '-',
         equipmentModel: mainEquipment?.model_number || mainEquipment?.model_name || '-',
         seer2: mainEquipment?.seer2_rating || mainEquipment?.seer_rating,
-        googleRating: b.bid.contractor_google_rating,
-        reviewCount: b.bid.contractor_google_review_count,
-        laborWarranty: b.bid.labor_warranty_years,
-        equipmentWarranty: b.bid.equipment_warranty_years,
-        isSwitchPreferred: b.bid.contractor_is_switch_preferred,
-        phone: b.bid.contractor_phone,
-        email: b.bid.contractor_email,
-        website: b.bid.contractor_website,
-        license: b.bid.contractor_license,
-        licenseState: b.bid.contractor_license_state,
-        insuranceVerified: b.bid.contractor_insurance_verified,
-        yearsInBusiness: b.bid.contractor_years_in_business,
-        totalInstalls: b.bid.contractor_total_installs,
-        certifications: b.bid.contractor_certifications || [],
-        estimatedDays: b.bid.estimated_days,
-        startDateAvailable: b.bid.start_date_available,
-        validUntil: b.bid.valid_until,
-        bidDate: b.bid.bid_date,
-        financingOffered: b.bid.financing_offered,
-        financingTerms: b.bid.financing_terms,
+        googleRating: b.contractor?.google_rating,
+        reviewCount: b.contractor?.google_review_count,
+        laborWarranty: sc?.labor_warranty_years,
+        equipmentWarranty: sc?.equipment_warranty_years,
+        phone: b.contractor?.phone,
+        email: b.contractor?.email,
+        website: b.contractor?.website,
+        license: b.contractor?.license,
+        licenseState: b.contractor?.license_state,
+        insuranceVerified: b.contractor?.insurance_verified,
+        yearsInBusiness: b.contractor?.years_in_business,
+        totalInstalls: b.contractor?.total_installs,
+        certifications: b.contractor?.certifications || [],
+        estimatedDays: sc?.estimated_days,
+        startDateAvailable: sc?.start_date_available,
+        validUntil: sc?.valid_until,
+        bidDate: sc?.bid_date,
+        financingOffered: sc?.financing_offered,
+        financingTerms: sc?.financing_terms,
         userNotes: b.bid.user_notes,
         isFavorite: b.bid.is_favorite,
         verifiedByUser: b.bid.verified_by_user,
-        extractionConfidence: b.bid.extraction_confidence,
-        valueScore: b.bid.value_score,
-        qualityScore: b.bid.quality_score,
-        completenessScore: b.bid.completeness_score,
+        extractionConfidence: sc?.extraction_confidence,
+        valueScore: b.scores?.value_score,
+        qualityScore: b.scores?.quality_score,
+        completenessScore: b.scores?.completeness_score,
       };
     });
   };
@@ -249,22 +250,22 @@ export function DecidePhase() {
       </div>
 
       {/* Red Flags Alert */}
-      {bids.some(b => b.bid.red_flags && b.bid.red_flags.length > 0) && (
+      {bids.some(b => b.scores?.red_flags && b.scores.red_flags.length > 0) && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <h3 className="font-medium text-red-900 mb-2">Potential Issues Identified</h3>
               <div className="space-y-2">
-                {bids.filter(b => b.bid.red_flags && b.bid.red_flags.length > 0).map(b => (
+                {bids.filter(b => b.scores?.red_flags && b.scores.red_flags.length > 0).map(b => (
                   <div key={b.bid.id} className="text-sm">
                     <span className="font-medium text-red-800">{b.bid.contractor_name}:</span>
                     <ul className="list-disc ml-5 mt-1 text-red-700">
-                      {b.bid.red_flags?.slice(0, 3).map((flag, i) => (
+                      {b.scores?.red_flags?.slice(0, 3).map((flag, i) => (
                         <li key={i}>{flag.issue}</li>
                       ))}
-                      {b.bid.red_flags && b.bid.red_flags.length > 3 && (
-                        <li className="text-red-500">+{b.bid.red_flags.length - 3} more issues</li>
+                      {b.scores?.red_flags && b.scores.red_flags.length > 3 && (
+                        <li className="text-red-500">+{b.scores.red_flags.length - 3} more issues</li>
                       )}
                     </ul>
                   </div>
@@ -276,22 +277,22 @@ export function DecidePhase() {
       )}
 
       {/* Positive Indicators */}
-      {bids.some(b => b.bid.positive_indicators && b.bid.positive_indicators.length > 0) && (
+      {bids.some(b => b.scores?.positive_indicators && b.scores.positive_indicators.length > 0) && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <h3 className="font-medium text-green-900 mb-2">Positive Indicators</h3>
               <div className="space-y-2">
-                {bids.filter(b => b.bid.positive_indicators && b.bid.positive_indicators.length > 0).map(b => (
+                {bids.filter(b => b.scores?.positive_indicators && b.scores.positive_indicators.length > 0).map(b => (
                   <div key={b.bid.id} className="text-sm">
                     <span className="font-medium text-green-800">{b.bid.contractor_name}:</span>
                     <ul className="list-disc ml-5 mt-1 text-green-700">
-                      {b.bid.positive_indicators?.slice(0, 3).map((indicator, i) => (
+                      {b.scores?.positive_indicators?.slice(0, 3).map((indicator, i) => (
                         <li key={i}>{indicator.indicator}</li>
                       ))}
-                      {b.bid.positive_indicators && b.bid.positive_indicators.length > 3 && (
-                        <li className="text-green-500">+{b.bid.positive_indicators.length - 3} more</li>
+                      {b.scores?.positive_indicators && b.scores.positive_indicators.length > 3 && (
+                        <li className="text-green-500">+{b.scores.positive_indicators.length - 3} more</li>
                       )}
                     </ul>
                   </div>
@@ -429,7 +430,7 @@ export function DecidePhase() {
               {projectFaqData.by_bid.length > 0 && (
                 <BidSpecificFaqsCard
                   bidFaqSets={projectFaqData.by_bid}
-                  switchPreferredBids={new Set(bids.filter(b => b.bid.contractor_is_switch_preferred).map(b => b.bid.id))}
+                  switchPreferredBids={new Set<string>()}
                 />
               )}
 
@@ -483,11 +484,7 @@ export function DecidePhase() {
                 <div className="flex items-start justify-between mb-5">
                   <div className="flex items-center gap-4">
                     <h3 className="text-xl font-bold text-gray-900">{bid.contractor}</h3>
-                    {bid.isSwitchPreferred && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-switch-green-500 to-switch-green-600 text-white rounded-full text-xs font-medium">
-                        <Award className="w-3 h-3" /> Switch Preferred
-                      </span>
-                    )}
+                    {/* Switch Preferred badge — requires Switch.com integration */}
                   </div>
                   <div className="flex items-center gap-3">
                     {isSelected && (

@@ -508,138 +508,222 @@ export type Database = {
       bid_scope: {
         Row: {
           accessories: Json | null
+          additional_warranty_details: string | null
           air_handler_detail: string | null
           air_handler_included: boolean | null
+          bid_date: string | null
           bid_id: string
           breaker_size_required: number | null
           commissioning_detail: string | null
           commissioning_included: boolean | null
+          compressor_warranty_years: number | null
           created_at: string
           dedicated_circuit_included: boolean | null
+          deposit_percentage: number | null
+          deposit_required: number | null
           disconnect_detail: string | null
           disconnect_included: boolean | null
+          disposal_cost: number | null
           disposal_detail: string | null
           disposal_included: boolean | null
           drain_line_detail: string | null
           drain_line_included: boolean | null
           ductwork_detail: string | null
           ductwork_included: boolean | null
+          electrical_cost: number | null
           electrical_detail: string | null
           electrical_included: boolean | null
           electrical_notes: string | null
           electrical_permit_included: boolean | null
+          equipment_cost: number | null
+          equipment_warranty_years: number | null
+          estimated_days: number | null
+          estimated_rebates: number | null
           exclusions: string[] | null
           existing_panel_amps: number | null
+          extraction_confidence:
+            | Database["public"]["Enums"]["confidence_level"]
+            | null
+          extraction_notes: string | null
+          financing_offered: boolean | null
+          financing_terms: string | null
           id: string
           inclusions: string[] | null
+          labor_cost: number | null
+          labor_warranty_years: number | null
           line_items: Json | null
           line_set_detail: string | null
           line_set_included: boolean | null
           load_calculation_included: boolean | null
           manual_j_detail: string | null
           manual_j_included: boolean | null
+          materials_cost: number | null
           pad_detail: string | null
           pad_included: boolean | null
           panel_assessment_included: boolean | null
           panel_upgrade_cost: number | null
           panel_upgrade_included: boolean | null
+          payment_schedule: string | null
+          permit_cost: number | null
           permit_detail: string | null
           permit_included: boolean | null
           proposed_panel_amps: number | null
+          start_date_available: string | null
           summary: string | null
+          system_type: string | null
           thermostat_detail: string | null
           thermostat_included: boolean | null
+          total_after_rebates: number | null
+          total_before_rebates: number | null
+          total_bid_amount: number | null
           updated_at: string
+          valid_until: string | null
         }
         Insert: {
           accessories?: Json | null
+          additional_warranty_details?: string | null
           air_handler_detail?: string | null
           air_handler_included?: boolean | null
+          bid_date?: string | null
           bid_id: string
           breaker_size_required?: number | null
           commissioning_detail?: string | null
           commissioning_included?: boolean | null
+          compressor_warranty_years?: number | null
           created_at?: string
           dedicated_circuit_included?: boolean | null
+          deposit_percentage?: number | null
+          deposit_required?: number | null
           disconnect_detail?: string | null
           disconnect_included?: boolean | null
+          disposal_cost?: number | null
           disposal_detail?: string | null
           disposal_included?: boolean | null
           drain_line_detail?: string | null
           drain_line_included?: boolean | null
           ductwork_detail?: string | null
           ductwork_included?: boolean | null
+          electrical_cost?: number | null
           electrical_detail?: string | null
           electrical_included?: boolean | null
           electrical_notes?: string | null
           electrical_permit_included?: boolean | null
+          equipment_cost?: number | null
+          equipment_warranty_years?: number | null
+          estimated_days?: number | null
+          estimated_rebates?: number | null
           exclusions?: string[] | null
           existing_panel_amps?: number | null
+          extraction_confidence?:
+            | Database["public"]["Enums"]["confidence_level"]
+            | null
+          extraction_notes?: string | null
+          financing_offered?: boolean | null
+          financing_terms?: string | null
           id?: string
           inclusions?: string[] | null
+          labor_cost?: number | null
+          labor_warranty_years?: number | null
           line_items?: Json | null
           line_set_detail?: string | null
           line_set_included?: boolean | null
           load_calculation_included?: boolean | null
           manual_j_detail?: string | null
           manual_j_included?: boolean | null
+          materials_cost?: number | null
           pad_detail?: string | null
           pad_included?: boolean | null
           panel_assessment_included?: boolean | null
           panel_upgrade_cost?: number | null
           panel_upgrade_included?: boolean | null
+          payment_schedule?: string | null
+          permit_cost?: number | null
           permit_detail?: string | null
           permit_included?: boolean | null
           proposed_panel_amps?: number | null
+          start_date_available?: string | null
           summary?: string | null
+          system_type?: string | null
           thermostat_detail?: string | null
           thermostat_included?: boolean | null
+          total_after_rebates?: number | null
+          total_before_rebates?: number | null
+          total_bid_amount?: number | null
           updated_at?: string
+          valid_until?: string | null
         }
         Update: {
           accessories?: Json | null
+          additional_warranty_details?: string | null
           air_handler_detail?: string | null
           air_handler_included?: boolean | null
+          bid_date?: string | null
           bid_id?: string
           breaker_size_required?: number | null
           commissioning_detail?: string | null
           commissioning_included?: boolean | null
+          compressor_warranty_years?: number | null
           created_at?: string
           dedicated_circuit_included?: boolean | null
+          deposit_percentage?: number | null
+          deposit_required?: number | null
           disconnect_detail?: string | null
           disconnect_included?: boolean | null
+          disposal_cost?: number | null
           disposal_detail?: string | null
           disposal_included?: boolean | null
           drain_line_detail?: string | null
           drain_line_included?: boolean | null
           ductwork_detail?: string | null
           ductwork_included?: boolean | null
+          electrical_cost?: number | null
           electrical_detail?: string | null
           electrical_included?: boolean | null
           electrical_notes?: string | null
           electrical_permit_included?: boolean | null
+          equipment_cost?: number | null
+          equipment_warranty_years?: number | null
+          estimated_days?: number | null
+          estimated_rebates?: number | null
           exclusions?: string[] | null
           existing_panel_amps?: number | null
+          extraction_confidence?:
+            | Database["public"]["Enums"]["confidence_level"]
+            | null
+          extraction_notes?: string | null
+          financing_offered?: boolean | null
+          financing_terms?: string | null
           id?: string
           inclusions?: string[] | null
+          labor_cost?: number | null
+          labor_warranty_years?: number | null
           line_items?: Json | null
           line_set_detail?: string | null
           line_set_included?: boolean | null
           load_calculation_included?: boolean | null
           manual_j_detail?: string | null
           manual_j_included?: boolean | null
+          materials_cost?: number | null
           pad_detail?: string | null
           pad_included?: boolean | null
           panel_assessment_included?: boolean | null
           panel_upgrade_cost?: number | null
           panel_upgrade_included?: boolean | null
+          payment_schedule?: string | null
+          permit_cost?: number | null
           permit_detail?: string | null
           permit_included?: boolean | null
           proposed_panel_amps?: number | null
+          start_date_available?: string | null
           summary?: string | null
+          system_type?: string | null
           thermostat_detail?: string | null
           thermostat_included?: boolean | null
+          total_after_rebates?: number | null
+          total_before_rebates?: number | null
+          total_bid_amount?: number | null
           updated_at?: string
+          valid_until?: string | null
         }
         Relationships: [
           {
@@ -779,125 +863,62 @@ export type Database = {
       }
       bids: {
         Row: {
-          additional_warranty_details: string | null
-          bid_date: string | null
           bid_index: number | null
-          compressor_warranty_years: number | null
           contractor_name: string
           created_at: string
-          deposit_percentage: number | null
-          deposit_required: number | null
-          disposal_cost: number | null
-          electrical_cost: number | null
-          equipment_cost: number | null
-          equipment_warranty_years: number | null
-          estimated_days: number | null
-          estimated_rebates: number | null
-          extraction_confidence:
-            | Database["public"]["Enums"]["confidence_level"]
-            | null
-          extraction_notes: string | null
-          financing_offered: boolean | null
-          financing_terms: string | null
           id: string
           is_favorite: boolean | null
-          labor_cost: number | null
-          labor_warranty_years: number | null
-          materials_cost: number | null
-          payment_schedule: string | null
+          last_error: string | null
           pdf_upload_id: string | null
-          permit_cost: number | null
+          processing_attempts: number | null
           project_id: string
-          start_date_available: string | null
-          system_type: string | null
-          total_after_rebates: number | null
-          total_before_rebates: number | null
-          total_bid_amount: number
+          request_id: string
+          source_doc_mime: string | null
+          source_doc_url: string | null
+          status: string
+          storage_key: string | null
           updated_at: string
           user_notes: string | null
-          valid_until: string | null
           verified_at: string | null
           verified_by_user: boolean | null
         }
         Insert: {
-          additional_warranty_details?: string | null
-          bid_date?: string | null
           bid_index?: number | null
-          compressor_warranty_years?: number | null
-          contractor_name: string
+          contractor_name?: string
           created_at?: string
-          deposit_percentage?: number | null
-          deposit_required?: number | null
-          disposal_cost?: number | null
-          electrical_cost?: number | null
-          equipment_cost?: number | null
-          equipment_warranty_years?: number | null
-          estimated_days?: number | null
-          estimated_rebates?: number | null
-          extraction_confidence?:
-            | Database["public"]["Enums"]["confidence_level"]
-            | null
-          extraction_notes?: string | null
-          financing_offered?: boolean | null
-          financing_terms?: string | null
           id?: string
           is_favorite?: boolean | null
-          labor_cost?: number | null
-          labor_warranty_years?: number | null
-          materials_cost?: number | null
-          payment_schedule?: string | null
+          last_error?: string | null
           pdf_upload_id?: string | null
-          permit_cost?: number | null
+          processing_attempts?: number | null
           project_id: string
-          start_date_available?: string | null
-          system_type?: string | null
-          total_after_rebates?: number | null
-          total_before_rebates?: number | null
-          total_bid_amount: number
+          request_id?: string
+          source_doc_mime?: string | null
+          source_doc_url?: string | null
+          status?: string
+          storage_key?: string | null
           updated_at?: string
           user_notes?: string | null
-          valid_until?: string | null
           verified_at?: string | null
           verified_by_user?: boolean | null
         }
         Update: {
-          additional_warranty_details?: string | null
-          bid_date?: string | null
           bid_index?: number | null
-          compressor_warranty_years?: number | null
           contractor_name?: string
           created_at?: string
-          deposit_percentage?: number | null
-          deposit_required?: number | null
-          disposal_cost?: number | null
-          electrical_cost?: number | null
-          equipment_cost?: number | null
-          equipment_warranty_years?: number | null
-          estimated_days?: number | null
-          estimated_rebates?: number | null
-          extraction_confidence?:
-            | Database["public"]["Enums"]["confidence_level"]
-            | null
-          extraction_notes?: string | null
-          financing_offered?: boolean | null
-          financing_terms?: string | null
           id?: string
           is_favorite?: boolean | null
-          labor_cost?: number | null
-          labor_warranty_years?: number | null
-          materials_cost?: number | null
-          payment_schedule?: string | null
+          last_error?: string | null
           pdf_upload_id?: string | null
-          permit_cost?: number | null
+          processing_attempts?: number | null
           project_id?: string
-          start_date_available?: string | null
-          system_type?: string | null
-          total_after_rebates?: number | null
-          total_before_rebates?: number | null
-          total_bid_amount?: number
+          request_id?: string
+          source_doc_mime?: string | null
+          source_doc_url?: string | null
+          status?: string
+          storage_key?: string | null
           updated_at?: string
           user_notes?: string | null
-          valid_until?: string | null
           verified_at?: string | null
           verified_by_user?: boolean | null
         }
@@ -1463,6 +1484,95 @@ export type Database = {
         }
         Relationships: []
       }
+      mindpal_extractions: {
+        Row: {
+          extracted_at: string | null
+          field_confidences: Json | null
+          id: string
+          mapped_bid_id: string | null
+          overall_confidence: number | null
+          parsed_successfully: boolean | null
+          parsing_errors: string[] | null
+          pdf_upload_id: string
+          processed_at: string | null
+          raw_json: Json
+        }
+        Insert: {
+          extracted_at?: string | null
+          field_confidences?: Json | null
+          id?: string
+          mapped_bid_id?: string | null
+          overall_confidence?: number | null
+          parsed_successfully?: boolean | null
+          parsing_errors?: string[] | null
+          pdf_upload_id: string
+          processed_at?: string | null
+          raw_json: Json
+        }
+        Update: {
+          extracted_at?: string | null
+          field_confidences?: Json | null
+          id?: string
+          mapped_bid_id?: string | null
+          overall_confidence?: number | null
+          parsed_successfully?: boolean | null
+          parsing_errors?: string[] | null
+          pdf_upload_id?: string
+          processed_at?: string | null
+          raw_json?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mindpal_extractions_mapped_bid_id_fkey"
+            columns: ["mapped_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mindpal_extractions_mapped_bid_id_fkey"
+            columns: ["mapped_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_contractors"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "mindpal_extractions_mapped_bid_id_fkey"
+            columns: ["mapped_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_equipment"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "mindpal_extractions_mapped_bid_id_fkey"
+            columns: ["mapped_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_compare_scope"
+            referencedColumns: ["bid_id"]
+          },
+          {
+            foreignKeyName: "mindpal_extractions_mapped_bid_id_fkey"
+            columns: ["mapped_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mindpal_extractions_mapped_bid_id_fkey"
+            columns: ["mapped_bid_id"]
+            isOneToOne: false
+            referencedRelation: "v_bid_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mindpal_extractions_pdf_upload_id_fkey"
+            columns: ["pdf_upload_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdf_uploads: {
         Row: {
           created_at: string
@@ -1845,6 +1955,8 @@ export type Database = {
           heat_pump_type: Database["public"]["Enums"]["heat_pump_type"] | null
           heating_load_calculated: number | null
           id: string
+          is_demo: boolean
+          is_public_demo: boolean
           min_seer_requirement: number | null
           must_have_features: string[] | null
           notification_email: string | null
@@ -1882,6 +1994,8 @@ export type Database = {
           heat_pump_type?: Database["public"]["Enums"]["heat_pump_type"] | null
           heating_load_calculated?: number | null
           id?: string
+          is_demo?: boolean
+          is_public_demo?: boolean
           min_seer_requirement?: number | null
           must_have_features?: string[] | null
           notification_email?: string | null
@@ -1919,6 +2033,8 @@ export type Database = {
           heat_pump_type?: Database["public"]["Enums"]["heat_pump_type"] | null
           heating_load_calculated?: number | null
           id?: string
+          is_demo?: boolean
+          is_public_demo?: boolean
           min_seer_requirement?: number | null
           must_have_features?: string[] | null
           notification_email?: string | null
@@ -2245,48 +2361,76 @@ export type Database = {
       v_bid_compare_scope: {
         Row: {
           accessories: Json | null
+          additional_warranty_details: string | null
           air_handler_detail: string | null
           air_handler_included: boolean | null
+          bid_date: string | null
           bid_id: string | null
           breaker_size_required: number | null
           commissioning_detail: string | null
           commissioning_included: boolean | null
+          compressor_warranty_years: number | null
           contractor_name: string | null
           dedicated_circuit_included: boolean | null
+          deposit_percentage: number | null
+          deposit_required: number | null
           disconnect_detail: string | null
           disconnect_included: boolean | null
+          disposal_cost: number | null
           disposal_detail: string | null
           disposal_included: boolean | null
           drain_line_detail: string | null
           drain_line_included: boolean | null
           ductwork_detail: string | null
           ductwork_included: boolean | null
+          electrical_cost: number | null
           electrical_detail: string | null
           electrical_included: boolean | null
           electrical_notes: string | null
           electrical_permit_included: boolean | null
+          equipment_cost: number | null
+          equipment_warranty_years: number | null
+          estimated_days: number | null
+          estimated_rebates: number | null
           exclusions: string[] | null
           existing_panel_amps: number | null
+          extraction_confidence:
+            | Database["public"]["Enums"]["confidence_level"]
+            | null
+          extraction_notes: string | null
+          financing_offered: boolean | null
+          financing_terms: string | null
           inclusions: string[] | null
+          labor_cost: number | null
+          labor_warranty_years: number | null
           line_items: Json | null
           line_set_detail: string | null
           line_set_included: boolean | null
           load_calculation_included: boolean | null
           manual_j_detail: string | null
           manual_j_included: boolean | null
+          materials_cost: number | null
           pad_detail: string | null
           pad_included: boolean | null
           panel_assessment_included: boolean | null
           panel_upgrade_cost: number | null
           panel_upgrade_included: boolean | null
+          payment_schedule: string | null
+          permit_cost: number | null
           permit_detail: string | null
           permit_included: boolean | null
           project_id: string | null
           proposed_panel_amps: number | null
           scope_id: string | null
+          start_date_available: string | null
           summary: string | null
+          system_type: string | null
           thermostat_detail: string | null
           thermostat_included: boolean | null
+          total_after_rebates: number | null
+          total_before_rebates: number | null
+          total_bid_amount: number | null
+          valid_until: string | null
         }
         Relationships: [
           {
@@ -2346,6 +2490,7 @@ export type Database = {
           is_favorite: boolean | null
           labor_cost: number | null
           labor_warranty_years: number | null
+          last_error: string | null
           line_items: Json | null
           manual_j_included: boolean | null
           materials_cost: number | null
@@ -2356,13 +2501,19 @@ export type Database = {
           permit_cost: number | null
           permit_included: boolean | null
           positive_indicators: Json | null
+          processing_attempts: number | null
           project_id: string | null
           proposed_panel_amps: number | null
           quality_score: number | null
           ranking_recommendation: string | null
           red_flags: Json | null
+          request_id: string | null
           scope_summary: string | null
+          source_doc_mime: string | null
+          source_doc_url: string | null
           start_date_available: string | null
+          status: string | null
+          storage_key: string | null
           system_type: string | null
           thermostat_included: boolean | null
           total_after_rebates: number | null
@@ -2417,6 +2568,7 @@ export type Database = {
           quality_score: number | null
           ranking_recommendation: string | null
           red_flags: Json | null
+          status: string | null
           system_type: string | null
           total_after_rebates: number | null
           total_bid_amount: number | null
@@ -2457,6 +2609,7 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_bid_scores: { Args: { p_bid_id: string }; Returns: undefined }
       cleanup_expired_verifications: { Args: never; Returns: undefined }
       validate_admin_session: {
         Args: { token: string }
