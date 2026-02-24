@@ -5,7 +5,7 @@ import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
 import { AnalysisSuccessScreen } from './AnalysisSuccessScreen';
 import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject, getPublicDemoProjects } from '../lib/database/bidsmartService';
-import { uploadPdfFile, startBatchAnalysis } from '../lib/services/mindpalService';
+import { uploadPdfFile, startBatchAnalysis, type DocumentForAnalysis } from '../lib/services/mindpalService';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import SwitchLogo from '../assets/switchlogo.svg';
 
@@ -342,31 +342,42 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
 
       setAnalysisState('uploading');
 
-      // Upload each PDF to Supabase Storage
+      // Upload each PDF to Supabase Storage + create bid stubs
       const pdfUploadIds: string[] = [];
+      const documents: DocumentForAnalysis[] = [];
+      const batchRequestId = crypto.randomUUID();
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         console.log(`Uploading ${file.name} (${i + 1}/${files.length})`);
-        
-        const uploadResult = await uploadPdfFile(projectId, file);
+
+        const uploadResult = await uploadPdfFile(projectId, file, batchRequestId);
         if (uploadResult.error || !uploadResult.pdfUploadId) {
           setAnalysisState('error');
           setAnalysisError(uploadResult.error || `Failed to upload ${file.name}`);
           return;
         }
         pdfUploadIds.push(uploadResult.pdfUploadId);
+
+        // V2: Track bid_id ↔ pdf_upload_id pairing for MindPal
+        if (uploadResult.bidId) {
+          documents.push({
+            bid_id: uploadResult.bidId,
+            pdf_upload_id: uploadResult.pdfUploadId,
+          });
+        }
       }
 
-      console.log('All PDFs uploaded, starting analysis with IDs:', pdfUploadIds);
+      console.log('All PDFs uploaded, starting analysis with IDs:', pdfUploadIds, 'documents:', documents);
       setAnalysisState('analyzing');
 
-      // Start analysis with the uploaded PDF IDs
+      // Start analysis with V2 documents array (bid_id + pdf_upload_id pairs)
       const analysisResult = await startBatchAnalysis(
         projectId,
         pdfUploadIds,
         priorities,
         user.email,
-        projectDetails
+        projectDetails,
+        documents.length > 0 ? documents : undefined
       );
 
       if (!analysisResult.success) {
