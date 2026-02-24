@@ -56,11 +56,9 @@ FIELD_IDS: {
   project_id:      '699a33ad6787d2e1b0e9ed99',  // UUID of the project
   user_notes:      '699a33ad6787d2e1b0e9ed9a',  // optional user notes
   callback_url:    '699a33ad6787d2e1b0e9ed9b',  // Supabase Edge Function URL (direct)
-  documents_json:  'TBD'                         // NEW — paired {bid_id, doc_url, mime_type} array
+  documents_json:  '699d42f8f6f83a173c0b6d4a',  // V2 — paired {bid_id, doc_url, mime_type} array
 }
 ```
-
-> **Note:** `documents_json` field ID will be assigned when the MindPal rep creates it (Step B1 in MINDPAL_V2_INTEGRATION.md). Update `src/config/mindpal.config.ts` with the new ID.
 
 ## Legacy Workflow IDs (archived — do not use)
 

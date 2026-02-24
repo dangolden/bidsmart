@@ -19,7 +19,7 @@ const PROJECT_ID_FIELD_ID = Deno.env.get("MINDPAL_PROJECT_ID_FIELD_ID") || "698e
 const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "697fc84945bf3484d9a860ff";
 const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "698e9588ff3f2d1fa1486189";
 // NEW: documents_json field — paired bid_id + doc_url for MindPal Loop Node
-const DOCUMENTS_JSON_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENTS_JSON_FIELD_ID") || "";
+const DOCUMENTS_JSON_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENTS_JSON_FIELD_ID") || "699d42f8f6f83a173c0b6d4a";
 
 // V2 request body: accepts documents array with bid_ids
 interface DocumentInput {

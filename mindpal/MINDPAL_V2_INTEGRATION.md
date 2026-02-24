@@ -54,17 +54,17 @@ bids (18 cols)          — Identity stub: status, request_id, storage_key, proc
 
 ## Workflow Changes Required (Steps B1–B9)
 
-### B1: Add `documents_json` Input Field
+### B1: Add `documents_json` Input Field ✅ DONE
 
 **Where**: MindPal workflow settings → Input Fields
 
-1. Add a new input field: `documents_json` (type: **TEXT**)
-2. Record the new field ID that MindPal generates
-3. Send the field ID to the dev team to update `src/config/mindpal.config.ts`
+**Field ID**: `699d42f8f6f83a173c0b6d4a`
+**Mention syntax**: `@[API Input - documents_json](type=WORKFLOW_HUMAN_INPUT_FIELD&workflowHumanInputFieldId=699d42f8f6f83a173c0b6d4a)`
 
-**Current input fields** (for reference):
+**All input fields** (updated):
 ```
-documents       → 699a33ad6787d2e1b0e9ed96  (JSON array of signed PDF URLs)
+documents       → 699a33ad6787d2e1b0e9ed96  (JSON array of signed PDF URLs — legacy, keep for now)
+documents_json  → 699d42f8f6f83a173c0b6d4a  (JSON array of {bid_id, doc_url, mime_type} — V2)
 user_priorities → 699a33ad6787d2e1b0e9ed98
 request_id      → 699a33ad6787d2e1b0e9ed97
 callback_url    → 699a33ad6787d2e1b0e9ed9b
@@ -75,8 +75,8 @@ project_id      → 699a33ad6787d2e1b0e9ed99
 **What the frontend will send** in `documents_json`:
 ```json
 [
-  {"bid_id": "uuid-1", "doc_url": "https://signed-url-1.pdf", "mime_type": "application/pdf"},
-  {"bid_id": "uuid-2", "doc_url": "https://signed-url-2.pdf", "mime_type": "application/pdf"}
+  {"bid_id": "uuid-1", "doc_url": "https://signed-url-1.pdf", "storage_key": null, "mime_type": "application/pdf"},
+  {"bid_id": "uuid-2", "doc_url": "https://signed-url-2.pdf", "storage_key": null, "mime_type": "application/pdf"}
 ]
 ```
 
@@ -88,11 +88,11 @@ project_id      → 699a33ad6787d2e1b0e9ed99
 
 **Position**: First node in the workflow chain (before the Loop)
 **Node Type**: CODE
-**Input**: `@[documents_json]` — must show purple in MindPal UI
+**Input**: `@[API Input - documents_json]` — must show purple in MindPal UI
 
 **Code** (paste this exactly):
 ```javascript
-const raw = @[documents_json];
+const raw = @[API Input - documents_json];
 let docs;
 try {
   // Strip markdown wrappers if present
