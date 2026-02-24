@@ -5,8 +5,10 @@ import { useUser } from '../../hooks/useUser';
 import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject, validatePdfFile, updateProjectNotificationSettings } from '../../lib/database/bidsmartService';
 import { uploadPdfFile, startBatchAnalysis, pollBatchExtractionStatus, type BatchExtractionStatus, type DocumentForAnalysis } from '../../lib/services/mindpalService';
 import { AnalysisSubmissionInterstitial } from '../AnalysisSubmissionInterstitial';
+import { IncentivesPanel } from '../IncentivesPanel';
 import { useAnalysisNotification } from '../../hooks/useAnalysisNotification';
 import { NotificationToast } from '../NotificationToast';
+import { zipToState } from '../../lib/utils/zipToState';
 import { useSpeechToText } from '../../hooks/useSpeechToText';
 
 interface PrioritySliderProps {
@@ -78,6 +80,7 @@ export function GatherPhase() {
   const [notificationSaved, setNotificationSaved] = useState(false);
   const [enableSound, setEnableSound] = useState(true);
   const [showCompletionToast, setShowCompletionToast] = useState(false);
+  const [zipCode, setZipCode] = useState('');
   const { notify, requestPermission, permission, toggleSound } = useAnalysisNotification();
 
   // Speech-to-text for project details
@@ -386,6 +389,8 @@ export function GatherPhase() {
         <AnalysisSubmissionInterstitial
           email={notificationEmail}
           onEmailChange={setNotificationEmail}
+          zip={zipCode}
+          onZipChange={setZipCode}
           notifyOnCompletion={notifyOnCompletion}
           onNotifyChange={setNotifyOnCompletion}
           enableSound={enableSound}
@@ -513,6 +518,19 @@ export function GatherPhase() {
           </div>
         )}
 
+        {/* Incentives while waiting */}
+        {zipCode && (
+          <div className="w-full max-w-2xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 text-center">
+              While you wait — available rebates & incentives
+            </h3>
+            <IncentivesPanel
+              userZip={zipCode}
+              userState={zipToState(zipCode) || null}
+            />
+          </div>
+        )}
+
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 max-w-md w-full">
           <div className="flex items-start gap-3">
             <FlaskConical className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" />
@@ -616,6 +634,19 @@ export function GatherPhase() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Incentives while waiting */}
+        {zipCode && (
+          <div className="w-full max-w-2xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 text-center">
+              While you wait — available rebates & incentives
+            </h3>
+            <IncentivesPanel
+              userZip={zipCode}
+              userState={zipToState(zipCode) || null}
+            />
           </div>
         )}
       </div>

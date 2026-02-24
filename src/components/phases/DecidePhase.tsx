@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, BookOpen, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock, FlaskConical, Download, FileCheck2, AlertTriangle } from 'lucide-react';
+import { DollarSign, Star, Shield, Zap, CheckCircle, Copy, Check, ArrowRight, HelpCircle, BookOpen, ChevronDown, ChevronUp, Phone, Mail, Globe, Calendar, Clock, FlaskConical, Download, FileCheck2, AlertTriangle, Loader2 } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
 import { supabase } from '../../lib/supabaseClient';
 import { IncentivesTable } from '../IncentivesTable';
@@ -19,7 +19,7 @@ interface TabConfig {
 }
 
 export function DecidePhase() {
-  const { bids, questions, refreshQuestions, completePhase, projectId } = usePhase();
+  const { bids, questions, questionsLoading, refreshQuestions, completePhase, projectId } = usePhase();
   const [activeTab, setActiveTab] = useState<DecideTab>('incentives');
   const [rebatePrograms, setRebatePrograms] = useState<RebateProgram[]>([]);
   const [selectedIncentives, setSelectedIncentives] = useState<Set<string>>(new Set());
@@ -450,7 +450,15 @@ export function DecidePhase() {
 
       {activeTab === 'questions' && (
         <div className="space-y-6">
-        {bidData.map((bid) => {
+        {questions.length === 0 && questionsLoading ? (
+          <div className="text-center py-12">
+            <Loader2 className="w-8 h-8 text-switch-green-600 animate-spin mx-auto mb-4" />
+            <p className="text-gray-700 font-medium">Generating questions for your contractors...</p>
+            <p className="text-sm text-gray-500 mt-2">
+              This may take an additional minute. You can browse other tabs while you wait.
+            </p>
+          </div>
+        ) : bidData.map((bid) => {
           const bidQuestions = getQuestionsForBid(bid.bidId);
           const answeredCount = bidQuestions.filter((q) => q.is_answered).length;
           const unansweredQuestions = bidQuestions.filter((q) => !q.is_answered);

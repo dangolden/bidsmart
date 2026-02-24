@@ -18,7 +18,7 @@ const PHASES: { phase: Phase; label: string }[] = [
 ];
 
 export function PhaseLayout({ children, onNavigateHome, projectName, isDemoMode = false }: PhaseLayoutProps) {
-  const { currentPhase, phaseStatus, goToPhase, canAccessPhase } = usePhase();
+  const { currentPhase, phaseStatus, goToPhase, canAccessPhase, questionsLoading } = usePhase();
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -86,6 +86,12 @@ export function PhaseLayout({ children, onNavigateHome, projectName, isDemoMode 
                     >
                       {item.label}
                     </span>
+                    {item.phase === 3 && questionsLoading && (
+                      <span className="relative flex h-2 w-2 flex-shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-switch-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-switch-green-500"></span>
+                      </span>
+                    )}
                   </button>
 
                   {index < PHASES.length - 1 && (
