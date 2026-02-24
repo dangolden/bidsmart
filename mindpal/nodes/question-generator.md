@@ -12,6 +12,70 @@
 
 ---
 
+## MindPal Configuration Mapping
+
+What goes where when configuring this node in MindPal:
+
+| MindPal Section | What Belongs There | Examples from This Spec |
+|---|---|---|
+| **Agent Background** | Role definition, scope boundaries, question philosophy, tier definitions + assignment rules, category definitions, trigger definitions, electrical requirement rule, anti-hallucination rules, field format rules | `<role>`, `<scope>`, `<question_philosophy>`, `<question_tiers>`, `<tier_assignment_rules>`, `<question_categories>`, `<question_triggers>`, `<electrical_requirement>`, `<data_integrity>`, `<rules>` — permanent reasoning framework for question generation |
+| **Desired Output Format** | JSON schema with questions[] and questions_summary[] structures, all field requirements, enum values for category/tier/priority/triggered_by | `<output_schema>` — the exact JSON contract with both arrays |
+| **Task Prompt** | Variable references (`@[Equipment Researcher]`, `@[Contractor Researcher]`, etc. — must show purple), tier-by-tier generation rules with question counts, priority rules, quality requirements, example questions, complete JSON output template | Task-specific generation workflow — the step-by-step question generation instructions |
+
+**Key principle:** The 4-tier framework, trigger definitions, and electrical requirement rule go in Background as permanent reasoning guidelines. The generation rules per tier (counts, examples) and output template go in Task Prompt. The tier definitions are important enough to appear in both sections.
+
+---
+
+## Field-by-Field Rules
+
+### Agent Output Fields (become contractor_questions rows)
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `bid_index` | INTEGER. 0-based index into the input bid array. Used by Code Node to resolve to actual bid_id UUID. NOT stored in DB. | Never — REQUIRED (routing field) |
+| `contractor_name` | TEXT. Must exactly match upstream bid data's contractor name. NOT stored in DB directly — used for Code Node routing/validation. | Never — REQUIRED (routing field) |
+| `question_text` | TEXT, NOT NULL. The specific question to ask the contractor. Must reference actual bid data (prices, model numbers, warranty years) — never generic. | Never — REQUIRED |
+| `question_category` | TEXT. EXACTLY one of: `pricing`, `warranty`, `equipment`, `timeline`, `scope`, `credentials`, `electrical`. | Never — REQUIRED |
+| `question_tier` | TEXT. EXACTLY one of: `essential`, `clarification`, `detailed`, `expert`. Determines UI grouping and expandable sections. | Never — REQUIRED |
+| `priority` | TEXT. EXACTLY one of: `high`, `medium`, `low`. Essential tier is always "high". Detailed is typically "medium". Expert is typically "low" or "medium". | Never — REQUIRED (defaults to "medium" in DB) |
+| `context` | TEXT. Non-empty explanation of WHY this question matters and what triggered it. Must reference specific data points. | Never — REQUIRED |
+| `triggered_by` | TEXT. EXACTLY one of: `missing_field`, `scope_difference`, `price_variance`, `unclear_term`, `red_flag`, `negotiation`, `electrical`, `standard_essential`, `technical_verification`. | Never — REQUIRED |
+| `missing_field` | TEXT. Field name (e.g., "labor_warranty_years", "model_number") if triggered_by is "missing_field". | When triggered_by is NOT "missing_field" |
+| `good_answer_looks_like` | TEXT. SPECIFIC description of what a reassuring answer from the contractor would be. Never generic like "a good answer." | Never — REQUIRED |
+| `concerning_answer_looks_like` | TEXT. SPECIFIC description of what a worrying answer would be. Never generic. | Never — REQUIRED |
+| `display_order` | INTEGER. Unique per bid_index, starting from 1. Ordered by tier (essential first) then priority (high first). | Never — REQUIRED |
+
+### Questions Summary Fields (one entry per bid — used by UI)
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `bid_index` | INTEGER. Same as in questions array. | Never |
+| `contractor_name` | TEXT. Same as in questions array. | Never |
+| `essential_count` | INTEGER. Count of essential tier questions for this bid. Must match actual array count. | Never |
+| `clarification_count` | INTEGER. Count of clarification tier questions. 0 if no gaps detected. | Never |
+| `detailed_count` | INTEGER. Count of detailed tier questions. 0 if bid is straightforward. | Never |
+| `expert_count` | INTEGER. Count of expert tier questions. 0 if no technical verification needed. | Never |
+| `high_priority_count` | INTEGER. Cross-tier count of high priority questions. | Never |
+| `medium_priority_count` | INTEGER. Cross-tier count of medium priority questions. | Never |
+| `low_priority_count` | INTEGER. Cross-tier count of low priority questions. | Never |
+| `total_questions` | INTEGER. Must equal sum of tier counts and sum of priority counts. | Never |
+| `main_concerns` | TEXT[]. Top 3 concerns for this bid as short strings. | Never — always provide at least 1 |
+
+### Fields NOT in Agent Output
+
+| Field | Set By | Notes |
+|---|---|---|
+| `id` | Database | gen_random_uuid() |
+| `bid_id` | Code Node | Resolved from bid_index using the bid array |
+| `created_at` | Database | NOW() |
+| `auto_generated` | Code Node | Always `true` for MindPal-generated questions |
+| `generation_notes` | Code Node | Optional debug notes |
+| `is_answered` | Frontend | User tracking — preserved across re-runs |
+| `answer_text` | Frontend | User's answer — preserved across re-runs |
+| `answered_at` | Frontend | Timestamp — preserved across re-runs |
+
+---
+
 ## How This Node Fits the Architecture
 
 All upstream Loop nodes (Bid Data Extractor, Equipment Researcher, Scope Extractor, Contractor Researcher) process bids independently — one bid per iteration. The Scoring Engine (Agent) produces cross-bid scores. The Incentive Finder (Agent) researches programs once per job.

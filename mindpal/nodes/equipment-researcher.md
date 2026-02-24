@@ -8,6 +8,57 @@
 
 ---
 
+## MindPal Configuration Mapping
+
+What goes where when configuring this node in MindPal:
+
+| MindPal Section | What Belongs There | Examples from This Spec |
+|---|---|---|
+| **Agent Background** | Role definition, scope boundaries, domain expertise, enum values, null-handling rules, anti-hallucination rules, deterministic field mappings | `<role>`, `<scope>`, `<expertise>`, `<data_integrity>`, `<rules>` — permanent knowledge the model needs regardless of task |
+| **Desired Output Format** | JSON schema with every field + type + valid values, one clean example structure, field requirement notes | `<output_schema>` — the exact JSON contract the model must produce |
+| **Task Prompt** | Variable references (`{{#currentItem}}` — must show purple), step-by-step extraction + research instructions, complete JSON output examples, edge case reminders, critical final reminders | The task the model executes each iteration — references upstream data and walks through the extraction+research flow |
+
+**Key principle:** Domain knowledge that never changes (what SEER2 means, when AFUE applies, fuel_type mapping) goes in Background. Task-specific steps (parse context, audit gaps, search, output) go in Task Prompt. Beneficial redundancy in both is acceptable — the model sees Background + Task together.
+
+---
+
+## Field-by-Field Rules
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `equipment_type` | TEXT, NOT NULL. Values: `heat_pump`, `outdoor_unit`, `condenser`, `furnace`, `air_handler`, `indoor_unit`. Identify from bid context — heat_pump heats AND cools, condenser cools only. | Never — REQUIRED |
+| `system_role` | TEXT. Deterministic from equipment_type: heat_pump/outdoor_unit→`primary_both`, condenser→`primary_cooling`, furnace→`primary_heating`, air_handler/indoor_unit→`air_distribution`. | Never — REQUIRED (set deterministically) |
+| `brand` | TEXT, NOT NULL. Normalized spelling: "Lenox"→"Lennox", "Traine"→"Trane", "Goodmen"→"Goodman". | Never — REQUIRED |
+| `model_number` | TEXT. Manufacturer part number (e.g., "24VNA036A003"). Distinct from model_name. | Not found in bid context |
+| `model_name` | TEXT. Marketing/product line name (e.g., "Infinity 24"). Distinct from model_number. | Not found in bid or web research |
+| `capacity_btu` | INTEGER. Cooling/heating capacity in BTU/hr (e.g., 36000, 48000). If only capacity_tons given, calculate: BTU = tons × 12000. | Neither BTU nor tons found |
+| `capacity_tons` | DECIMAL(4,2). 1 ton = 12,000 BTU. E.g., 3.0, 4.0. | Not found and cannot calculate from BTU |
+| `seer_rating` | DECIMAL(5,2). Older standard. Range 13–24. Keep if bid lists SEER; research SEER2 separately. | Furnaces, air handlers, or not found |
+| `seer2_rating` | DECIMAL(5,2). 2023+ DOE standard (~5% lower than SEER). Range 13.0–24.0. PREFERRED over seer_rating. | Furnaces, air handlers, or not found |
+| `hspf_rating` | DECIMAL(5,2). Older heat pump heating efficiency standard. | Furnaces, condensers, air handlers — ALWAYS null |
+| `hspf2_rating` | DECIMAL(5,2). 2023+ heating efficiency for HEAT PUMPS ONLY. Range 7.5–14.0. | Furnaces, condensers, air handlers — ALWAYS null |
+| `eer_rating` | DECIMAL(5,2). Steady-state cooling efficiency. | Furnaces, air handlers, or not found |
+| `cop` | DECIMAL(4,2). Coefficient of performance (heating mode). | Furnaces, air handlers, or not found |
+| `afue_rating` | DECIMAL(5,2). FURNACES ONLY. As percentage (e.g., 96.0, 98.0). | Heat pumps, condensers, air handlers — ALWAYS null |
+| `fuel_type` | TEXT. Deterministic: heat_pump/outdoor_unit/condenser/air_handler/indoor_unit→`electric`. furnace→`natural_gas` (unless bid specifies propane/oil). | Never for major equipment — set deterministically |
+| `variable_speed` | BOOLEAN. Infer from model series if not stated. true = variable speed compressor/blower. | Cannot determine from bid or research |
+| `stages` | INTEGER. 1 = single-stage, 2 = two-stage. Use **null** (not 0) for variable speed. NEVER 0. | Variable speed equipment (stages is not applicable) |
+| `refrigerant_type` | TEXT. E.g., "R-410A", "R-32", "R-454B". | Furnaces, or not found in research |
+| `sound_level_db` | DECIMAL(5,1). Outdoor units: 50–75 dB. Indoor: 18–30 dB. At lowest operating speed. | Not found in research |
+| `voltage` | INTEGER. Heat pumps/AC: 208, 230, 240. Furnaces/air handlers: typically 120. | Not found |
+| `amperage_draw` | INTEGER. At rated capacity. | Not found in research |
+| `minimum_circuit_amperage` | INTEGER. Per manufacturer specs (MCA). | Not found in research |
+| `energy_star_certified` | BOOLEAN. true = certified, false = confirmed not certified, null = unknown. | Cannot verify via web research |
+| `energy_star_most_efficient` | BOOLEAN. Higher tier than standard ENERGY STAR. | Cannot verify, or not applicable |
+| `warranty_years` | INTEGER. Standard parts warranty in years (e.g., 5, 10). Distinct from compressor_warranty_years. | Not found in bid or research |
+| `compressor_warranty_years` | INTEGER. Compressor-specific warranty (often longer). Distinct from warranty_years. Null for furnaces (no compressor). | Furnaces, or not found |
+| `equipment_cost` | DECIMAL(10,2). From bid ONLY — NEVER web-researched. Plain number (4500.00 not "$4,500"). | Not broken out in bid pricing |
+| `confidence` | confidence_level ENUM. Values: `high`, `medium`, `low`, `manual`. high = brand+model verified via manufacturer/AHRI. medium = brand found, partial specs. low = unable to verify. | Never — always set a confidence level |
+
+**Relationship rule:** `stages` and `variable_speed` are inversely related. If variable_speed = true, then stages = null (not 0). If stages = 1 or 2, then variable_speed = false (or null if unverifiable).
+
+---
+
 ## How This Node Fits the Architecture
 
 The **Bid Data Extractor** is an upstream Loop Node that reads each contractor bid

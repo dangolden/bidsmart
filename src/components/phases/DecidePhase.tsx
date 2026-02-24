@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { DollarSign, CheckCircle, ArrowRight, HelpCircle, BookOpen, FlaskConical, Download, FileCheck2, AlertTriangle } from 'lucide-react';
 import { usePhase } from '../../context/PhaseContext';
+import { useUser } from '../../hooks/useUser';
 
-import { IncentivesTable } from '../IncentivesTable';
+import { IncentivesPanel } from '../IncentivesPanel';
 import { OverallFaqsCard } from '../OverallFaqsCard';
 import { BidSpecificFaqsCard } from '../BidSpecificFaqsCard';
 import { ContractorQuestionsPanel } from '../questions';
-import type { ProjectIncentive, ProjectFaqData } from '../../lib/types';
-import { getFaqsByProject, getProjectIncentives } from '../../lib/database/bidsmartService';
+import type { ProjectFaqData } from '../../lib/types';
+import { getFaqsByProject } from '../../lib/database/bidsmartService';
 
 type DecideTab = 'incentives' | 'questions' | 'faqs';
 
@@ -20,28 +21,18 @@ interface TabConfig {
 
 export function DecidePhase() {
   const { bids, questions, completePhase, projectId } = usePhase();
+  const { user } = useUser();
+  const userZip = user?.property_zip || null;
+  const userState = user?.property_state || null;
+
   const [activeTab, setActiveTab] = useState<DecideTab>('incentives');
-  const [projectIncentives, setProjectIncentives] = useState<ProjectIncentive[]>([]);
-  const [selectedIncentives, setSelectedIncentives] = useState<Set<string>>(new Set());
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedContractor, _setSelectedContractor] = useState<string | null>(null);
   const [projectFaqData, setProjectFaqData] = useState<ProjectFaqData>({ overall: [], by_bid: [] });
 
   useEffect(() => {
-    loadProjectIncentives();
     loadAllFaqs();
   }, [projectId, bids]);
-
-  const loadProjectIncentives = async () => {
-    if (!projectId) return;
-    try {
-      const incentives = await getProjectIncentives(projectId);
-      setProjectIncentives(incentives);
-      setSelectedIncentives(new Set(incentives.map(i => i.id)));
-    } catch (error) {
-      console.error('Error loading project incentives:', error);
-    }
-  };
 
   const loadAllFaqs = async () => {
     if (!projectId || bids.length === 0) return;
@@ -54,39 +45,18 @@ export function DecidePhase() {
     }
   };
 
-  const toggleIncentive = (programId: string) => {
-    const newSelected = new Set(selectedIncentives);
-    if (newSelected.has(programId)) {
-      newSelected.delete(programId);
-    } else {
-      newSelected.add(programId);
-    }
-    setSelectedIncentives(newSelected);
-  };
-
-  const getTotalSelectedRebates = () => {
-    return Array.from(selectedIncentives).reduce((sum, id) => {
-      const incentive = projectIncentives.find(i => i.id === id);
-      return sum + (incentive ? (Number(incentive.amount_max) || Number(incentive.amount_min) || 0) : 0);
-    }, 0);
-  };
-
-  const totalSelectedRebates = getTotalSelectedRebates();
-
   const getBidData = () => {
     return bids.map((b) => {
       const mainEquipment = b.equipment.find(
         (e) => e.equipment_type === 'outdoor_unit' || e.equipment_type === 'heat_pump'
       ) || b.equipment[0];
 
-      const netCost = b.bid.total_bid_amount - totalSelectedRebates;
-
       return {
         bidId: b.bid.id,
         contractor: b.bid.contractor_name || b.contractor?.company || 'Unknown',
         totalAmount: b.bid.total_bid_amount,
-        estimatedRebates: totalSelectedRebates,
-        netCost,
+        estimatedRebates: 0,
+        netCost: b.bid.total_bid_amount,
         equipmentBrand: mainEquipment?.brand || '-',
         equipmentModel: mainEquipment?.model_number || mainEquipment?.model_name || '-',
         seer2: mainEquipment?.seer2_rating || mainEquipment?.seer_rating,
@@ -136,7 +106,7 @@ export function DecidePhase() {
     {
       key: 'incentives',
       label: 'Available Incentives',
-      description: 'Select rebates you plan to apply for',
+      description: 'Rebates and incentives for your area',
       icon: <DollarSign className="w-5 h-5" />
     },
     {
@@ -322,21 +292,7 @@ export function DecidePhase() {
       )}
 
       {activeTab === 'incentives' && (
-        <div className="space-y-6">
-          {projectIncentives.length > 0 ? (
-            <IncentivesTable
-              projectIncentives={projectIncentives}
-              selectedIncentives={selectedIncentives}
-              onToggleIncentive={toggleIncentive}
-            />
-          ) : (
-            <div className="bg-white rounded-xl border-2 border-gray-200 p-12 text-center">
-              <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Incentives Available</h3>
-              <p className="text-gray-600">No incentives have been identified for this project yet.</p>
-            </div>
-          )}
-        </div>
+        <IncentivesPanel userZip={userZip} userState={userState} />
       )}
 
       {activeTab === 'faqs' && (

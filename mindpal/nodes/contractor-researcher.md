@@ -6,6 +6,58 @@
 
 ---
 
+## MindPal Configuration Mapping
+
+What goes where when configuring this node in MindPal:
+
+| MindPal Section | What Belongs There | Examples from This Spec |
+|---|---|---|
+| **Agent Background** | Role definition, scope boundaries, domain expertise (licensing boards, review platforms, certifications), anti-hallucination rules, field format rules, research behavior guidance | `<role>`, `<scope>`, `<expertise>`, `<data_integrity>`, `<rules>` — permanent knowledge about HVAC contractor research |
+| **Desired Output Format** | JSON schema with every field + type + valid values, research_confidence scale, field requirements | `<output_schema>` — the exact JSON contract |
+| **Task Prompt** | Variable references (`{{bid.contractor_name}}`, `{{bid.customer_info.property_city}}` — must show purple), search sequence (Searches 1-6), time boundaries, complete JSON output template, field rules, validation rules, examples | Task-specific instructions — the search workflow and output formatting |
+
+**Key principle:** Domain knowledge (what NATE certification means, BBB rating scale, license_status valid values) goes in Background. Search sequence steps and output templates go in Task Prompt. Beneficial redundancy is acceptable.
+
+---
+
+## Field-by-Field Rules
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `name` | TEXT, NOT NULL. MUST exactly match input bid's contractor name — case-sensitive, no alteration. | Never — REQUIRED |
+| `company` | TEXT. Legal company name if different from display name (e.g., "ABC HVAC LLC" vs "ABC HVAC"). Pass through from input. | Same as name, or not found |
+| `contact_name` | TEXT. Primary contact person / owner. From bid or enriched from website. | Not found in bid or web research |
+| `address` | TEXT. Business address from Google Business Profile, BBB, or website. | Not found in research |
+| `phone` | TEXT. Phone number from bid or search results. | Not found |
+| `email` | TEXT. Email from bid or contractor website. | Not found |
+| `website` | TEXT. Company website URL. From bid or search results. | Not found |
+| `license` | TEXT. License number verified from state licensing board (may differ from bid). | Not found on licensing board |
+| `license_state` | TEXT. Two-letter state abbreviation (e.g., "CA", "GA", "CO"). From bid or research. | Not provided in bid and not determinable |
+| `license_status` | TEXT. EXACTLY one of: `Active`, `Inactive`, `Expired`. No other values. | Not verified on licensing board |
+| `license_expiration_date` | DATE. YYYY-MM-DD format. From state licensing board. | Not found on licensing board |
+| `insurance_verified` | BOOLEAN. true = confirmed via web source (website says "fully insured" or licensing board). null = unknown. NOT false unless confirmed absent. | Cannot verify — use null (not false) |
+| `bonded` | BOOLEAN. true = confirmed bonded. null = unknown. | Cannot verify |
+| `years_in_business` | INTEGER. Calculate from year_established if needed. E.g., 14. | Not found |
+| `year_established` | INTEGER. Four-digit year (e.g., 2008, 2010). | Not found on website or research |
+| `total_installs` | INTEGER. Total heat pump installations if stated on website. | Rarely available — usually null |
+| `certifications` | TEXT[]. Array of certification name strings. E.g., `["NATE Certified", "EPA 608", "Carrier Factory Authorized Dealer"]`. Empty array `[]` if none found. | Use `[]` (empty array), not null |
+| `employee_count` | INTEGER. Must be a plain integer (e.g., 12, 25, 50) — NOT a string range like "10-25". If range found, use lower bound or midpoint. | Not found |
+| `service_area` | TEXT. Plain text description (e.g., "Greater Atlanta Metro — Fulton, DeKalb, Gwinnett counties"). | Not found |
+| `google_rating` | DECIMAL(3,2). Range 0.0–5.0. From Google Business Profile. | No Google Business Profile found |
+| `google_review_count` | INTEGER. Number of Google reviews. Note small sample size (<10) in research_notes. | No Google Business Profile found |
+| `yelp_rating` | DECIMAL(3,2). Range 0.0–5.0. From Yelp Business Page. | No Yelp listing found |
+| `yelp_review_count` | INTEGER. Number of Yelp reviews. | No Yelp listing found |
+| `bbb_rating` | TEXT. Exact letter grade: `A+`, `A`, `A-`, `B+`, `B`, `B-`, `C`, `F`. NOT "NR" or descriptive text. | No BBB listing or "No Rating" shown |
+| `bbb_accredited` | BOOLEAN. true = BBB accredited, false = listed but not accredited. null = no listing. | No BBB listing found |
+| `bbb_complaints_3yr` | INTEGER. 3-year complaint count from BBB. Use 0 only if confirmed zero complaints (not for "not found"). | No BBB listing found |
+| `research_confidence` | INTEGER. 0–100 self-assessed score. 90-100: Google+Yelp+BBB+License all found. 70-89: Google+Yelp found, BBB or license missing. 40-69: 1-2 sources only. 0-39: timeout or minimal results. | Never — always set |
+| `verification_date` | DATE. Today's date in YYYY-MM-DD. Auto-set by agent. | Never — always set |
+| `research_notes` | TEXT. Narrative of all searches performed, sources found/not found, timeouts, gaps, and ambiguities. | Never — always include research summary |
+
+**Key distinction:** `insurance_verified: null` means "not checked / unknown." `insurance_verified: false` means "confirmed uninsured." Do NOT use false for "not found."
+
+---
+
 ## How This Node Fits the Architecture
 
 The **Equipment Researcher** is the upstream Loop Node that enriches equipment specs via web research and passes a fully populated bid object downstream. It does NOT research the contractor — it only touches the `equipment` array.

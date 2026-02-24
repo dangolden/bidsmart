@@ -3,20 +3,23 @@
 > Each node maps to specific Supabase tables. This doc defines exactly what each
 > node receives, what it outputs, and what schema doc it needs.
 >
-> Source of truth for table schemas: `docs/{TABLE}_SCHEMA.md` files
+> Source of truth for table schemas: `docs/SCHEMA_V2_COMPLETE.html`
+> Last updated: February 2026
 
 ---
 
-## ⚠️ Migration Required Before Equipment Researcher Can Run
+## ⚠️ V2 Schema Restructure (Feb 2026) — KEY CHANGES
 
-`BID_EQUIPMENT_SCHEMA.md` defines 3 columns that don't exist in the DB yet:
-- `system_role` TEXT
-- `afue_rating` DECIMAL(5,2)
-- `fuel_type` TEXT
+The database has been restructured. Key table changes:
 
-Also: the schema doc references `bids(id)` as FK, but the actual table uses
-`contractor_bids(id)`. The schema doc should be corrected OR a table rename
-migration is planned. **Clarify before building the Equipment Researcher agent.**
+1. **`bids`** = 18-column identity stub (status, request_id, storage_key, processing_attempts). Created by frontend at PDF upload time.
+2. **`bid_scope`** = 69 columns (ALL extracted data). Expanded from 43 scope-only columns to include pricing (10), payment terms (5), warranty (4), timeline (4), extraction metadata (2), and system_type (1).
+3. **`bid_contractors`** = contractor info (1:1 with bids)
+4. **`bid_equipment`** = equipment specs (1:N with bids). FK is `bids(id)`.
+5. **`contractor_questions`** = clarification questions (1:N with bids)
+6. **Old `contractor_bids` table** = RENAMED to `bids`. All references to `contractor_bids` below are now `bids`.
+
+**Document input pattern change**: MindPal now receives `documents_json` — a JSON array of `{bid_id, doc_url, mime_type}` objects pairing each PDF with its pre-created `bid_id`. This replaces the old flat URL array.
 
 ---
 
@@ -46,11 +49,17 @@ This context is what downstream nodes reference via `@[Bid Data Extractor]` /
 | | |
 |---|---|
 | **Type** | LOOP |
-| **Input** | Signed PDF URLs (one per iteration) |
+| **Input** | `documents_json` parsed objects — each iteration has `{bid_id, doc_url, mime_type}` |
 | **Output** | Unstructured text/markdown context — NOT DB-ready JSON |
 | **Populates** | ❌ No tables directly — serves as context for all downstream nodes |
 | **Web Search** | OFF (extraction from document only) |
 | **Model** | Claude Sonnet (needs multimodal PDF support) |
+
+### V2 Change: bid_id Passthrough
+The Bid Data Extractor now receives `bid_id` paired with each document via `@[item - bid_id]`.
+It must include `bid_id` in its output so downstream nodes and the callback can route data
+to the correct pre-created bid row. This eliminates the old pattern where bid_id was generated
+inside the callback (which caused 409 FK timing errors).
 
 ### What This Node Does
 Reads a single contractor bid PDF and extracts ALL information into rich text context:
@@ -60,7 +69,7 @@ the foundation that all downstream nodes build on.
 
 ### What This Node Does NOT Do
 - Does NOT output JSON formatted for any specific Supabase table
-- Does NOT write to contractor_bids, bid_equipment, or bid_line_items
+- Does NOT write to bids, bid_equipment, or other tables directly
 - Does NOT need to know about database column names or types
 
 ### What Information It Extracts (as unstructured context)
@@ -77,8 +86,8 @@ the foundation that all downstream nodes build on.
 | Node | What it reads from Extractor context |
 |------|-------------------------------------|
 | Equipment Researcher | Equipment brand/model/specs → enriches via web → outputs `bid_equipment` JSON |
-| Scope Extractor | Scope inclusions/exclusions/details → outputs scope columns for `contractor_bids` JSON |
-| Contractor Researcher | Contractor name/company/license → enriches via web → outputs contractor columns for `contractor_bids` JSON |
+| Scope Extractor | Scope inclusions/exclusions/details + pricing/warranty/timeline → outputs `bid_scope` JSON (69 columns) |
+| Contractor Researcher | Contractor name/company/license → enriches via web → outputs `bid_contractors` JSON |
 | Incentive Finder | Location, equipment types → researches incentives → outputs `incentive_programs` JSON |
 | All other nodes | Reference as background context for their specific tasks |
 
@@ -125,61 +134,70 @@ Energy Star certification, model names, warranty periods, electrical specs.
 |---|---|
 | **Type** | LOOP |
 | **Input** | `@[Bid Data Extractor]` — unstructured context, one bid per iteration |
-| **Populates** | `contractor_bids` (scope boolean + detail columns only) |
+| **Populates** | `bid_scope` (69 columns — ALL extracted data) |
 | **Web Search** | OFF (extraction only — scope data comes exclusively from the bid PDF) |
 | **Model** | Claude Haiku or GPT-4o mini |
 
 ### What This Node Does
-Parses scope-of-work information from the Bid Data Extractor's unstructured context
-and outputs flat JSON matching the scope columns in the `contractor_bids` table.
+Parses ALL extracted data from the Bid Data Extractor's unstructured context
+and outputs flat JSON matching the `bid_scope` table columns (69 columns).
 This is a pure extraction node — no web research. Everything comes from what the
 contractor included/excluded in their bid document.
 
+### V2 Change: Expanded to 69 Columns
+In V2, `bid_scope` expanded from 43 scope-only columns to 69 columns. The 26 new
+columns (pricing, payment, warranty, timeline, extraction metadata) were previously
+on the `bids` table but are now on `bid_scope` so all extracted data lives together.
+
 ### Why a Separate Node (not part of Equipment Researcher)
 - Equipment Researcher does web research; Scope Extractor does not
-- Equipment data goes to `bid_equipment` table; scope data goes to `contractor_bids` table
+- Equipment data goes to `bid_equipment` table; scope data goes to `bid_scope` table
 - Different models/costs — scope extraction is simpler and can use a cheaper model
 - Separation of concerns: one node = one table (or tight column group)
 
 ### Target Table
-**`contractor_bids`** — scope columns only:
+**`bid_scope`** — 69 columns total:
 
-**Scope Booleans (12 columns):**
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `scope_permit_included` | BOOLEAN | Whether permit fees and filing are included |
-| `scope_disposal_included` | BOOLEAN | Whether old equipment disposal is included |
-| `scope_electrical_included` | BOOLEAN | Whether electrical work (circuit, disconnect) is included |
-| `scope_ductwork_included` | BOOLEAN | Whether ductwork modifications are included |
-| `scope_thermostat_included` | BOOLEAN | Whether new thermostat is included |
-| `scope_manual_j_included` | BOOLEAN | Whether Manual J load calculation is included |
-| `scope_commissioning_included` | BOOLEAN | Whether system commissioning/startup is included |
-| `scope_air_handler_included` | BOOLEAN | Whether air handler replacement is included |
-| `scope_line_set_included` | BOOLEAN | Whether new refrigerant line set is included |
-| `scope_disconnect_included` | BOOLEAN | Whether electrical disconnect is included |
-| `scope_pad_included` | BOOLEAN | Whether equipment pad is included |
-| `scope_drain_line_included` | BOOLEAN | Whether condensate drain line is included |
-
-**Scope Summary Fields (3 columns):**
+**Scope Booleans + Details (24 columns — 12 pairs):**
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `scope_summary` | TEXT | Overall scope summary |
-| `inclusions` | TEXT[] | Array of included items |
-| `exclusions` | TEXT[] | Array of excluded items |
+| `permit_included` / `permit_detail` | BOOLEAN / TEXT | Permit fees and filing |
+| `disposal_included` / `disposal_detail` | BOOLEAN / TEXT | Old equipment disposal |
+| `electrical_included` / `electrical_detail` | BOOLEAN / TEXT | Electrical work |
+| `ductwork_included` / `ductwork_detail` | BOOLEAN / TEXT | Ductwork modifications |
+| `thermostat_included` / `thermostat_detail` | BOOLEAN / TEXT | New thermostat |
+| `manual_j_included` / `manual_j_detail` | BOOLEAN / TEXT | Manual J load calc |
+| `commissioning_included` / `commissioning_detail` | BOOLEAN / TEXT | System commissioning |
+| `air_handler_included` / `air_handler_detail` | BOOLEAN / TEXT | Air handler |
+| `line_set_included` / `line_set_detail` | BOOLEAN / TEXT | Refrigerant line set |
+| `disconnect_included` / `disconnect_detail` | BOOLEAN / TEXT | Outdoor disconnect |
+| `pad_included` / `pad_detail` | BOOLEAN / TEXT | Equipment pad |
+| `drain_line_included` / `drain_line_detail` | BOOLEAN / TEXT | Condensate drain line |
+
+**Electrical Sub-Group (10 columns)** — SAFETY-CRITICAL
+
+**Summary Fields (3 columns):** `summary`, `inclusions`, `exclusions`
+
+**JSONB Fields (2 columns):** `accessories`, `line_items`
+
+**V2 Migrated Columns (26 columns):**
+- System type (1): `system_type`
+- Pricing (10): `total_bid_amount`, `labor_cost`, `equipment_cost`, `materials_cost`, `permit_cost`, `disposal_cost`, `electrical_cost`, `total_before_rebates`, `estimated_rebates`, `total_after_rebates`
+- Payment (5): `deposit_required`, `deposit_percentage`, `payment_schedule`, `financing_offered`, `financing_terms`
+- Warranty (4): `labor_warranty_years`, `equipment_warranty_years`, `compressor_warranty_years`, `additional_warranty_details`
+- Timeline (4): `estimated_days`, `start_date_available`, `bid_date`, `valid_until`
+- Extraction (2): `extraction_confidence`, `extraction_notes`
 
 **Important:** All scope booleans default to NULL. NULL means "not specified in bid."
 FALSE means "explicitly excluded by the contractor." This distinction matters for
-question generation — if a scope item is NULL, the Question Generator can flag it
-as something to ask the contractor about.
+question generation.
 
-### Schema Doc Needed
-- Part of `docs/CONTRACTOR_BIDS_SCHEMA.md` — ❌ NOT YET CREATED
-  (scope columns are a subset of the full contractor_bids table)
+### Schema Doc
+- `docs/SCHEMA_V2_COMPLETE.html` — ✅ Updated with full 69-column bid_scope
 
 ### Node Spec
-- `mindpal/nodes/scope-extractor.md` — ✅ COMPLETE
+- `mindpal/nodes/scope-extractor.md` — ✅ COMPLETE (updated for V2)
 
 ### Build Priority: **2nd** (runs in parallel with Equipment Researcher — both read from Extractor)
 
@@ -343,45 +361,44 @@ ALL bids simultaneously to produce relative rankings.
 
 | | |
 |---|---|
-| **Type** | LOOP |
-| **Input** | All prior nodes + user priorities |
-| **Populates** | `bid_questions` (N rows per bid) |
+| **Type** | **AGENT** (not Loop — needs cross-bid context) |
+| **Input** | `@[Equipment Researcher]`, `@[Contractor Researcher]`, `@[Incentive Finder]`, `@[Scoring Engine]`, `@[API Input - user_priorities]` |
+| **Populates** | `contractor_questions` (N rows per bid) |
 | **Web Search** | OFF |
 | **Model** | Claude Sonnet |
 
 ### What This Node Does
 Generates specific, actionable questions for the homeowner to ask each contractor.
 Questions are triggered by missing information, scope gaps, price anomalies, red
-flags, and cross-bid comparisons.
+flags, and cross-bid comparisons. Uses a 4-tier system (essential, clarification,
+detailed, expert) with 7 question categories including electrical.
 
-### Why Loop Node
-Questions are per-bid — each contractor has different gaps and issues. The agent
-receives one bid's full enriched data per iteration, plus read-only context about
-other bids for cross-referencing.
+### Why Agent Node (not Loop)
+Questions require cross-bid context: "Your price is $4,200 higher than Contractor A"
+and "Contractor B includes electrical panel assessment but your bid doesn't mention it."
+These comparisons are impossible in a Loop that sees only one bid at a time.
 
 ### Target Table
-**`bid_questions`** — agent-output columns:
+**`contractor_questions`** — agent-output columns:
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `question_text` | TEXT, NOT NULL | The actual question |
-| `category` | TEXT | pricing, warranty, equipment, timeline, scope, credentials, electrical |
+| `question_category` | TEXT | pricing, warranty, equipment, timeline, scope, credentials, **electrical** |
+| `question_tier` | TEXT | essential, clarification, detailed, expert |
 | `priority` | TEXT | high, medium, low |
 | `context` | TEXT | Why this question was generated |
-| `triggered_by` | TEXT | missing_field, scope_difference, price_variance, unclear_term, red_flag, negotiation, electrical |
+| `triggered_by` | TEXT | missing_field, scope_difference, price_variance, unclear_term, red_flag, negotiation, electrical, standard_essential, technical_verification |
 | `good_answer_looks_like` | TEXT | What a good answer would be |
 | `concerning_answer_looks_like` | TEXT | What a concerning answer would be |
 | `missing_field` | TEXT | Which field triggered this (if applicable) |
 | `generation_notes` | TEXT | Agent notes |
 | `display_order` | INTEGER | Sort order for display |
 
-Note: `question_category` also exists (legacy) alongside `category`. MindPal should
-write to `category`; the frontend supports both.
+### Node Spec
+- `mindpal/nodes/question-generator.md` — ✅ COMPLETE (v2 with 4-tier system)
 
-### Schema Doc Needed
-- `docs/BID_QUESTIONS_SCHEMA.md` — ❌ NOT YET CREATED
-
-### Build Priority: **7th** (⚠️ Currently DEGRADED in v10 — this is the restoration)
+### Build Priority: **7th** (⚠️ Restored from degraded v10 single-line instructions)
 
 ---
 
@@ -471,13 +488,16 @@ less meaningful.
 Deterministic JavaScript. Receives all AI node outputs as string inputs, parses
 each, and makes HTTP POST/PATCH calls to the Supabase REST API.
 
-### Insert Order (FK dependency)
-1. `contractor_bids` → INSERT (scope data from Scope Extractor + contractor data from Contractor Researcher) → returns `bid_id`
-2. `bid_equipment` → INSERT using `bid_id`
-3. `bid_line_items` → INSERT using `bid_id`
-4. `bid_questions` → INSERT using `bid_id`
-5. `bid_faqs` → INSERT using `bid_id`
-6. `incentive_programs` → INSERT using `bid_id`
+### V2 Insert Strategy
+In V2, `bid_id` is pre-created by the frontend at PDF upload time. The callback UPDATEs
+existing rows instead of INSERTing new ones. FK timing errors are eliminated.
+
+1. `bids` → UPDATE existing row (set status, contractor_name)
+2. `bid_scope` → UPSERT on bid_id (all 69 columns of extracted data)
+3. `bid_contractors` → UPSERT on bid_id
+4. `bid_equipment` → DELETE + INSERT using `bid_id`
+5. `contractor_questions` → INSERT using `bid_id`
+6. `bid_faqs` → INSERT using `bid_id`
 7. `project_faqs` → INSERT using `project_id`
 
 ### Schema Doc Needed
@@ -487,19 +507,17 @@ each, and makes HTTP POST/PATCH calls to the Supabase REST API.
 
 ---
 
-## Schema Doc Creation Order
+## Schema Documentation
 
-Based on node build dependencies:
+**Primary schema reference:** `docs/SCHEMA_V2_COMPLETE.html` — comprehensive HTML doc covering all tables with column details, relationships, indexes, and V2 migration notes.
 
-```
-1. docs/CONTRACTOR_BIDS_SCHEMA.md    ← Needed for Nodes 3 (Scope), 4 (Contractor), 5 (Incentive summary), 6 (Scoring)
-2. docs/BID_LINE_ITEMS_SCHEMA.md     ← Needed for future line items node
-3. docs/BID_EQUIPMENT_SCHEMA.md      ← ✅ ALREADY EXISTS
-4. docs/INCENTIVE_PROGRAMS_SCHEMA.md ← Needed for Node 5
-5. docs/BID_QUESTIONS_SCHEMA.md      ← Needed for Node 7
-6. docs/BID_FAQS_SCHEMA.md           ← Needed for Node 8
-7. docs/PROJECT_FAQS_SCHEMA.md       ← Needed for Node 9
-```
+Individual table schema docs (where they exist):
 
-**CONTRACTOR_BIDS_SCHEMA.md is the critical path** — it's the largest table (~115 cols)
-and blocks Nodes 3, 4, 5, and 6.
+| Table | Schema Doc | Status |
+|-------|-----------|--------|
+| ALL tables | `docs/SCHEMA_V2_COMPLETE.html` | ✅ Complete (V2 updated) |
+| `bid_equipment` | `docs/BID_EQUIPMENT_SCHEMA.md` | ✅ Exists |
+| `bids` | In SCHEMA_V2_COMPLETE.html | ✅ (18-col identity stub) |
+| `bid_scope` | In SCHEMA_V2_COMPLETE.html | ✅ (69 columns) |
+| `bid_contractors` | In SCHEMA_V2_COMPLETE.html | ✅ |
+| `contractor_questions` | In SCHEMA_V2_COMPLETE.html | ✅ |

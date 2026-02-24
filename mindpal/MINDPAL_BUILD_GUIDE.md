@@ -53,15 +53,18 @@ old v10 audit files, field mapping audits, or the mindpal-json-assembler-schema.
 
 ### Current Schema Docs (use these)
 
+**Primary reference:** `docs/SCHEMA_V2_COMPLETE.html` — comprehensive HTML doc covering ALL tables.
+
 | Table | Schema Doc | Status |
 |-------|-----------|--------|
+| ALL tables | `docs/SCHEMA_V2_COMPLETE.html` | ✅ Complete (V2 restructure applied) |
 | `bid_equipment` | `docs/BID_EQUIPMENT_SCHEMA.md` | ✅ Complete (SQL + JSON + field rules) |
-| `contractor_bids` | **NEEDS CREATION** — `docs/CONTRACTOR_BIDS_SCHEMA.md` | ❌ Not yet written |
-| `bid_line_items` | **NEEDS CREATION** — `docs/BID_LINE_ITEMS_SCHEMA.md` | ❌ Not yet written |
-| `bid_questions` | **NEEDS CREATION** — `docs/BID_QUESTIONS_SCHEMA.md` | ❌ Not yet written |
-| `bid_faqs` | **NEEDS CREATION** — `docs/BID_FAQS_SCHEMA.md` | ❌ Not yet written |
-| `project_faqs` | **NEEDS CREATION** — `docs/PROJECT_FAQS_SCHEMA.md` | ❌ Not yet written |
-| `incentive_programs` | **NEEDS CREATION** — `docs/INCENTIVE_PROGRAMS_SCHEMA.md` | ❌ Not yet written |
+| `bids` | `docs/SCHEMA_V2_COMPLETE.html` | ✅ 18-column identity stub |
+| `bid_scope` | `docs/SCHEMA_V2_COMPLETE.html` | ✅ 69 columns (43 scope + 26 migrated) |
+| `bid_contractors` | `docs/SCHEMA_V2_COMPLETE.html` | ✅ |
+| `contractor_questions` | `docs/SCHEMA_V2_COMPLETE.html` | ✅ |
+
+> **V2 Note:** The old `contractor_bids` table has been split into `bids` (identity stub) + `bid_scope` (all extracted data) + `bid_contractors` (company info). References to `contractor_bids` in this codebase are outdated.
 
 ### Schema Doc Template
 
@@ -255,30 +258,30 @@ that run before it.
    → Node spec: mindpal/nodes/equipment-researcher.md ✅ DONE
 
 3. Scope Extractor (LOOP) — can run in parallel with Equipment Researcher
-   → Target: contractor_bids (scope columns only)
+   → Target: bid_scope (69 columns — all extracted data)
    → Input: @[Bid Data Extractor] (unstructured context)
-   → Schema doc needed: Part of CONTRACTOR_BIDS_SCHEMA.md
-   → Node spec: mindpal/nodes/scope-extractor.md ✅ DONE
+   → Schema doc: SCHEMA_V2_COMPLETE.html ✅
+   → Node spec: mindpal/nodes/scope-extractor.md ✅ DONE (updated for V2)
 
 4. Contractor Researcher (LOOP)
-   → Target: contractor_bids (enriches contractor fields)
+   → Target: bid_contractors (enriches contractor fields)
    → Input: @[Bid Data Extractor] (unstructured context)
-   → Schema doc needed: CONTRACTOR_BIDS_SCHEMA.md
+   → Schema doc: SCHEMA_V2_COMPLETE.html ✅
 
 5. Incentive Finder (AGENT)
-   → Target: incentive_programs + contractor_bids (incentive summary fields)
+   → Target: incentive_programs + bid_scope (incentive summary fields)
    → Input: @[Bid Data Extractor] + @[Equipment Researcher]
-   → Schema doc needed: INCENTIVE_PROGRAMS_SCHEMA.md
+   → Schema doc: SCHEMA_V2_COMPLETE.html ✅
 
 6. Scoring Engine (AGENT)
-   → Target: contractor_bids (score fields)
+   → Target: bid_scores (score fields)
    → Input: @[Equipment Researcher] + @[Contractor Researcher] + @[Incentive Finder] + user priorities
-   → Schema doc needed: Part of CONTRACTOR_BIDS_SCHEMA.md (score columns)
+   → Schema doc: SCHEMA_V2_COMPLETE.html ✅
 
-7. Question Generator (LOOP)
-   → Target: bid_questions
+7. Question Generator (AGENT — needs cross-bid context)
+   → Target: contractor_questions
    → Input: All prior nodes + user priorities
-   → Schema doc needed: BID_QUESTIONS_SCHEMA.md
+   → Node spec: mindpal/nodes/question-generator.md ✅ DONE (v2 4-tier system)
 
 8. Per-Bid FAQ Generator (LOOP)
    → Target: bid_faqs

@@ -6,6 +6,100 @@
 
 ---
 
+## MindPal Configuration Mapping
+
+What goes where when configuring this node in MindPal:
+
+| MindPal Section | What Belongs There | Examples from This Spec |
+|---|---|---|
+| **Agent Background** | Role definition, scope boundaries, federal/state/utility/manufacturer program expertise, stacking rules, anti-hallucination rules, field format rules | `<role>`, `<scope>`, `<expertise>`, `<rules>` — permanent knowledge about incentive programs, eligibility, and stacking |
+| **Desired Output Format** | JSON schema with location_context, summary, and programs[] structures, all field requirements, enum values | `<output_schema>` — the exact JSON contract with all program fields |
+| **Task Prompt** | Variable reference (`@[Contractor Researcher]` — must show purple), step-by-step research sequence (Steps 1-7), search budget, complete JSON output template, validation rules | Task-specific research workflow — the search sequence and output formatting |
+
+**Key principle:** Incentive program knowledge (what 25C covers, HEEHRA income tiers, stacking rules) goes in Background as permanent domain knowledge. The research sequence (identify utilities → federal → state → utility → manufacturer → synthesize) goes in Task Prompt.
+
+---
+
+## V2 Schema Reconciliation
+
+**IMPORTANT:** The agent output field names differ from the V2 `project_incentives` table column names. The downstream Code Node must map between them.
+
+| Agent Output Field | V2 DB Column (`project_incentives`) | Notes |
+|---|---|---|
+| `program_name` | `program_name` | Match |
+| `program_type` | `program_type` | Match, BUT DB CHECK includes `tax_credit` — agent should use `tax_credit` for federal 25C |
+| `incentive_amount_numeric_min` | `amount_min` | Rename needed in Code Node |
+| `incentive_amount_numeric_max` | `amount_max` | Rename needed in Code Node |
+| `incentive_amount_string` | `amount_description` | Rename needed in Code Node |
+| `equipment_requirements` | `eligibility_requirements` | Agent combines both; DB has separate fields |
+| `eligibility_requirements` | `eligibility_requirements` | Match |
+| `income_limits` | `income_limits` | Match |
+| `can_stack_with_other_incentives` | `can_stack` | Rename needed in Code Node |
+| `stacking_notes` | `stacking_notes` | Match |
+| `verification_source` | `verification_source` | Match |
+| `still_active` | `still_active` | Match |
+| `research_confidence` | `confidence` | Rename needed in Code Node |
+| `research_notes` | *(no DB column)* | Debugging only — not stored |
+| `application_process` | `application_process` | Match |
+| *(not in agent output)* | `source` | Code Node sets: `'ai_discovered'` |
+| *(not in agent output)* | `incentive_database_id` | Code Node sets: null (for ai_discovered) |
+| *(not in agent output)* | `equipment_types_eligible` | Code Node maps from agent's equipment_requirements |
+| *(not in agent output)* | `income_qualified` | Code Node derives: true if income_limits is non-null |
+| *(not in agent output)* | `application_url` | Could be extracted from verification_source |
+| *(not in agent output)* | `project_id` | Code Node sets from job context (NOT bid_id) |
+| *(not in agent output)* | `user_plans_to_apply` | Frontend only |
+| *(not in agent output)* | `application_status` | Frontend only |
+| *(not in agent output)* | `applied_amount` | Frontend only |
+
+**Key change from V1:** `project_incentives` uses `project_id` (not `bid_id`). Incentives are per-project, not per-bid. The Code Node inserts one set of programs per project, not duplicated across bids.
+
+---
+
+## Field-by-Field Rules
+
+### Location Context (debugging/routing — not stored in DB directly)
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `state` | TEXT. Full state name from customer_info.property_state. | Never — extracted from bid input |
+| `zip` | TEXT. Zip code from customer_info.property_zip. | Not available in bid input |
+| `electric_utility` | TEXT. Identified via web search "[city] [state] electric utility". | Could not identify from search |
+| `gas_utility` | TEXT. If applicable. | No gas service, or not identified |
+| `cca` | TEXT. Community Choice Aggregation name (common in CA, MA, IL). | No CCA in this area |
+| `ren` | TEXT. Regional Energy Network (CA only — BayREN, SoCalREN). | Not in California, or no REN |
+
+### Summary (written to contractor_bids summary columns via Code Node)
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `programs_found_count` | INTEGER. Must equal actual length of programs[]. | Never — always set (0 if nothing found) |
+| `total_potential_low` | DECIMAL. Conservative stackable combination at minimum amounts. Do NOT stack 25C + HEEHRA. Plain number (no $ sign). | No programs found |
+| `total_potential_high` | DECIMAL. Best-case stackable combination at maximum amounts. Plain number. | No programs found |
+| `research_confidence` | TEXT. `high`, `medium`, `low`. Overall assessment across all programs. | Never — always set |
+| `research_notes` | TEXT. Narrative of searches performed, sources found, stacking calculation logic. | Never — always include |
+
+### Program Fields (each becomes one `project_incentives` row)
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `program_name` | TEXT, REQUIRED. Official program name (e.g., "IRA Section 25C Energy Efficient Home Improvement Credit"). | Never — REQUIRED |
+| `program_type` | TEXT, REQUIRED. Values: `federal`, `state`, `utility`, `local`, `manufacturer`, `tax_credit`. NOTE: Federal 25C should be `tax_credit` per V2 CHECK constraint. HEEHRA is `federal`. | Never — REQUIRED |
+| `incentive_amount_numeric_min` | DECIMAL. Minimum possible amount. For fixed rebates, min = max. Maps to DB `amount_min`. | Amount unknown or not determinable |
+| `incentive_amount_numeric_max` | DECIMAL. Maximum possible amount (cap). Maps to DB `amount_max`. | Amount unknown |
+| `incentive_amount_string` | TEXT, REQUIRED. Human-readable description (e.g., "30% of cost, up to $2,000 per year"). Maps to DB `amount_description`. | Never — always provide even if numeric fields are null |
+| `equipment_requirements` | TEXT. Equipment eligibility specs (e.g., "ENERGY STAR Most Efficient certified"). | No specific equipment requirements |
+| `eligibility_requirements` | TEXT. Other eligibility criteria beyond equipment. | No requirements beyond equipment type |
+| `income_limits` | TEXT. Income qualification details if applicable (e.g., "≤80% AMI: 100% rebate, 80-150% AMI: 50%"). | Not income-qualified |
+| `application_process` | TEXT. How to apply (e.g., "Claim on IRS Form 5695", "Apply through utility portal"). | Application process not found |
+| `can_stack_with_other_incentives` | BOOLEAN. true = confirmed stackable, false = confirmed non-stackable. Maps to DB `can_stack`. | Stacking rules unknown |
+| `stacking_notes` | TEXT. Specific stacking limitations (e.g., "Cannot combine with HEEHRA on same equipment same year"). | No stacking restrictions or restrictions unknown |
+| `verification_source` | TEXT, REQUIRED. URL or site name where program was confirmed. Audit trail. | Never — always cite source |
+| `still_active` | BOOLEAN, REQUIRED. true unless confirmed expired. false for ended programs. | Never — always set (default true) |
+| `research_confidence` | TEXT. Per-program confidence. `high` = official source. `medium` = reputable secondary. `low` = referenced only. Maps to DB `confidence`. | Never — always set |
+| `research_notes` | TEXT. Per-program notes. NOT stored in DB — debugging only. | No additional notes needed |
+
+---
+
 ## How This Node Fits the Architecture
 
 All upstream Loop nodes (Bid Data Extractor, Equipment Researcher, Contractor Researcher) process bids one at a time. The **Incentive Finder** is the first **Agent node** (not a Loop) — it runs once per job, not once per bid.
@@ -15,7 +109,7 @@ Incentives are location-based and equipment-type-based, not contractor-specific.
 The Incentive Finder:
 1. Receives the full output from all upstream nodes (location, equipment types, utility info)
 2. Researches available incentive programs once for the job
-3. Outputs a program list + summary that gets written once per bid (same programs, each bid gets its own rows since `incentive_programs` is FK'd to `bid_id`)
+3. Outputs a program list + summary that gets written once per project to `project_incentives` (FK'd to `project_id`, NOT per-bid)
 
 ---
 
@@ -26,7 +120,7 @@ The Incentive Finder:
 | Location-based, not bid-based | Federal 25C, HEEHRA, state programs all depend on property address — not which contractor you pick |
 | Avoid duplicate searches | Running 5× searches for the same zip code wastes budget and produces inconsistent results |
 | Cross-bid context needed | Needs to know ALL equipment types across all bids to determine eligibility correctly |
-| Single authoritative list | One research pass → one program list → written to each bid_id |
+| Single authoritative list | One research pass → one program list → written once per project_id |
 
 ---
 
@@ -169,10 +263,10 @@ STEP 6 — SYNTHESIZE: Calculate total_potential_low and total_potential_high
 2. Mark still_active: false if a program has expired — do not omit expired programs, document them.
 3. research_confidence per program: "high" = verified on official source this session, "medium" = found on reputable secondary source, "low" = referenced but unverified.
 4. incentive_amount_string is always required — write a human-readable version even if numeric fields are null.
-5. program_type must be exactly one of: federal, state, utility, local, manufacturer.
+5. program_type must be exactly one of: federal, state, utility, local, manufacturer, tax_credit. Use tax_credit for Federal 25C (it's a non-refundable tax credit, not a direct rebate). Use federal for HEEHRA (it's a direct rebate program).
 6. can_stack_with_other_incentives: true if confirmed stackable, false if confirmed non-stackable, null if unknown.
 7. Always note the verification_source URL or site name for each program.
-8. Write the same programs for every bid_id — incentives are property-level, not contractor-level.
+8. Programs are written once per project_id — incentives are property-level, not contractor-level. The Code Node handles this.
 9. Do NOT exceed 8 total searches.
 10. Do NOT wrap output in markdown code blocks. Return raw JSON only.
 </rules>
@@ -207,7 +301,7 @@ Your output must be a JSON object with this exact structure:
   "programs": [
     {
       "program_name": "string",
-      "program_type": "federal|state|utility|local|manufacturer",
+      "program_type": "federal|state|utility|local|manufacturer|tax_credit",
       "incentive_amount_numeric_min": number or null,
       "incentive_amount_numeric_max": number or null,
       "incentive_amount_string": "string",
@@ -232,14 +326,14 @@ FIELD REQUIREMENTS:
 - summary.total_potential_high: maximum realistic total (best-case stackable combo), as a plain number
 - programs: array of all programs found — [] if nothing found
 - program_name: REQUIRED, NOT NULL
-- program_type: REQUIRED — exactly one of: federal, state, utility, local, manufacturer
+- program_type: REQUIRED — exactly one of: federal, state, utility, local, manufacturer, tax_credit. Use tax_credit for IRA Section 25C. Use federal for HEEHRA.
 - incentive_amount_string: REQUIRED — always write a human-readable description even if numeric fields are null
 - still_active: REQUIRED boolean — true unless confirmed expired
 - research_confidence per program: "high" (official source), "medium" (reputable secondary), "low" (referenced only)
 - verification_source: URL or site name where this program was confirmed
 
-Do NOT include id, bid_id, or created_at — those are set by the downstream insert node.
-The downstream Code Node will duplicate these programs across each bid_id.
+Do NOT include id, project_id, or created_at — those are set by the downstream Code Node.
+The Code Node inserts these programs once per project_id (NOT duplicated per bid).
 </output_schema>
 ```
 
@@ -251,10 +345,10 @@ The downstream Code Node will duplicate these programs across each bid_id.
 |---|---|
 | Node Key | `incentive-finder` |
 | Node Type | AGENT (single-run, not Loop) |
-| Target Tables | `incentive_programs` (N rows per program × per bid) + `contractor_bids` (incentive summary fields) |
+| Target Tables | `project_incentives` (N rows per program, per project) + summary fields to project-level context |
 | Input Source | `@[Contractor Researcher]` output (full bid array) |
-| Writes New Rows? | YES — inserts into `incentive_programs`, updates `contractor_bids` |
-| Upsert Key | `bid_id + program_name` (prevents duplicate programs on re-run) |
+| Writes New Rows? | YES — inserts into `project_incentives` (one set per project, NOT per bid) |
+| Upsert Key | `project_id + program_name` (prevents duplicate programs on re-run) |
 | Model | Claude 3.5 Sonnet or GPT-4o |
 | Search Budget | 8 searches maximum |
 
@@ -264,8 +358,8 @@ The downstream Code Node will duplicate these programs across each bid_id.
 
 The Incentive Finder receives the complete array of enriched bid objects and performs a single job-level research pass to find all applicable incentive programs for the homeowner's property and equipment. It outputs:
 
-1. **`programs[]`** — each item becomes one row in `incentive_programs`, duplicated for every `bid_id`
-2. **`summary`** — the summary fields write to `incentive_*` columns on every `contractor_bids` row
+1. **`programs[]`** — each item becomes one row in `project_incentives`, written once per `project_id`
+2. **`summary`** — the summary fields write to project-level incentive context
 
 **Rule:** This node researches once. The same program list applies to all bids. The downstream Code Node handles fan-out to individual `bid_id` rows.
 
@@ -273,39 +367,48 @@ The Incentive Finder receives the complete array of enriched bid objects and per
 
 ## Database Columns This Node Populates
 
-### `incentive_programs` table (one row per program, per bid)
+### `project_incentives` table (V2 — one row per program, per project)
 
-| DB Column | Type | Source |
+> **V2 change:** Table renamed from `incentive_programs` to `project_incentives`. FK changed from `bid_id` to `project_id`. Incentives are per-project, not per-bid.
+
+| DB Column | Type | Agent Output Field | Notes |
+|---|---|---|---|
+| `id` | UUID | *(DB-set)* | gen_random_uuid() |
+| `project_id` | UUID | *(Code Node sets)* | FK → projects(id), NOT bid_id |
+| `source` | TEXT NOT NULL | *(Code Node sets)* | `'ai_discovered'` for all MindPal-found programs |
+| `incentive_database_id` | UUID | *(Code Node sets)* | null for ai_discovered |
+| `program_name` | TEXT NOT NULL | `program_name` | Direct map |
+| `program_type` | TEXT NOT NULL | `program_type` | CHECK: federal, state, utility, manufacturer, tax_credit |
+| `amount_min` | DECIMAL(12,2) | `incentive_amount_numeric_min` | Rename in Code Node |
+| `amount_max` | DECIMAL(12,2) | `incentive_amount_numeric_max` | Rename in Code Node |
+| `amount_description` | TEXT | `incentive_amount_string` | Rename in Code Node |
+| `equipment_types_eligible` | TEXT[] | *(Code Node derives)* | From agent's equipment_requirements |
+| `eligibility_requirements` | TEXT | `eligibility_requirements` | Direct map |
+| `income_qualified` | BOOLEAN | *(Code Node derives)* | true if income_limits is non-null |
+| `income_limits` | TEXT | `income_limits` | Direct map |
+| `application_process` | TEXT | `application_process` | Direct map |
+| `application_url` | TEXT | *(Code Node extracts)* | From verification_source if URL |
+| `verification_source` | TEXT | `verification_source` | Direct map |
+| `can_stack` | BOOLEAN | `can_stack_with_other_incentives` | Rename in Code Node |
+| `stacking_notes` | TEXT | `stacking_notes` | Direct map |
+| `still_active` | BOOLEAN | `still_active` | Direct map |
+| `confidence` | TEXT | `research_confidence` | Rename in Code Node |
+| `user_plans_to_apply` | BOOLEAN | *(Frontend)* | Not in agent output |
+| `application_status` | TEXT | *(Frontend)* | Not in agent output |
+| `applied_amount` | DECIMAL(12,2) | *(Frontend)* | Not in agent output |
+| `created_at` | TIMESTAMPTZ | *(DB-set)* | now() |
+| `updated_at` | TIMESTAMPTZ | *(DB-set)* | now() |
+
+### Summary fields (written to `bids` or project-level context)
+
+| Field | Source | Notes |
 |---|---|---|
-| `program_name` | TEXT NOT NULL | Research output |
-| `program_type` | TEXT NOT NULL | federal / state / utility / local / manufacturer |
-| `incentive_amount_numeric_min` | DECIMAL(12,2) | Research output |
-| `incentive_amount_numeric_max` | DECIMAL(12,2) | Research output |
-| `incentive_amount_string` | TEXT | Human-readable description |
-| `equipment_requirements` | TEXT | Eligibility specs |
-| `eligibility_requirements` | TEXT | Other criteria |
-| `income_limits` | TEXT | Income qualification details |
-| `application_process` | TEXT | How to apply |
-| `can_stack_with_other_incentives` | BOOLEAN | Stacking eligibility |
-| `stacking_notes` | TEXT | Stacking details |
-| `verification_source` | TEXT | URL or site name |
-| `still_active` | BOOLEAN | Whether program is current |
-| `research_confidence` | TEXT | high / medium / low |
-| `research_notes` | TEXT | Per-program notes |
-
-### `contractor_bids` columns (written to every bid row for this job)
-
-| DB Column | Type | Source |
-|---|---|---|
-| `incentive_electric_utility` | TEXT | Identified from location research |
-| `incentive_gas_utility` | TEXT | Identified from location research |
-| `incentive_cca` | TEXT | CCA name if applicable |
-| `incentive_ren` | TEXT | REN name if applicable |
-| `incentive_total_potential_low` | DECIMAL(12,2) | Calculated conservative total |
-| `incentive_total_potential_high` | DECIMAL(12,2) | Calculated best-case total |
-| `incentive_programs_found_count` | INTEGER | Count of programs array |
-| `incentive_research_confidence` | TEXT | Overall research confidence |
-| `incentive_research_notes` | TEXT | Summary research narrative |
+| `location_context.*` | Research output | Utilities, CCA, REN — routing metadata |
+| `summary.programs_found_count` | Research output | Count of programs array |
+| `summary.total_potential_low` | Research output | Conservative stackable total |
+| `summary.total_potential_high` | Research output | Best-case stackable total |
+| `summary.research_confidence` | Research output | Overall confidence |
+| `summary.research_notes` | Research output | Research narrative |
 
 ---
 
@@ -444,7 +547,7 @@ Return ONLY valid JSON. No preamble, no explanation, no markdown wrappers.
   "programs": [
     {
       "program_name": "string",
-      "program_type": "federal|state|utility|local|manufacturer",
+      "program_type": "federal|state|utility|local|manufacturer|tax_credit",
       "incentive_amount_numeric_min": null,
       "incentive_amount_numeric_max": null,
       "incentive_amount_string": "string",
@@ -465,7 +568,7 @@ Return ONLY valid JSON. No preamble, no explanation, no markdown wrappers.
 VALIDATION RULES:
 ✅ MUST DO:
   1. programs_found_count must equal the actual length of the programs array
-  2. All program_type values must be exactly: federal, state, utility, local, or manufacturer
+  2. All program_type values must be exactly: federal, state, utility, local, manufacturer, or tax_credit. Use tax_credit for IRA 25C (not "federal").
   3. incentive_amount_string is REQUIRED on every program — always write a human-readable description
   4. still_active is REQUIRED boolean on every program
   5. verification_source is REQUIRED on every program — URL or site name
@@ -504,7 +607,7 @@ VALIDATION RULES:
   "programs": [
     {
       "program_name": "IRA Section 25C Energy Efficient Home Improvement Credit",
-      "program_type": "federal",
+      "program_type": "tax_credit",
       "incentive_amount_numeric_min": 600,
       "incentive_amount_numeric_max": 2000,
       "incentive_amount_string": "30% of cost, up to $2,000 per year for heat pumps",
@@ -614,24 +717,25 @@ VALIDATION RULES:
 The downstream Code Node must use this upsert key to prevent duplicate rows on re-runs:
 
 ```sql
-ON CONFLICT (bid_id, program_name) DO UPDATE SET
+-- V2: project_incentives uses project_id (not bid_id)
+-- Code Node maps agent field names → DB column names
+ON CONFLICT (project_id, program_name) DO UPDATE SET
   program_type = EXCLUDED.program_type,
-  incentive_amount_numeric_min = EXCLUDED.incentive_amount_numeric_min,
-  incentive_amount_numeric_max = EXCLUDED.incentive_amount_numeric_max,
-  incentive_amount_string = EXCLUDED.incentive_amount_string,
-  equipment_requirements = EXCLUDED.equipment_requirements,
+  amount_min = EXCLUDED.amount_min,                          -- agent: incentive_amount_numeric_min
+  amount_max = EXCLUDED.amount_max,                          -- agent: incentive_amount_numeric_max
+  amount_description = EXCLUDED.amount_description,          -- agent: incentive_amount_string
   eligibility_requirements = EXCLUDED.eligibility_requirements,
   income_limits = EXCLUDED.income_limits,
   application_process = EXCLUDED.application_process,
-  can_stack_with_other_incentives = EXCLUDED.can_stack_with_other_incentives,
+  can_stack = EXCLUDED.can_stack,                            -- agent: can_stack_with_other_incentives
   stacking_notes = EXCLUDED.stacking_notes,
   verification_source = EXCLUDED.verification_source,
   still_active = EXCLUDED.still_active,
-  research_confidence = EXCLUDED.research_confidence,
-  research_notes = EXCLUDED.research_notes;
+  confidence = EXCLUDED.confidence,                          -- agent: research_confidence
+  updated_at = now();
 ```
 
-The same programs list is inserted for every `bid_id` in the job. The Code Node loops over all `bid_ids` and inserts each program against each bid.
+The programs list is inserted once per `project_id` (NOT duplicated per bid). Incentives are property-level.
 
 ---
 

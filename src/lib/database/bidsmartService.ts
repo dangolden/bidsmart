@@ -20,6 +20,7 @@ import type {
   PdfUpload,
   MindPalExtraction,
   ProjectIncentive,
+  IncentiveProgramDB,
   ContractorQuestion,
   BidFaq,
   ProjectFaq,
@@ -719,6 +720,53 @@ export async function updateProjectIncentive(
     .update(updates)
     .eq('id', incentiveId)
     .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+// ============================================
+// INCENTIVE PROGRAM DATABASE (master reference)
+// ============================================
+
+/**
+ * Query incentive_program_database for all active programs matching zip/state/nationwide.
+ * Combines: nationwide + state-match + zip-match in a single OR query.
+ * RLS already filters is_active = true; explicit filter added for clarity.
+ */
+export async function getIncentivesByZip(
+  zip: string,
+  state?: string
+): Promise<IncentiveProgramDB[]> {
+  const orParts: string[] = ['available_nationwide.eq.true'];
+
+  if (zip) {
+    orParts.push(`available_zip_codes.cs.{"${zip}"}`);
+  }
+  if (state) {
+    orParts.push(`available_states.cs.{"${state}"}`);
+  }
+
+  const { data, error } = await supabase
+    .from('incentive_program_database')
+    .select('*')
+    .eq('is_active', true)
+    .or(orParts.join(','))
+    .order('program_type', { ascending: true })
+    .order('max_rebate', { ascending: false, nullsFirst: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getIncentiveById(
+  id: string
+): Promise<IncentiveProgramDB | null> {
+  const { data, error } = await supabase
+    .from('incentive_program_database')
+    .select('*')
+    .eq('id', id)
     .maybeSingle();
 
   if (error) throw error;

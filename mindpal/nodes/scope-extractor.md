@@ -1,10 +1,149 @@
 # Scope Extractor — Full Node Spec
 
-> **Source of truth:** `bid_scope` table in SCHEMA_V2_COMPLETE.html (43 columns)
+> **Source of truth:** `bid_scope` table in SCHEMA_V2_COMPLETE.html (69 columns)
 > Node Key: `scope-extractor`
 > Type: **LOOP**
 > Target Table: `bid_scope` (dedicated table, 1:1 with bids)
 > Agent: **New agent** — built from scratch, not reusing any existing agent
+>
+> **V2 UPDATE (Feb 2026):** `bid_scope` expanded from 43 → 69 columns. 26 columns migrated from old `bids` table: system_type (1), pricing (10), payment terms (5), warranty (4), timeline (4), extraction metadata (2). The Scope Extractor now outputs ALL bid_scope fields including these migrated columns. The `bids` table is now a slim 18-column identity stub — all extracted data lives in `bid_scope`.
+
+---
+
+## MindPal Configuration Mapping
+
+What goes where when configuring this node in MindPal:
+
+| MindPal Section | What Belongs There | Examples from This Spec |
+|---|---|---|
+| **Agent Background** | Role definition, scope boundaries, HVAC scope item expertise (what each item means), boolean interpretation rules (null vs true vs false), electrical sub-group field definitions, anti-hallucination rules | `<role>`, `<scope>`, `<expertise>`, `<extraction_behavior>`, `<data_integrity>`, `<rules>` — permanent knowledge about HVAC bid scope items |
+| **Desired Output Format** | JSON schema with all 69 fields + types + valid values, field requirement notes, accessories and line_items array schemas, V2 migrated column schemas (pricing, payment, warranty, timeline, extraction) | `<output_schema>` — the exact JSON contract with every boolean pair, electrical field, JSONB structure, and V2 migrated columns |
+| **Task Prompt** | Variable reference (`{{#currentItem}}` — must show purple), step-by-step extraction instructions (scan → booleans → electrical → accessories → line items → summary), critical reminders | Task-specific extraction workflow — walks through parsing the bid context |
+
+**Key principle:** What each scope item means (permit = filing + fees + inspections) goes in Background as permanent domain knowledge. The step-by-step extraction flow goes in Task Prompt. The boolean interpretation rule (null = not mentioned, true = explicitly included, false = explicitly excluded) is so critical it belongs in BOTH.
+
+---
+
+## Field-by-Field Rules
+
+### Boolean Interpretation (applies to all 12 scope boolean pairs)
+
+| Value | Meaning | Example |
+|---|---|---|
+| `true` | Bid EXPLICITLY states this item is included | "Includes: building permit and inspections" |
+| `false` | Bid EXPLICITLY states this item is NOT included or excluded | "Excludes: ductwork modifications" or "Customer responsible for permits" |
+| `null` | Bid does NOT MENTION this item at all | No reference to manual J anywhere in the bid |
+
+**CRITICAL:** `null != false`. Null triggers a question to the homeowner ("Ask about this"). False means the contractor explicitly excluded it.
+
+### Summary & Free-Form Fields
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `summary` | TEXT. 1-3 sentence scope overview. | No scope info found in bid |
+| `inclusions` | TEXT[]. Array of strings, each describing one included item. Empty `[]` if none explicitly listed. | Use `[]`, not null |
+| `exclusions` | TEXT[]. Array of strings, each describing one excluded item. Empty `[]` if none explicitly listed. | Use `[]`, not null |
+
+### 12 Scope Boolean + Detail Pairs (24 columns)
+
+| Boolean Field | Detail Field | What It Tracks | When Null |
+|---|---|---|---|
+| `permit_included` | `permit_detail` | Building/mechanical permits, filing fees, inspection scheduling | Not mentioned in bid |
+| `disposal_included` | `disposal_detail` | Removal and proper disposal of old HVAC equipment | Not mentioned |
+| `electrical_included` | `electrical_detail` | General electrical work (circuits, wiring, disconnect) — NOT panel upgrades | Not mentioned |
+| `ductwork_included` | `ductwork_detail` | Ductwork modifications, new ducts, sealing, replacement | Not mentioned |
+| `thermostat_included` | `thermostat_detail` | New thermostat supply and installation | Not mentioned |
+| `manual_j_included` | `manual_j_detail` | Manual J load calculation for proper equipment sizing | Not mentioned |
+| `commissioning_included` | `commissioning_detail` | System startup, testing, refrigerant charge verification, airflow balancing | Not mentioned |
+| `air_handler_included` | `air_handler_detail` | Indoor air handler/blower unit replacement | Not mentioned |
+| `line_set_included` | `line_set_detail` | New copper refrigerant lines (outdoor to indoor unit) | Not mentioned |
+| `disconnect_included` | `disconnect_detail` | Electrical disconnect switch near outdoor unit (code-required) | Not mentioned |
+| `pad_included` | `pad_detail` | Equipment pad/platform for outdoor unit (concrete, composite, or elevated) | Not mentioned |
+| `drain_line_included` | `drain_line_detail` | Condensate drain line from indoor unit | Not mentioned |
+
+**Detail fields:** Contain the ACTUAL text from the bid about this item — not AI-generated summaries. Null if no detail given even when boolean is true.
+
+### Electrical Sub-Group (10 columns — SAFETY-CRITICAL)
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `panel_assessment_included` | BOOLEAN. Whether bid includes evaluating the existing electrical panel. | Not mentioned — ALL 10 electrical fields null if bid has no electrical info |
+| `panel_upgrade_included` | BOOLEAN. Whether bid includes upgrading the panel (e.g., 100A→200A). false if quoted separately. | Not mentioned |
+| `dedicated_circuit_included` | BOOLEAN. Whether bid includes dedicated circuit for heat pump. | Not mentioned |
+| `electrical_permit_included` | BOOLEAN. Separate electrical permit (distinct from building permit). | Not mentioned |
+| `load_calculation_included` | BOOLEAN. Whether electrical load calculation is included. | Not mentioned |
+| `existing_panel_amps` | INTEGER. Current panel amperage (e.g., 100, 200). NEVER assume — only extract if explicitly stated. | Not stated in bid |
+| `proposed_panel_amps` | INTEGER. Proposed panel amperage if upgrade included. | No upgrade proposed |
+| `breaker_size_required` | INTEGER. Required breaker size in amps for the heat pump. | Not stated in bid |
+| `panel_upgrade_cost` | DECIMAL(10,2). Panel upgrade cost if quoted separately. Include even if upgrade not in main scope. | Not quoted |
+| `electrical_notes` | TEXT. Any additional electrical work notes or details. | No electrical details in bid |
+
+### JSONB Array Fields
+
+| Field | Format & Rules | When Empty |
+|---|---|---|
+| `accessories` | JSONB. Array of `{type, name, brand, model_number, description, cost}`. Types: thermostat, surge_protector, uv_light, condensate_pump, line_set_cover, other. Only include items explicitly mentioned in bid. | `[]` — empty array, not null |
+| `line_items` | JSONB. Array of `{item_type, description, amount, quantity, unit_price, is_included, notes}`. item_type MUST be one of: `equipment`, `labor`, `materials`, `permit`, `disposal`, `electrical`, `ductwork`, `thermostat`, `rebate_processing`, `warranty`, `other`. All amounts as plain numbers (no $). | `[]` — empty array if bid has no pricing breakdown |
+
+### V2 Migrated Columns (26 columns — moved from old `bids` table)
+
+> **V2 CHANGE:** These columns were previously on the `bids` table. They have been moved to `bid_scope` so all extracted data lives in one place. The `bids` table is now a slim 18-column identity stub.
+
+#### System Type (1 column)
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `system_type` | TEXT. One of: "heat_pump", "central_ac", "mini_split", "gas_furnace", "other". Hardcoded to "heat_pump" for this workflow. | Never — always set to "heat_pump" |
+
+#### Pricing (10 columns)
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `total_bid_amount` | DECIMAL(12,2). **REQUIRED** — the main bid price. | Should never be null — flag if missing |
+| `labor_cost` | DECIMAL(12,2). Labor portion if broken out. | Not itemized in bid |
+| `equipment_cost` | DECIMAL(12,2). Equipment portion if broken out. | Not itemized |
+| `materials_cost` | DECIMAL(12,2). Materials portion if broken out. | Not itemized |
+| `permit_cost` | DECIMAL(12,2). Permit fees if broken out. | Not itemized |
+| `disposal_cost` | DECIMAL(12,2). Disposal fees if broken out. | Not itemized |
+| `electrical_cost` | DECIMAL(12,2). Electrical work cost if broken out. | Not itemized |
+| `total_before_rebates` | DECIMAL(12,2). Total before any rebate deductions. | Same as total_bid_amount if no rebates |
+| `estimated_rebates` | DECIMAL(12,2). Sum of all rebate amounts mentioned. | No rebates mentioned |
+| `total_after_rebates` | DECIMAL(12,2). Net price after rebates. | No rebates mentioned |
+
+#### Payment Terms (5 columns)
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `deposit_required` | DECIMAL(12,2). Dollar amount of required deposit. | No deposit mentioned |
+| `deposit_percentage` | DECIMAL(5,2). Deposit as percentage (e.g. 50.0 for 50%). | No percentage given |
+| `payment_schedule` | TEXT. Free-form description of payment plan (e.g. "50% deposit, 50% on completion"). | No schedule mentioned |
+| `financing_offered` | BOOLEAN. Whether financing options are available. Default false. | Use false, not null |
+| `financing_terms` | TEXT. Description of financing terms (e.g. "0% for 12 months through GreenSky"). | No financing details |
+
+#### Warranty (4 columns)
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `labor_warranty_years` | INTEGER. Labor warranty in years. | Not specified |
+| `equipment_warranty_years` | INTEGER. Equipment/parts warranty in years. | Not specified |
+| `compressor_warranty_years` | INTEGER. Compressor-specific warranty in years (often longer). | Not specified |
+| `additional_warranty_details` | TEXT. Any extra warranty notes (registration requirements, limitations, transferability). | No additional details |
+
+#### Timeline (4 columns)
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `estimated_days` | INTEGER. Estimated installation duration in days. | Not specified |
+| `start_date_available` | DATE (YYYY-MM-DD). Earliest available start date. | Not specified |
+| `bid_date` | DATE (YYYY-MM-DD). Date the bid/quote was created. | Not found in document |
+| `valid_until` | DATE (YYYY-MM-DD). Date the bid/quote expires. | No expiration mentioned |
+
+#### Extraction Metadata (2 columns)
+
+| Field | Format & Rules | When Null |
+|---|---|---|
+| `extraction_confidence` | TEXT. One of: "high" (≥90%), "medium" (70-89%), "low" (<70%). Based on document clarity and completeness. | Never — REQUIRED |
+| `extraction_notes` | TEXT. Notes about extraction quality, issues encountered, or missing sections. | No issues found |
 
 ---
 
@@ -78,14 +217,21 @@ You are an HVAC bid scope-of-work extractor. You receive extracted bid context f
 </role>
 
 <scope>
-You output ALL scope-related fields for the bid_scope table:
+You output ALL fields for the bid_scope table (69 columns total):
 - Summary: summary, inclusions, exclusions
 - 12 boolean+detail pairs: permit, disposal, electrical, ductwork, thermostat, manual_j, commissioning, air_handler, line_set, disconnect, pad, drain_line
 - 10 electrical sub-group fields: panel_assessment_included, panel_upgrade_included, dedicated_circuit_included, electrical_permit_included, load_calculation_included, existing_panel_amps, proposed_panel_amps, breaker_size_required, panel_upgrade_cost, electrical_notes
 - accessories JSONB array
 - line_items JSONB array
+- V2 MIGRATED COLUMNS (26 fields):
+  - system_type (always "heat_pump")
+  - Pricing: total_bid_amount, labor_cost, equipment_cost, materials_cost, permit_cost, disposal_cost, electrical_cost, total_before_rebates, estimated_rebates, total_after_rebates
+  - Payment: deposit_required, deposit_percentage, payment_schedule, financing_offered, financing_terms
+  - Warranty: labor_warranty_years, equipment_warranty_years, compressor_warranty_years, additional_warranty_details
+  - Timeline: estimated_days, start_date_available, bid_date, valid_until
+  - Extraction: extraction_confidence, extraction_notes
 
-You do NOT output: equipment specs, pricing totals, contractor info, warranty, or any fields belonging to other tables (bids, bid_contractors, bid_equipment, bid_scores).
+You do NOT output: equipment specs (brand, model, SEER), contractor info, or any fields belonging to other tables (bids, bid_contractors, bid_equipment, bid_scores).
 </scope>
 
 <input_format>
@@ -356,7 +502,7 @@ Do NOT include any fields outside of scope (no equipment specs, pricing totals, 
 
 ## What This Node Does
 
-The Scope Extractor receives unstructured bid context from the Bid Data Extractor and parses ALL scope-of-work information into a structured JSON object matching the `bid_scope` table schema (43 columns).
+The Scope Extractor receives unstructured bid context from the Bid Data Extractor and parses ALL scope-of-work information into a structured JSON object matching the `bid_scope` table schema (69 columns — original 43 scope columns + 26 V2 migrated columns for pricing, payment, warranty, timeline, and extraction metadata).
 
 **Rule:** All scope information comes exclusively from the bid document. No web research. No assumptions. No AI general knowledge.
 

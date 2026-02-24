@@ -633,6 +633,42 @@ export interface ProjectIncentive {
 }
 
 /**
+ * incentive_program_database table — master reference of all known incentive programs.
+ * Flat DB shape for direct queries; distinct from ProjectIncentive (per-project tracking).
+ */
+export interface IncentiveProgramDB {
+  id: string;
+  program_name: string;
+  program_code: string | null;
+  description: string | null;
+  program_type: string | null;
+  available_states: string[] | null;
+  available_zip_codes: string[] | null;
+  available_utilities: string[] | null;
+  available_nationwide: boolean;
+  rebate_amount: number | null;
+  rebate_percentage: number | null;
+  max_rebate: number | null;
+  requirements: Record<string, any> | null;
+  income_qualified: boolean;
+  income_limits: Record<string, any> | null;
+  valid_from: string | null;
+  valid_until: string | null;
+  application_url: string | null;
+  application_process: string | null;
+  typical_processing_days: number | null;
+  stackable: boolean;
+  cannot_stack_with: string[] | null;
+  is_active: boolean;
+  last_verified: string | null;
+  discovered_by: 'seed' | 'mindpal' | 'admin' | null;
+  discovery_source_url: string | null;
+  program_type_display: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
  * V2 bid_faqs table — per-bid FAQs.
  * Column renamed: faq_category (DB) but V1 used 'category'.
  * V2 DB column is faq_category but auto-gen types show 'category'.

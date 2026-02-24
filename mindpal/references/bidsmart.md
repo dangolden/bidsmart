@@ -1,6 +1,14 @@
 # BidSmart — Workflow Architecture & Agent Specifications
 
-Source: BidSmart v8 implementation plan + v10 workflow config (Feb 2026)
+Source: BidSmart v8 spec + v18 workflow config (Feb 2026)
+
+> **V2 Schema Restructure (Feb 2026):**
+> - `bids` = 18-column identity stub (pre-created at PDF upload)
+> - `bid_scope` = 69 columns (ALL extracted data: scope + pricing + warranty + payment + timeline + extraction metadata)
+> - `bid_id` is pre-created and paired with each document via `documents_json`
+> - Make.com is no longer in the pipeline — webhook goes directly to Supabase Edge Function
+> - JSON Assembler Code Node is retired — each downstream node outputs DB-ready JSON
+> - See `mindpal/MINDPAL_V2_INTEGRATION.md` for full migration instructions
 
 ---
 
@@ -8,76 +16,93 @@ Source: BidSmart v8 implementation plan + v10 workflow config (Feb 2026)
 
 BidSmart analyzes HVAC heat pump contractor bids. Customers upload 1-5 PDFs; the system extracts, enriches, scores, and compares them, delivering structured JSON to Supabase for a React frontend.
 
-**Full pipeline:**
+**Full pipeline (V2):**
 ```
 Customer uploads PDFs
-  → Supabase Storage (signed URLs generated)
+  → Frontend creates bid stubs in Supabase (bid_id pre-created per PDF)
+  → Frontend uploads PDFs to Supabase Storage (signed URLs generated)
   → Supabase Edge Function: start-mindpal-analysis
-  → MindPal Workflow (11-12 agents, ~3-5 min)
-  → Webhook Node → Make.com (parses MindPal output)
-  → Supabase Edge Function: mindpal-callback
-  → Supabase DB (contractor_bids, bid_equipment, bid_questions, etc.)
-  → React Frontend
+       (payload: documents_json with {bid_id, doc_url, mime_type} pairs)
+  → MindPal Workflow (agents process each bid, ~3-5 min)
+       - Parse Documents JSON (Code Node — parses paired input)
+       - Loop Node: iterate over {bid_id, doc_url} pairs
+       - Bid Data Extractor agent (per PDF — outputs unstructured context)
+       - Equipment Researcher → bid_equipment (DB-ready JSON)
+       - Scope Extractor → bid_scope (DB-ready JSON, 69 columns)
+       - Contractor Researcher → bid_contractors (DB-ready JSON)
+       - Incentive Finder (Agent) → project_incentives
+       - Scoring Engine (Agent) → bid_scores
+       - Question Generator (Agent) → contractor_questions
+       - Per-Bid FAQ Generator → bid_faqs
+       - Overall FAQ Generator (Agent) → project_faqs
+       - Format Callback Payload (Code Node — merges all outputs)
+       - Webhook Node → Supabase Edge Function: mindpal-callback
+  → Edge Function UPSERTs to normalized Supabase tables
+  → Frontend polls/subscribes to job status + output tables
+  → UI renders from DB records
 ```
 
 ---
 
-## v10 Workflow IDs (current)
+## v18 Workflow IDs (current)
 
 ```javascript
-WORKFLOW_ID: '69860fd696be27d5d9cb4252'
+WORKFLOW_ID: '699a33ac6787d2e1b0e9ed93'
 
 FIELD_IDS: {
-  documents:       '69860fd696be27d5d9cb4258',  // JSON-stringified array of signed PDF URLs
-  user_priorities: '69860fd696be27d5d9cb4255',  // JSON-stringified priority object
-  request_id:      '69860fd696be27d5d9cb4257',  // unique string for this analysis job
-  callback_url:    '69860fd696be27d5d9cb4256'   // Make.com webhook URL
-}
-
-NODE_IDS: {
-  API_INPUT:             '69860fd696be27d5d9cb4253',
-  DOCUMENT_NORMALIZER:   '69860fdb96be27d5d9cb426d',
-  EXTRACT_ALL_BIDS:      '69860fd796be27d5d9cb4259',  // Loop Node
-  EQUIPMENT_RESEARCHER:  '69860fd796be27d5d9cb425b',
-  CONTRACTOR_RESEARCHER: '69860fd796be27d5d9cb425d',
-  INCENTIVE_FINDER:      '69860fd896be27d5d9cb425f',
-  SCORING_ENGINE:        '69860fd996be27d5d9cb4265',
-  QUESTION_GENERATOR:    '69860fd996be27d5d9cb4267',  // ⚠️ CURRENTLY DEGRADED
-  PER_BID_FAQ_GENERATOR: '69860fda96be27d5d9cb4269',
-  OVERALL_FAQ_GENERATOR: '69860fda96be27d5d9cb426b',
-  JSON_ASSEMBLER:        '69860fd896be27d5d9cb4261',  // Code Node
-  SEND_RESULTS:          '69860fd996be27d5d9cb4263'   // Webhook Node
+  documents:       '699a33ad6787d2e1b0e9ed96',  // JSON array of signed PDF URLs
+  request_id:      '699a33ad6787d2e1b0e9ed97',  // unique string (batch correlation ID)
+  user_priorities: '699a33ad6787d2e1b0e9ed98',  // JSON-stringified priority object
+  project_id:      '699a33ad6787d2e1b0e9ed99',  // UUID of the project
+  user_notes:      '699a33ad6787d2e1b0e9ed9a',  // optional user notes
+  callback_url:    '699a33ad6787d2e1b0e9ed9b',  // Supabase Edge Function URL (direct)
+  documents_json:  'TBD'                         // NEW — paired {bid_id, doc_url, mime_type} array
 }
 ```
 
-## v8 Reference IDs (last fully working — use for comparison/rollback)
+> **Note:** `documents_json` field ID will be assigned when the MindPal rep creates it (Step B1 in MINDPAL_V2_INTEGRATION.md). Update `src/config/mindpal.config.ts` with the new ID.
+
+## Legacy Workflow IDs (archived — do not use)
+
+<details>
+<summary>v10 IDs (retired)</summary>
+
+```
+WORKFLOW_ID: '69860fd696be27d5d9cb4252'
+```
+</details>
+
+<details>
+<summary>v8 IDs (retired)</summary>
+
 ```
 API Input:       697a111dfac1e3c184d4907e
 URL Translator:  697bdb5b2d27d60a23326f48
 Extract Bids:    697a111dfac1e3c184d49080
-Equipment:       697a111dfac1e3c184d49081
-Contractor:      697a111efac1e3c184d49082
-Incentive:       697a111efac1e3c184d49083
-Scoring:         697a111efac1e3c184d49084
-Question Gen:    697a111efac1e3c184d49085
-FAQ Gen:         697a111efac1e3c184d49086
-JSON Assembler:  697a111ffac1e3c184d49087
-Send Results:    697a111ffac1e3c184d49088
 ```
+</details>
 
 ---
 
 ## Agent Configuration Table
 
-| Agent | JSON Mode | Web Search | Knowledge Base | Model |
-|-------|-----------|------------|----------------|-------|
-| Bid Data Extractor | ON | OFF | None | Claude Sonnet (image/PDF support required) |
-| Equipment Researcher | ON | ON | HVAC specs docs | Claude Sonnet or Gemini 2.0 Pro |
-| Contractor Researcher | ON | ON | None (sites in prompt) | Claude Sonnet or Gemini 2.0 Pro |
-| Incentive Finder | ON | ON | "Incentive process" doc | Claude Sonnet or Gemini 2.0 Pro |
-| Scoring Engine | ON | OFF | "SCORING A HEAT PUMP BID", example layout.xlsx | GPT-4o or Claude Sonnet |
-| Question Generator | ON | OFF | None | Claude Sonnet |
-| FAQ Generator | ON | OFF | Compliance rules doc | Claude Haiku or GPT-4o Mini |
+| Agent | Type | JSON Mode | Web Search | Knowledge Base | Model |
+|-------|------|-----------|------------|----------------|-------|
+| Bid Data Extractor | LOOP | OFF (context) | OFF | None | Claude Sonnet (PDF support required) |
+| Equipment Researcher | LOOP | ON | ON | HVAC specs docs | Claude Sonnet or Gemini 2.0 Pro |
+| Scope Extractor | LOOP | ON | OFF | None | Claude Sonnet |
+| Contractor Researcher | LOOP | ON | ON | None (sites in prompt) | Claude Sonnet or Gemini 2.0 Pro |
+| Incentive Finder | AGENT | ON | ON | "Incentive process" doc | Claude Sonnet or Gemini 2.0 Pro |
+| Scoring Engine | AGENT | ON | OFF | "SCORING A HEAT PUMP BID" | GPT-4o or Claude Sonnet |
+| Question Generator | AGENT | ON | OFF | None | Claude Sonnet |
+| Per-Bid FAQ Generator | LOOP | ON | OFF | Compliance rules doc | Claude Haiku or GPT-4o Mini |
+| Overall FAQ Generator | AGENT | ON | OFF | None | Claude Haiku or GPT-4o Mini |
+
+> **V2 Changes:**
+> - Bid Data Extractor outputs **unstructured context** (NOT JSON) — downstream nodes parse it
+> - Scope Extractor is a **new node** targeting `bid_scope` (69 columns)
+> - Question Generator changed from LOOP to AGENT (needs cross-bid context)
+> - JSON Assembler is **retired** — each node outputs DB-ready JSON directly
 
 ---
 
@@ -337,65 +362,44 @@ Return ONLY the JSON. No other text.
 
 ---
 
-## JSON Assembler — Full Code Node Pattern
+## V2 Code Nodes
 
-```javascript
-// All inputs arrive as strings per MindPal docs — must parse every one
-function safeParseJSON(str) {
-  if (!str) return null;
-  const cleaned = str
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```\s*$/i, '')
-    .trim();
-  try { return JSON.parse(cleaned); }
-  catch(e) { return null; }
-}
+### Parse Documents JSON (first in chain)
 
-// Input variable names must match what's declared in Code Node's "Define Inputs"
-const enrichedBids   = safeParseJSON(enriched_bids_input);
-const contractorData = safeParseJSON(contractor_profiles_input);
-const incentivesData = safeParseJSON(incentives_input);
-const scoresData     = safeParseJSON(scores_input);
-const questionsData  = safeParseJSON(questions_input);
-const faqsData       = safeParseJSON(faqs_input);
+Parses the `documents_json` TEXT input into an array of `{bid_id, doc_url, mime_type}` objects.
+Full implementation: see `mindpal/MINDPAL_V2_INTEGRATION.md`, Step M2.
 
-const result = {
-  request_id:           request_id_input,
-  status:               "success",
-  bids:                 enrichedBids?.bids || [],
-  contractor_profiles:  contractorData?.contractor_profiles || [],
-  incentives:           incentivesData?.incentives || [],
-  scores:               scoresData?.bid_scores || [],
-  questions:            questionsData?.questions || [],
-  questions_summary:    questionsData?.questions_summary || [],
-  faqs:                 faqsData?.faqs || [],
-  metadata: {
-    bid_count:       (enrichedBids?.bids || []).length,
-    processing_date: new Date().toISOString()
-  }
-};
+### Format Callback Payload (after Loop completes)
 
-// Output variable name must match what's declared in Code Node's "Define Outputs"
-output = JSON.stringify(result);
-```
+Merges all per-bid outputs into the single callback payload sent to the Edge Function.
+Full implementation: see `mindpal/MINDPAL_V2_INTEGRATION.md`, Step M7.
 
 ---
 
-## Make.com Integration
+## V2 Database Target Tables
 
-### Webhook Extraction Pattern
-```
-workflow_run_output[]
-  → filter where .title = "JSON Assembler & Validator"
-  → extract .content (it's a JSON string)
-  → JSON.parse(.content)
-  → use as structured result object
-```
+| Node | Target Table | Insert Strategy |
+|------|-------------|----------------|
+| Scope Extractor | `bid_scope` (69 cols) | UPSERT on `bid_id` |
+| Equipment Researcher | `bid_equipment` (1:N) | DELETE existing + INSERT |
+| Contractor Researcher | `bid_contractors` (1:1) | UPSERT on `bid_id` |
+| Incentive Finder | `project_incentives` | INSERT (project-level) |
+| Scoring Engine | `bid_scores` (1:1) | UPSERT on `bid_id` |
+| Question Generator | `contractor_questions` (1:N) | UPSERT on `bid_id,question_text` |
+| Per-Bid FAQ Generator | `bid_faqs` (1:N) | INSERT per bid |
+| Overall FAQ Generator | `project_faqs` (1:N) | INSERT (project-level) |
+| Edge Function | `bids` (identity stub) | UPDATE existing row (status, contractor_name) |
 
-### Error Alert Route
-If `result.status !== "success"` → Gmail notification to `dangolden@pandotic.ai`
+> **Make.com is retired.** The webhook goes directly from MindPal → Supabase Edge Function (`mindpal-callback`).
+> No JSON Assembler needed — each node outputs DB-ready JSON.
 
-### Key Bugs to Avoid
-- **Spacing bug:** Make.com UI auto-adds spaces in `{{ variable }}`. Always edit raw JSON.
-- **Indexing:** Make.com is 1-based; MindPal payload `index` is 0-based. Check preview pane.
+---
+
+## Key Rules
+
+- **All Code Node inputs are strings** — always `JSON.parse()`, always strip markdown wrappers
+- **Purple highlight rule** — a MindPal variable reference only works if it displays purple in the UI
+- **Documents are signed URLs** — never encode PDFs as base64
+- **bid_id passthrough** — every Loop agent must include `bid_id` from `@[item - bid_id]` unchanged
+- **equipment_cost is never researched** — always pass-through from bid document
+- **Confidence is an enum** — 'high', 'medium', 'low', 'manual' (not a number)
