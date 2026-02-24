@@ -1,21 +1,27 @@
 import { Zap, CheckCircle2, XCircle, AlertTriangle, Info } from 'lucide-react';
-import type { ContractorBid } from '../lib/types';
+import type { BidScope } from '../lib/types';
 import { formatCurrency } from '../lib/utils/formatters';
 
+interface BidScopeRow {
+  bidId: string;
+  contractorName: string;
+  scope?: BidScope | null;
+}
+
 interface ElectricalComparisonTableProps {
-  bids: ContractorBid[];
+  rows: BidScopeRow[];
   className?: string;
 }
 
-export function ElectricalComparisonTable({ bids, className = '' }: ElectricalComparisonTableProps) {
-  if (!bids || bids.length === 0) {
+export function ElectricalComparisonTable({ rows, className = '' }: ElectricalComparisonTableProps) {
+  if (!rows || rows.length === 0) {
     return null;
   }
 
-  const hasAnyElectricalData = bids.some(bid =>
-    bid.electrical_panel_assessment_included !== null ||
-    bid.electrical_panel_upgrade_included !== null ||
-    bid.electrical_breaker_size_required !== null
+  const hasAnyElectricalData = rows.some(row =>
+    row.scope?.panel_assessment_included !== null && row.scope?.panel_assessment_included !== undefined ||
+    row.scope?.panel_upgrade_included !== null && row.scope?.panel_upgrade_included !== undefined ||
+    row.scope?.breaker_size_required !== null && row.scope?.breaker_size_required !== undefined
   );
 
   if (!hasAnyElectricalData) {
@@ -26,7 +32,7 @@ export function ElectricalComparisonTable({ bids, className = '' }: ElectricalCo
           <div>
             <p className="text-sm font-medium text-amber-900">Limited Electrical Information</p>
             <p className="text-sm text-amber-700 mt-1">
-              None of the bids include detailed electrical requirements. 
+              None of the bids include detailed electrical requirements.
               Consider asking contractors about electrical panel capacity and upgrade needs.
             </p>
           </div>
@@ -60,14 +66,14 @@ export function ElectricalComparisonTable({ bids, className = '' }: ElectricalCo
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                 Requirement
               </th>
-              {bids.map((bid, index) => (
-                <th key={bid.id} className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
+              {rows.map((row, index) => (
+                <th key={row.bidId} className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold">
                       {index + 1}
                     </div>
                     <span className="text-xs font-normal text-gray-600 truncate max-w-[120px]">
-                      {bid.contractor_name}
+                      {row.contractorName}
                     </span>
                   </div>
                 </th>
@@ -80,9 +86,9 @@ export function ElectricalComparisonTable({ bids, className = '' }: ElectricalCo
               <td className="px-4 py-3 text-sm font-medium text-gray-900">
                 Panel Assessment Included
               </td>
-              {bids.map(bid => (
-                <td key={bid.id} className="px-4 py-3 text-center">
-                  {getStatusIcon(bid.electrical_panel_assessment_included)}
+              {rows.map(row => (
+                <td key={row.bidId} className="px-4 py-3 text-center">
+                  {getStatusIcon(row.scope?.panel_assessment_included)}
                 </td>
               ))}
             </tr>
@@ -92,10 +98,10 @@ export function ElectricalComparisonTable({ bids, className = '' }: ElectricalCo
               <td className="px-4 py-3 text-sm font-medium text-gray-900">
                 Current Panel Capacity
               </td>
-              {bids.map(bid => (
-                <td key={bid.id} className="px-4 py-3 text-center text-sm text-gray-700">
-                  {bid.electrical_existing_panel_amps ? (
-                    <span className="font-semibold">{bid.electrical_existing_panel_amps}A</span>
+              {rows.map(row => (
+                <td key={row.bidId} className="px-4 py-3 text-center text-sm text-gray-700">
+                  {row.scope?.existing_panel_amps ? (
+                    <span className="font-semibold">{row.scope.existing_panel_amps}A</span>
                   ) : (
                     <span className="text-gray-400">—</span>
                   )}
@@ -108,18 +114,18 @@ export function ElectricalComparisonTable({ bids, className = '' }: ElectricalCo
               <td className="px-4 py-3 text-sm font-medium text-gray-900">
                 Panel Upgrade Required
               </td>
-              {bids.map(bid => (
-                <td key={bid.id} className="px-4 py-3 text-center">
-                  {bid.electrical_panel_upgrade_included === true ? (
+              {rows.map(row => (
+                <td key={row.bidId} className="px-4 py-3 text-center">
+                  {row.scope?.panel_upgrade_included === true ? (
                     <div className="flex flex-col items-center gap-1">
                       <AlertTriangle className="w-5 h-5 text-amber-600" />
-                      {bid.electrical_proposed_panel_amps && (
+                      {row.scope?.proposed_panel_amps && (
                         <span className="text-xs text-gray-600">
-                          to {bid.electrical_proposed_panel_amps}A
+                          to {row.scope.proposed_panel_amps}A
                         </span>
                       )}
                     </div>
-                  ) : bid.electrical_panel_upgrade_included === false ? (
+                  ) : row.scope?.panel_upgrade_included === false ? (
                     <CheckCircle2 className="w-5 h-5 text-switch-green-600" />
                   ) : (
                     <span className="text-gray-400">—</span>
@@ -133,11 +139,11 @@ export function ElectricalComparisonTable({ bids, className = '' }: ElectricalCo
               <td className="px-4 py-3 text-sm font-medium text-gray-900">
                 Panel Upgrade Cost
               </td>
-              {bids.map(bid => (
-                <td key={bid.id} className="px-4 py-3 text-center">
-                  {bid.electrical_panel_upgrade_cost ? (
+              {rows.map(row => (
+                <td key={row.bidId} className="px-4 py-3 text-center">
+                  {row.scope?.panel_upgrade_cost ? (
                     <span className="font-semibold text-gray-900">
-                      {formatCurrency(bid.electrical_panel_upgrade_cost)}
+                      {formatCurrency(row.scope.panel_upgrade_cost)}
                     </span>
                   ) : (
                     <span className="text-gray-400">—</span>
@@ -151,10 +157,10 @@ export function ElectricalComparisonTable({ bids, className = '' }: ElectricalCo
               <td className="px-4 py-3 text-sm font-medium text-gray-900">
                 Required Breaker Size
               </td>
-              {bids.map(bid => (
-                <td key={bid.id} className="px-4 py-3 text-center text-sm text-gray-700">
-                  {bid.electrical_breaker_size_required ? (
-                    <span className="font-semibold">{bid.electrical_breaker_size_required}A</span>
+              {rows.map(row => (
+                <td key={row.bidId} className="px-4 py-3 text-center text-sm text-gray-700">
+                  {row.scope?.breaker_size_required ? (
+                    <span className="font-semibold">{row.scope.breaker_size_required}A</span>
                   ) : (
                     <span className="text-gray-400">—</span>
                   )}
@@ -167,9 +173,9 @@ export function ElectricalComparisonTable({ bids, className = '' }: ElectricalCo
               <td className="px-4 py-3 text-sm font-medium text-gray-900">
                 Dedicated Circuit Included
               </td>
-              {bids.map(bid => (
-                <td key={bid.id} className="px-4 py-3 text-center">
-                  {getStatusIcon(bid.electrical_dedicated_circuit_included)}
+              {rows.map(row => (
+                <td key={row.bidId} className="px-4 py-3 text-center">
+                  {getStatusIcon(row.scope?.dedicated_circuit_included)}
                 </td>
               ))}
             </tr>
@@ -179,9 +185,9 @@ export function ElectricalComparisonTable({ bids, className = '' }: ElectricalCo
               <td className="px-4 py-3 text-sm font-medium text-gray-900">
                 Electrical Permit Included
               </td>
-              {bids.map(bid => (
-                <td key={bid.id} className="px-4 py-3 text-center">
-                  {getStatusIcon(bid.electrical_permit_included)}
+              {rows.map(row => (
+                <td key={row.bidId} className="px-4 py-3 text-center">
+                  {getStatusIcon(row.scope?.electrical_permit_included)}
                 </td>
               ))}
             </tr>
@@ -191,9 +197,9 @@ export function ElectricalComparisonTable({ bids, className = '' }: ElectricalCo
               <td className="px-4 py-3 text-sm font-medium text-gray-900">
                 Load Calculation Included
               </td>
-              {bids.map(bid => (
-                <td key={bid.id} className="px-4 py-3 text-center">
-                  {getStatusIcon(bid.electrical_load_calculation_included)}
+              {rows.map(row => (
+                <td key={row.bidId} className="px-4 py-3 text-center">
+                  {getStatusIcon(row.scope?.load_calculation_included)}
                 </td>
               ))}
             </tr>
@@ -208,8 +214,8 @@ export function ElectricalComparisonTable({ bids, className = '' }: ElectricalCo
           <div className="text-sm">
             <p className="font-medium text-blue-900">Why This Matters</p>
             <p className="text-blue-700 mt-1">
-              Heat pumps require dedicated electrical circuits and adequate panel capacity. 
-              Panel upgrades can add $1,500-$3,500 to your total cost. Ensure contractors 
+              Heat pumps require dedicated electrical circuits and adequate panel capacity.
+              Panel upgrades can add $1,500-$3,500 to your total cost. Ensure contractors
               have assessed your electrical system before committing.
             </p>
           </div>

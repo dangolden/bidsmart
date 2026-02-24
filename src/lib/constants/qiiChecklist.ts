@@ -6,9 +6,9 @@
  * Based on ACCA/ANSI Quality Installation standards.
  */
 
-import type { QIIChecklistItem, QIICategory } from '../types';
+import type { QIIChecklistItemDef, QIICategory } from '../types';
 
-export const QII_CHECKLIST_ITEMS: QIIChecklistItem[] = [
+export const QII_CHECKLIST_ITEMS: QIIChecklistItemDef[] = [
   // ── Pre-Installation ──────────────────────────────────
   {
     item_key: 'manual_j',
@@ -176,12 +176,12 @@ export const QII_CHECKLIST_ITEMS: QIIChecklistItem[] = [
 ];
 
 /** Lookup a QII item by its item_key */
-export function getQIIItem(itemKey: string): QIIChecklistItem | undefined {
+export function getQIIItem(itemKey: string): QIIChecklistItemDef | undefined {
   return QII_CHECKLIST_ITEMS.find(item => item.item_key === itemKey);
 }
 
 /** Get all QII items for a given category */
-export function getQIIItemsByCategory(category: QIICategory): QIIChecklistItem[] {
+export function getQIIItemsByCategory(category: QIICategory): QIIChecklistItemDef[] {
   return QII_CHECKLIST_ITEMS.filter(item => item.category === category);
 }
 

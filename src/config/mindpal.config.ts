@@ -10,7 +10,8 @@ export const MINDPAL_CONFIG = {
 
   // Field IDs (CRITICAL - used in API request body)
   FIELD_IDS: {
-    documents: '699a33ad6787d2e1b0e9ed96',
+    documents: '699a33ad6787d2e1b0e9ed96',       // Legacy flat URL array (keep for backward compat)
+    documents_json: '699d42f8f6f83a173c0b6d4a',   // V2: array of {bid_id, doc_url, mime_type}
     user_priorities: '699a33ad6787d2e1b0e9ed98',
     request_id: '699a33ad6787d2e1b0e9ed97',
     callback_url: '699a33ad6787d2e1b0e9ed9b',

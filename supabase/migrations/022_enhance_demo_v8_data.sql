@@ -11,6 +11,15 @@ DECLARE
   bid_record RECORD;
   bid_counter INTEGER;
 BEGIN
+  -- V2 schema guard: skip if contractor_bids table doesn't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'contractor_bids'
+  ) THEN
+    RAISE NOTICE 'Skipping V1 demo migration (022) - contractor_bids table does not exist (V2 schema)';
+    RETURN;
+  END IF;
+
   -- Get demo projects
   FOR demo_project_id IN 
     SELECT id FROM projects WHERE is_demo = true OR is_public_demo = true
@@ -266,25 +275,36 @@ BEGIN
   END LOOP;
 END $$;
 
--- Ensure all demo equipment has amperage data
-UPDATE bid_equipment
-SET
-  amperage_draw = CASE 
-    WHEN capacity_tons IS NULL OR capacity_tons <= 2 THEN 18
-    WHEN capacity_tons <= 3 THEN 28
-    WHEN capacity_tons <= 4 THEN 38
-    ELSE 48
-  END,
-  minimum_circuit_amperage = CASE 
-    WHEN capacity_tons IS NULL OR capacity_tons <= 2 THEN 25
-    WHEN capacity_tons <= 3 THEN 35
-    WHEN capacity_tons <= 4 THEN 45
-    ELSE 55
-  END
-WHERE bid_id IN (
-  SELECT cb.id 
-  FROM contractor_bids cb
-  JOIN projects p ON cb.project_id = p.id
-  WHERE p.is_demo = true OR p.is_public_demo = true
-)
-AND (amperage_draw IS NULL OR minimum_circuit_amperage IS NULL);
+-- Ensure all demo equipment has amperage data (wrapped in guard for V2 compatibility)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'contractor_bids'
+  ) THEN
+    RAISE NOTICE 'Skipping V1 demo equipment update (022) - contractor_bids table does not exist (V2 schema)';
+    RETURN;
+  END IF;
+
+  UPDATE bid_equipment
+  SET
+    amperage_draw = CASE
+      WHEN capacity_tons IS NULL OR capacity_tons <= 2 THEN 18
+      WHEN capacity_tons <= 3 THEN 28
+      WHEN capacity_tons <= 4 THEN 38
+      ELSE 48
+    END,
+    minimum_circuit_amperage = CASE
+      WHEN capacity_tons IS NULL OR capacity_tons <= 2 THEN 25
+      WHEN capacity_tons <= 3 THEN 35
+      WHEN capacity_tons <= 4 THEN 45
+      ELSE 55
+    END
+  WHERE bid_id IN (
+    SELECT cb.id
+    FROM contractor_bids cb
+    JOIN projects p ON cb.project_id = p.id
+    WHERE p.is_demo = true OR p.is_public_demo = true
+  )
+  AND (amperage_draw IS NULL OR minimum_circuit_amperage IS NULL);
+END $$;

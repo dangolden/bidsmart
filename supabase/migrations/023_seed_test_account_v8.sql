@@ -14,6 +14,15 @@ DECLARE
   bid2_id UUID;
   bid3_id UUID;
 BEGIN
+  -- V2 schema guard: skip if contractor_bids table doesn't exist
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'contractor_bids'
+  ) THEN
+    RAISE NOTICE 'Skipping V1 demo migration (023) - contractor_bids table does not exist (V2 schema)';
+    RETURN;
+  END IF;
+
   -- Create test user if doesn't exist
   INSERT INTO users_ext (email, full_name, property_city, property_state, property_zip)
   VALUES ('test@bidsmart.com', 'Test User', 'Austin', 'TX', '78701')

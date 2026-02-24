@@ -18,7 +18,7 @@ interface ChecklistItemWithStatus {
   description: string | null | undefined;
   why_it_matters: string | null | undefined;
   is_critical: boolean;
-  display_order: number;
+  display_order: number | null | undefined;
   status?: ProjectQIIChecklist;
 }
 

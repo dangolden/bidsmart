@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, DollarSign, CheckSquare, Square, ExternalLink, Info } from 'lucide-react';
-import type { ProjectIncentive } from '../lib/types';
+import type { RebateProgram } from '../lib/types';
 import { formatCurrency } from '../lib/utils/formatters';
 
 interface IncentivesTableProps {
-  projectIncentives: ProjectIncentive[];
+  rebatePrograms: RebateProgram[];
   selectedIncentives: Set<string>;
   onToggleIncentive: (incentiveId: string) => void;
 }
 
-export function IncentivesTable({ projectIncentives, selectedIncentives, onToggleIncentive }: IncentivesTableProps) {
+export function IncentivesTable({ rebatePrograms, selectedIncentives, onToggleIncentive }: IncentivesTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const toggleExpand = (incentiveId: string) => {
@@ -22,16 +22,16 @@ export function IncentivesTable({ projectIncentives, selectedIncentives, onToggl
     setExpandedRows(newExpanded);
   };
 
-  const getAmount = (incentive: ProjectIncentive) => {
-    return incentive.amount_max || incentive.amount_min || 0;
+  const getAmount = (incentive: RebateProgram) => {
+    return Number(incentive.max_rebate) || Number(incentive.rebate_amount) || 0;
   };
 
   const totalSelectedAmount = Array.from(selectedIncentives).reduce((sum, id) => {
-    const incentive = projectIncentives.find(i => i.id === id);
+    const incentive = rebatePrograms.find(i => i.id === id);
     return sum + (incentive ? getAmount(incentive) : 0);
   }, 0);
 
-  if (projectIncentives.length === 0) {
+  if (rebatePrograms.length === 0) {
     return null;
   }
 
@@ -52,7 +52,7 @@ export function IncentivesTable({ projectIncentives, selectedIncentives, onToggl
       </div>
 
       <div className="divide-y divide-gray-200">
-        {projectIncentives.map((incentive) => {
+        {rebatePrograms.map((incentive) => {
           const isExpanded = expandedRows.has(incentive.id);
           const isSelected = selectedIncentives.has(incentive.id);
           const amount = getAmount(incentive);
@@ -84,30 +84,27 @@ export function IncentivesTable({ projectIncentives, selectedIncentives, onToggl
                         Income Qualified
                       </span>
                     )}
-                    {incentive.still_active === false && (
+                    {!incentive.is_active && (
                       <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full">
                         Inactive
                       </span>
                     )}
                   </div>
-                  {!isExpanded && incentive.eligibility_requirements && (
-                    <p className="text-sm text-gray-500 mt-0.5 truncate">{incentive.eligibility_requirements}</p>
+                  {!isExpanded && incentive.description && (
+                    <p className="text-sm text-gray-500 mt-0.5 truncate">{incentive.description}</p>
                   )}
                 </div>
 
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    {incentive.amount_description ? (
+                    {incentive.rebate_percentage ? (
                       <span className="text-base font-bold text-switch-green-700">
-                        {incentive.amount_description}
+                        {incentive.rebate_percentage}%{incentive.max_rebate ? ` (up to ${formatCurrency(Number(incentive.max_rebate))})` : ''}
                       </span>
                     ) : amount > 0 ? (
                       <>
                         <span className="text-lg font-bold text-switch-green-700">
-                          {incentive.amount_min && incentive.amount_max && incentive.amount_min !== incentive.amount_max
-                            ? `${formatCurrency(incentive.amount_min)}–${formatCurrency(incentive.amount_max)}`
-                            : formatCurrency(amount)
-                          }
+                          {formatCurrency(amount)}
                         </span>
                       </>
                     ) : (
@@ -130,29 +127,24 @@ export function IncentivesTable({ projectIncentives, selectedIncentives, onToggl
 
               {isExpanded && (
                 <div className="px-5 pb-5 pl-14 space-y-4">
-                  {incentive.eligibility_requirements && (
+                  {incentive.description && (
                     <div>
-                      <span className="text-xs font-medium text-gray-500 uppercase">Eligibility</span>
-                      <p className="text-sm text-gray-700 mt-1">{incentive.eligibility_requirements}</p>
+                      <span className="text-xs font-medium text-gray-500 uppercase">Description</span>
+                      <p className="text-sm text-gray-700 mt-1">{incentive.description}</p>
                     </div>
                   )}
 
-                  {incentive.income_limits && (
+                  {incentive.income_qualified && incentive.income_limits && (
                     <div className="flex items-start gap-2">
                       <Info className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                       <div>
                         <span className="text-xs font-medium text-gray-500 uppercase">Income Limits</span>
-                        <p className="text-sm text-gray-900">{incentive.income_limits}</p>
+                        <p className="text-sm text-gray-900">
+                          {typeof incentive.income_limits === 'object'
+                            ? Object.entries(incentive.income_limits).map(([k, v]) => `${k}: ${v}`).join(', ')
+                            : String(incentive.income_limits)}
+                        </p>
                       </div>
-                    </div>
-                  )}
-
-                  {incentive.equipment_types_eligible && incentive.equipment_types_eligible.length > 0 && (
-                    <div>
-                      <span className="text-xs font-medium text-gray-500 uppercase">Eligible Equipment</span>
-                      <p className="text-sm text-gray-900 mt-1">
-                        {incentive.equipment_types_eligible.join(', ')}
-                      </p>
                     </div>
                   )}
 
@@ -163,18 +155,15 @@ export function IncentivesTable({ projectIncentives, selectedIncentives, onToggl
                     </div>
                   )}
 
-                  {incentive.stacking_notes && (
+                  {incentive.stackable === false && (
                     <div className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3">
-                      <span className="font-medium">Stacking Note:</span> {incentive.stacking_notes}
+                      <span className="font-medium">Not Stackable:</span> This incentive cannot be combined with other programs.
                     </div>
                   )}
 
-                  {incentive.confidence && (
+                  {incentive.last_verified && (
                     <div className="text-xs text-gray-500">
-                      Confidence: <span className="capitalize font-medium">{incentive.confidence}</span>
-                      {incentive.verification_source && (
-                        <span className="ml-2 text-gray-400">· Source: {incentive.verification_source}</span>
-                      )}
+                      Last verified: {incentive.last_verified}
                     </div>
                   )}
 
@@ -199,7 +188,7 @@ export function IncentivesTable({ projectIncentives, selectedIncentives, onToggl
       <div className="bg-gray-50 px-5 py-4 border-t-2 border-gray-200">
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            {selectedIncentives.size} of {projectIncentives.length} selected
+            {selectedIncentives.size} of {rebatePrograms.length} selected
           </div>
           <div className="text-right">
             <span className="text-sm text-gray-500">Estimated Total Savings</span>
