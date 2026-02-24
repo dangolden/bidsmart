@@ -19,6 +19,43 @@ export interface MindPalTriggerRequest {
   };
 }
 
+// ============================================================
+// V2 Callback: multi-bid payload keyed by bid_id
+// ============================================================
+
+/** Per-bid extraction data sent from MindPal */
+export interface MindPalBidResult {
+  bid_id: string;
+  contractor_info?: ContractorInfo;
+  pricing?: PricingInfo;
+  timeline?: TimelineInfo;
+  warranty?: WarrantyInfo;
+  equipment?: EquipmentInfo[];
+  line_items?: LineItemInfo[];
+  scope_of_work?: ScopeInfo;
+  payment_terms?: PaymentTermsInfo;
+  dates?: DatesInfo;
+  field_confidences?: Record<string, number>;
+  extraction_notes?: ExtractionNote[];
+  overall_confidence?: number;
+}
+
+/** V2 callback payload — array of bid results */
+export interface MindPalCallbackPayloadV2 {
+  request_id: string;
+  project_id: string;
+  signature: string;
+  timestamp: string;
+  status: "success" | "partial" | "failed";
+  bids: MindPalBidResult[];
+  error?: {
+    code: string;
+    message: string;
+    details?: string;
+  };
+}
+
+/** V1 callback payload — kept for backward compatibility */
 export interface MindPalCallbackPayload {
   request_id: string;
   signature: string;

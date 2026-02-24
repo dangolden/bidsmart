@@ -1,35 +1,30 @@
 /**
- * BidSmart V2 Database Service
- *
- * All queries target V2 normalized tables and views.
- * V2 schema: bids + bid_contractors + bid_scope + bid_scores + bid_equipment (1:N)
- * Views: v_bid_summary, v_bid_compare_equipment, v_bid_compare_contractors,
- *        v_bid_compare_scope, v_bid_full
+ * BidSmart Database Service
+ * 
+ * Core CRUD operations for projects, bids, and related data.
  */
 
 import { supabase } from '../supabaseClient';
 import type {
   Project,
   Bid,
-  BidContractor,
   BidScope,
-  BidScores,
+  BidContractor,
+  BidScore,
+  BidLineItem,
   BidEquipment,
-  BidWithChildren,
-  BidSummaryView,
+  BidAnalysis,
   PdfUpload,
   MindPalExtraction,
-  ProjectIncentive,
-  IncentiveProgramDB,
-  ContractorQuestion,
-  BidFaq,
-  ProjectFaq,
-  ProjectQIIChecklist,
+  RebateProgram,
+  ProjectRebate,
   ProjectRequirements,
   UserExt,
   ProjectStatus,
   PdfStatus,
-  ProjectFaqData,
+  ProjectSummary,
+  BidComparisonTableRow,
+  BidFaq,
 } from '../types';
 
 // ============================================
@@ -266,9 +261,40 @@ export async function createDraftProject(
 }
 
 // ============================================
-// BIDS (V2 — normalized)
+// BIDS (V2 — thin identity stubs)
 // ============================================
 
+/**
+ * Create a bid stub at PDF upload time.
+ * The stub is updated by the MindPal callback with status='completed'.
+ */
+export async function createBidStub(
+  projectId: string,
+  pdfUploadId: string,
+  requestId: string,
+  storageKey?: string
+): Promise<Bid> {
+  const { data, error } = await supabase
+    .from('bids')
+    .insert({
+      project_id: projectId,
+      pdf_upload_id: pdfUploadId,
+      request_id: requestId,
+      storage_key: storageKey || null,
+      status: 'pending',
+      contractor_name: 'TBD',
+      verified_by_user: false,
+      is_favorite: false,
+      processing_attempts: 0,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/** @deprecated Use createBidStub for V2 flow. Kept for backward compat. */
 export async function createBid(
   projectId: string,
   bidData: Partial<Bid>
@@ -278,7 +304,11 @@ export async function createBid(
     .insert({
       project_id: projectId,
       contractor_name: bidData.contractor_name || 'Unknown Contractor',
-      total_bid_amount: bidData.total_bid_amount || 0,
+      request_id: bidData.request_id || '',
+      status: bidData.status || 'pending',
+      verified_by_user: bidData.verified_by_user || false,
+      is_favorite: bidData.is_favorite || false,
+      processing_attempts: 0,
       ...bidData,
     })
     .select()
@@ -304,7 +334,7 @@ export async function getBidsByProject(projectId: string): Promise<Bid[]> {
     .from('bids')
     .select('*')
     .eq('project_id', projectId)
-    .order('bid_index', { ascending: true, nullsFirst: false });
+    .order('created_at', { ascending: true });
 
   if (error) throw error;
   return data || [];
@@ -359,73 +389,8 @@ export async function verifyBid(bidId: string): Promise<Bid | null> {
 }
 
 // ============================================
-// BID CONTRACTORS (V2 — 1:1 per bid)
+// BID SCOPE (V2 — all extracted data)
 // ============================================
-
-export async function createBidContractor(
-  bidId: string,
-  contractorData: Partial<BidContractor>
-): Promise<BidContractor> {
-  const { data, error } = await supabase
-    .from('bid_contractors')
-    .insert({
-      bid_id: bidId,
-      name: contractorData.name || 'Unknown',
-      ...contractorData,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function getBidContractor(bidId: string): Promise<BidContractor | null> {
-  const { data, error } = await supabase
-    .from('bid_contractors')
-    .select('*')
-    .eq('bid_id', bidId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function updateBidContractor(
-  bidId: string,
-  updates: Partial<BidContractor>
-): Promise<BidContractor | null> {
-  const { data, error } = await supabase
-    .from('bid_contractors')
-    .update(updates)
-    .eq('bid_id', bidId)
-    .select()
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
-
-// ============================================
-// BID SCOPE (V2 — 1:1 per bid)
-// ============================================
-
-export async function createBidScope(
-  bidId: string,
-  scopeData: Partial<BidScope>
-): Promise<BidScope> {
-  const { data, error } = await supabase
-    .from('bid_scope')
-    .insert({
-      bid_id: bidId,
-      ...scopeData,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
 
 export async function getBidScope(bidId: string): Promise<BidScope | null> {
   const { data, error } = await supabase
@@ -438,15 +403,29 @@ export async function getBidScope(bidId: string): Promise<BidScope | null> {
   return data;
 }
 
-export async function updateBidScope(
-  bidId: string,
-  updates: Partial<BidScope>
-): Promise<BidScope | null> {
+export async function getBidScopesByProject(projectId: string): Promise<BidScope[]> {
+  // Join through bids to filter by project
   const { data, error } = await supabase
     .from('bid_scope')
-    .update(updates)
+    .select('*, bids!inner(project_id)')
+    .eq('bids.project_id', projectId);
+
+  if (error) throw error;
+  return (data || []).map((row: Record<string, unknown>) => {
+    const { bids: _, ...scope } = row;
+    return scope as unknown as BidScope;
+  });
+}
+
+// ============================================
+// BID CONTRACTORS (V2)
+// ============================================
+
+export async function getBidContractor(bidId: string): Promise<BidContractor | null> {
+  const { data, error } = await supabase
+    .from('bid_contractors')
+    .select('*')
     .eq('bid_id', bidId)
-    .select()
     .maybeSingle();
 
   if (error) throw error;
@@ -454,27 +433,10 @@ export async function updateBidScope(
 }
 
 // ============================================
-// BID SCORES (V2 — 1:1 per bid)
+// BID SCORES (V2)
 // ============================================
 
-export async function createBidScores(
-  bidId: string,
-  scoresData: Partial<BidScores>
-): Promise<BidScores> {
-  const { data, error } = await supabase
-    .from('bid_scores')
-    .insert({
-      bid_id: bidId,
-      ...scoresData,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function getBidScores(bidId: string): Promise<BidScores | null> {
+export async function getBidScore(bidId: string): Promise<BidScore | null> {
   const { data, error } = await supabase
     .from('bid_scores')
     .select('*')
@@ -485,14 +447,51 @@ export async function getBidScores(bidId: string): Promise<BidScores | null> {
   return data;
 }
 
-export async function updateBidScores(
+// ============================================
+// BID LINE ITEMS
+// ============================================
+
+export async function createLineItem(
   bidId: string,
-  updates: Partial<BidScores>
-): Promise<BidScores | null> {
+  itemData: Partial<BidLineItem>
+): Promise<BidLineItem> {
   const { data, error } = await supabase
-    .from('bid_scores')
-    .update(updates)
+    .from('bid_line_items')
+    .insert({
+      bid_id: bidId,
+      item_type: itemData.item_type || 'other',
+      description: itemData.description || '',
+      quantity: itemData.quantity || 1,
+      total_price: itemData.total_price || 0,
+      confidence: itemData.confidence || 'manual',
+      ...itemData,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getLineItemsByBid(bidId: string): Promise<BidLineItem[]> {
+  const { data, error } = await supabase
+    .from('bid_line_items')
+    .select('*')
     .eq('bid_id', bidId)
+    .order('line_order', { nullsFirst: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateLineItem(
+  itemId: string,
+  updates: Partial<BidLineItem>
+): Promise<BidLineItem | null> {
+  const { data, error } = await supabase
+    .from('bid_line_items')
+    .update(updates)
+    .eq('id', itemId)
     .select()
     .maybeSingle();
 
@@ -500,8 +499,41 @@ export async function updateBidScores(
   return data;
 }
 
+export async function deleteLineItem(itemId: string): Promise<void> {
+  const { error } = await supabase
+    .from('bid_line_items')
+    .delete()
+    .eq('id', itemId);
+
+  if (error) throw error;
+}
+
+export async function bulkCreateLineItems(
+  bidId: string,
+  items: Partial<BidLineItem>[]
+): Promise<BidLineItem[]> {
+  const itemsToInsert = items.map((item, index) => ({
+    bid_id: bidId,
+    item_type: item.item_type || 'other',
+    description: item.description || '',
+    quantity: item.quantity || 1,
+    total_price: item.total_price || 0,
+    confidence: item.confidence || 'manual',
+    line_order: index,
+    ...item,
+  }));
+
+  const { data, error } = await supabase
+    .from('bid_line_items')
+    .insert(itemsToInsert)
+    .select();
+
+  if (error) throw error;
+  return data || [];
+}
+
 // ============================================
-// BID EQUIPMENT (V2 — 1:N per bid)
+// BID EQUIPMENT
 // ============================================
 
 export async function createEquipment(
@@ -514,6 +546,7 @@ export async function createEquipment(
       bid_id: bidId,
       equipment_type: equipmentData.equipment_type || 'other',
       brand: equipmentData.brand || 'Unknown',
+      confidence: equipmentData.confidence || 'manual',
       ...equipmentData,
     })
     .select()
@@ -565,6 +598,7 @@ export async function bulkCreateEquipment(
     bid_id: bidId,
     equipment_type: eq.equipment_type || 'other',
     brand: eq.brand || 'Unknown',
+    confidence: eq.confidence || 'manual',
     ...eq,
   }));
 
@@ -578,110 +612,19 @@ export async function bulkCreateEquipment(
 }
 
 // ============================================
-// CONTRACTOR QUESTIONS (V2 — replaces bid_questions)
+// BID ANALYSIS
 // ============================================
 
-export async function getQuestionsByBid(bidId: string): Promise<ContractorQuestion[]> {
-  const { data, error } = await supabase
-    .from('contractor_questions')
-    .select('*')
-    .eq('bid_id', bidId)
-    .order('display_order', { ascending: true });
-
-  if (error) throw error;
-  return data || [];
-}
-
-export async function createContractorQuestion(
-  bidId: string,
-  questionData: Partial<ContractorQuestion>
-): Promise<ContractorQuestion> {
-  const { data, error } = await supabase
-    .from('contractor_questions')
-    .insert({
-      bid_id: bidId,
-      question_text: questionData.question_text || '',
-      ...questionData,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function bulkCreateContractorQuestions(
-  bidId: string,
-  questions: Partial<ContractorQuestion>[]
-): Promise<ContractorQuestion[]> {
-  const questionsToInsert = questions.map((q) => ({
-    bid_id: bidId,
-    question_text: q.question_text || '',
-    ...q,
-  }));
-
-  const { data, error } = await supabase
-    .from('contractor_questions')
-    .insert(questionsToInsert)
-    .select();
-
-  if (error) throw error;
-  return data || [];
-}
-
-export async function updateContractorQuestion(
-  questionId: string,
-  updates: Partial<ContractorQuestion>
-): Promise<ContractorQuestion | null> {
-  const { data, error } = await supabase
-    .from('contractor_questions')
-    .update(updates)
-    .eq('id', questionId)
-    .select()
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function markQuestionAnswered(
-  questionId: string,
-  answerText: string
-): Promise<ContractorQuestion | null> {
-  return updateContractorQuestion(questionId, {
-    is_answered: true,
-    answer_text: answerText,
-    answered_at: new Date().toISOString(),
-  });
-}
-
-// ============================================
-// PROJECT INCENTIVES (V2 — replaces rebate_programs + project_rebates)
-// ============================================
-
-export async function getProjectIncentives(projectId: string): Promise<ProjectIncentive[]> {
-  const { data, error } = await supabase
-    .from('project_incentives')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('program_type', { ascending: true });
-
-  if (error) throw error;
-  return data || [];
-}
-
-export async function createProjectIncentive(
+export async function createAnalysis(
   projectId: string,
-  incentiveData: Partial<ProjectIncentive>
-): Promise<ProjectIncentive> {
+  analysisData: Partial<BidAnalysis>
+): Promise<BidAnalysis> {
   const { data, error } = await supabase
-    .from('project_incentives')
+    .from('bid_analysis')
     .insert({
       project_id: projectId,
-      source: incentiveData.source || 'ai_discovered',
-      program_name: incentiveData.program_name || 'Unknown Program',
-      program_type: incentiveData.program_type || 'federal',
-      ...incentiveData,
+      analysis_version: '1.0',
+      ...analysisData,
     })
     .select()
     .single();
@@ -690,268 +633,29 @@ export async function createProjectIncentive(
   return data;
 }
 
-export async function bulkCreateProjectIncentives(
-  projectId: string,
-  incentives: Partial<ProjectIncentive>[]
-): Promise<ProjectIncentive[]> {
-  const toInsert = incentives.map((inc) => ({
-    project_id: projectId,
-    source: inc.source || 'ai_discovered',
-    program_name: inc.program_name || 'Unknown Program',
-    program_type: inc.program_type || 'federal',
-    ...inc,
-  }));
-
+export async function getLatestAnalysis(projectId: string): Promise<BidAnalysis | null> {
   const { data, error } = await supabase
-    .from('project_incentives')
-    .insert(toInsert)
-    .select();
-
-  if (error) throw error;
-  return data || [];
-}
-
-export async function updateProjectIncentive(
-  incentiveId: string,
-  updates: Partial<ProjectIncentive>
-): Promise<ProjectIncentive | null> {
-  const { data, error } = await supabase
-    .from('project_incentives')
-    .update(updates)
-    .eq('id', incentiveId)
-    .select()
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
-
-// ============================================
-// INCENTIVE PROGRAM DATABASE (master reference)
-// ============================================
-
-/**
- * Query incentive_program_database for all active programs matching zip/state/nationwide.
- * Combines: nationwide + state-match + zip-match in a single OR query.
- * RLS already filters is_active = true; explicit filter added for clarity.
- */
-export async function getIncentivesByZip(
-  zip: string,
-  state?: string
-): Promise<IncentiveProgramDB[]> {
-  const orParts: string[] = ['available_nationwide.eq.true'];
-
-  if (zip) {
-    orParts.push(`available_zip_codes.cs.{"${zip}"}`);
-  }
-  if (state) {
-    orParts.push(`available_states.cs.{"${state}"}`);
-  }
-
-  const { data, error } = await supabase
-    .from('incentive_program_database')
-    .select('*')
-    .eq('is_active', true)
-    .or(orParts.join(','))
-    .order('program_type', { ascending: true })
-    .order('max_rebate', { ascending: false, nullsFirst: false });
-
-  if (error) throw error;
-  return data || [];
-}
-
-export async function getIncentiveById(
-  id: string
-): Promise<IncentiveProgramDB | null> {
-  const { data, error } = await supabase
-    .from('incentive_program_database')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
-
-// ============================================
-// BID FAQs
-// ============================================
-
-export async function getFaqsByBid(bidId: string): Promise<BidFaq[]> {
-  const { data, error } = await supabase
-    .from('bid_faqs')
-    .select('*')
-    .eq('bid_id', bidId)
-    .order('display_order', { ascending: true });
-
-  if (error) throw error;
-  return data || [];
-}
-
-export async function createBidFaq(
-  bidId: string,
-  faqData: Partial<BidFaq>
-): Promise<BidFaq> {
-  const { data, error } = await supabase
-    .from('bid_faqs')
-    .insert({
-      bid_id: bidId,
-      question: faqData.question || '',
-      answer: faqData.answer || '',
-      ...faqData,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function bulkCreateBidFaqs(
-  bidId: string,
-  faqs: Partial<BidFaq>[]
-): Promise<BidFaq[]> {
-  const faqsToInsert = faqs.map(faq => ({
-    bid_id: bidId,
-    question: faq.question || '',
-    answer: faq.answer || '',
-    ...faq,
-  }));
-
-  const { data, error } = await supabase
-    .from('bid_faqs')
-    .insert(faqsToInsert)
-    .select();
-
-  if (error) throw error;
-  return data || [];
-}
-
-export async function updateBidFaq(
-  faqId: string,
-  updates: Partial<BidFaq>
-): Promise<BidFaq | null> {
-  const { data, error } = await supabase
-    .from('bid_faqs')
-    .update(updates)
-    .eq('id', faqId)
-    .select()
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function deleteBidFaq(faqId: string): Promise<void> {
-  const { error } = await supabase
-    .from('bid_faqs')
-    .delete()
-    .eq('id', faqId);
-
-  if (error) throw error;
-}
-
-// ============================================
-// PROJECT FAQs
-// ============================================
-
-export async function getProjectFaqs(projectId: string): Promise<ProjectFaq[]> {
-  const { data, error } = await supabase
-    .from('project_faqs')
+    .from('bid_analysis')
     .select('*')
     .eq('project_id', projectId)
-    .order('display_order', { ascending: true });
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (error) throw error;
-  return data || [];
+  return data;
 }
 
-export async function bulkCreateProjectFaqs(
-  projectId: string,
-  faqs: Partial<ProjectFaq>[]
-): Promise<ProjectFaq[]> {
-  const toInsert = faqs.map(faq => ({
-    project_id: projectId,
-    question: faq.question || '',
-    answer: faq.answer || '',
-    ...faq,
-  }));
-
+export async function updateAnalysis(
+  analysisId: string,
+  updates: Partial<BidAnalysis>
+): Promise<BidAnalysis | null> {
   const { data, error } = await supabase
-    .from('project_faqs')
-    .insert(toInsert)
-    .select();
-
-  if (error) throw error;
-  return data || [];
-}
-
-/**
- * Get all FAQs for a project — both project-level and per-bid.
- */
-export async function getFaqsByProject(
-  projectId: string,
-  bids: Array<{ bid: Bid }>
-): Promise<ProjectFaqData> {
-  const overallFaqsPromise = getProjectFaqs(projectId);
-
-  const bidFaqsPromises = bids.map(async (bidData, index) => {
-    const faqs = await getFaqsByBid(bidData.bid.id);
-    return {
-      bid_id: bidData.bid.id,
-      bid_index: index,
-      contractor_name: bidData.bid.contractor_name || `Bid ${index + 1}`,
-      faqs,
-    };
-  });
-
-  const [overall, ...bidFaqResults] = await Promise.all([
-    overallFaqsPromise,
-    ...bidFaqsPromises,
-  ]);
-
-  return {
-    overall,
-    by_bid: bidFaqResults,
-  };
-}
-
-// ============================================
-// PROJECT QII CHECKLIST
-// ============================================
-
-export async function getProjectQIIChecklist(
-  projectId: string
-): Promise<ProjectQIIChecklist[]> {
-  const { data, error } = await supabase
-    .from('project_qii_checklist')
-    .select('*')
-    .eq('project_id', projectId);
-
-  if (error) throw error;
-  return data || [];
-}
-
-export async function upsertQIIChecklistItem(
-  projectId: string,
-  itemKey: string,
-  isVerified: boolean,
-  verifiedBy?: string
-): Promise<ProjectQIIChecklist> {
-  const { data, error } = await supabase
-    .from('project_qii_checklist')
-    .upsert(
-      {
-        project_id: projectId,
-        checklist_item_key: itemKey,
-        is_verified: isVerified,
-        verified_at: isVerified ? new Date().toISOString() : null,
-        verified_by: isVerified ? (verifiedBy || 'homeowner') : null,
-      },
-      { onConflict: 'project_id,checklist_item_key' }
-    )
+    .from('bid_analysis')
+    .update(updates)
+    .eq('id', analysisId)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data;
@@ -1098,104 +802,92 @@ export async function getExtractionByPdfUpload(
 }
 
 // ============================================
-// V2 VIEWS — Read-Only Queries
+// REBATE PROGRAMS
 // ============================================
 
-/**
- * Get bid summaries for a project using v_bid_summary view.
- * Used by BidCard list views.
- */
-export async function getBidSummaries(projectId: string): Promise<BidSummaryView[]> {
+export async function getActiveRebates(): Promise<RebateProgram[]> {
   const { data, error } = await supabase
-    .from('v_bid_summary')
+    .from('rebate_programs')
     .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
+    .eq('is_active', true)
+    .order('program_name');
 
   if (error) throw error;
-  return (data || []) as BidSummaryView[];
+  return data || [];
 }
 
-// ============================================
-// COMPOSITE QUERIES (V2)
-// ============================================
-
-/**
- * Get a single bid with all its children (contractor, scope, scores, equipment, questions).
- * This is the primary shape used by PhaseContext.
- */
-export async function getBidWithChildren(bidId: string): Promise<BidWithChildren | null> {
-  const bid = await getBid(bidId);
-  if (!bid) return null;
-
-  const [contractor, scope, scores, equipment, questions] = await Promise.all([
-    getBidContractor(bidId),
-    getBidScope(bidId),
-    getBidScores(bidId),
-    getEquipmentByBid(bidId),
-    getQuestionsByBid(bidId),
-  ]);
-
-  return { bid, contractor, scope, scores, equipment, questions };
-}
-
-/**
- * Get all bids for a project with their children.
- * Used by PhaseContext to load all bid data.
- */
-export async function getBidsWithChildren(projectId: string): Promise<BidWithChildren[]> {
-  const bids = await getBidsByProject(projectId);
-
-  return Promise.all(
-    bids.map(async (bid) => {
-      const [contractor, scope, scores, equipment, questions] = await Promise.all([
-        getBidContractor(bid.id),
-        getBidScope(bid.id),
-        getBidScores(bid.id),
-        getEquipmentByBid(bid.id),
-        getQuestionsByBid(bid.id),
-      ]);
-
-      return { bid, contractor, scope, scores, equipment, questions };
-    })
-  );
-}
-
-// ============================================
-// PROJECT REQUIREMENTS
-// ============================================
-
-export async function getProjectRequirements(
-  projectId: string
-): Promise<ProjectRequirements | null> {
+export async function getRebatesByState(stateCode: string): Promise<RebateProgram[]> {
   const { data, error } = await supabase
-    .from('project_requirements')
+    .from('rebate_programs')
     .select('*')
-    .eq('project_id', projectId)
-    .maybeSingle();
+    .eq('is_active', true)
+    .or(`available_nationwide.eq.true,available_states.cs.{${stateCode}}`);
 
   if (error) throw error;
-  return data;
+  return data || [];
 }
 
-export async function createProjectRequirements(
+interface ProjectRebateWithProgram {
+  id: string;
+  project_id: string;
+  rebate_program_id: string;
+  is_eligible: boolean | null;
+  eligibility_notes: string | null;
+  estimated_amount: number | null;
+  applied_amount: number | null;
+  application_status: string | null;
+  application_date: string | null;
+  approval_date: string | null;
+  created_at: string;
+  updated_at: string;
+  rebate_programs: RebateProgram;
+}
+
+export async function getProjectRebates(projectId: string): Promise<Array<{
+  program: RebateProgram;
+  projectRebate: ProjectRebate;
+}>> {
+  const { data, error } = await supabase
+    .from('project_rebates')
+    .select(`
+      *,
+      rebate_programs (*)
+    `)
+    .eq('project_id', projectId);
+
+  if (error) throw error;
+
+  return (data as ProjectRebateWithProgram[] || []).map((item) => ({
+    program: item.rebate_programs,
+    projectRebate: {
+      id: item.id,
+      project_id: item.project_id,
+      rebate_program_id: item.rebate_program_id,
+      is_eligible: item.is_eligible ?? false,
+      eligibility_notes: item.eligibility_notes,
+      estimated_amount: item.estimated_amount,
+      applied_amount: item.applied_amount,
+      application_status: item.application_status,
+      application_date: item.application_date,
+      approval_date: item.approval_date,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    },
+  }));
+}
+
+export async function addProjectRebate(
   projectId: string,
-  requirements: Partial<ProjectRequirements> = {}
-): Promise<ProjectRequirements> {
+  rebateProgramId: string,
+  estimatedAmount?: number
+): Promise<ProjectRebate> {
   const { data, error } = await supabase
-    .from('project_requirements')
+    .from('project_rebates')
     .insert({
       project_id: projectId,
-      priority_price: requirements.priority_price ?? 3,
-      priority_warranty: requirements.priority_warranty ?? 3,
-      priority_efficiency: requirements.priority_efficiency ?? 3,
-      priority_timeline: requirements.priority_timeline ?? 3,
-      priority_reputation: requirements.priority_reputation ?? 3,
-      timeline_urgency: requirements.timeline_urgency ?? 'flexible',
-      specific_concerns: requirements.specific_concerns ?? [],
-      must_have_features: requirements.must_have_features ?? [],
-      nice_to_have_features: requirements.nice_to_have_features ?? [],
-      ...requirements,
+      rebate_program_id: rebateProgramId,
+      is_eligible: true,
+      estimated_amount: estimatedAmount,
     })
     .select()
     .single();
@@ -1204,43 +896,71 @@ export async function createProjectRequirements(
   return data;
 }
 
-export async function updateProjectRequirements(
-  projectId: string,
-  updates: Partial<ProjectRequirements>
-): Promise<ProjectRequirements | null> {
-  const { data, error } = await supabase
-    .from('project_requirements')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
+// ============================================
+// COMPOSITE QUERIES
+// ============================================
+
+export async function getProjectSummary(projectId: string): Promise<ProjectSummary | null> {
+  // Get project
+  const project = await getProject(projectId);
+  if (!project) return null;
+
+  // Get bids with their scope, contractor, scores, line items, and equipment
+  const bids = await getBidsByProject(projectId);
+  const bidsWithDetails: BidComparisonTableRow[] = await Promise.all(
+    bids.map(async (bid) => {
+      const [scope, contractor, scores, lineItems, equipment] = await Promise.all([
+        getBidScope(bid.id),
+        getBidContractor(bid.id),
+        getBidScore(bid.id),
+        getLineItemsByBid(bid.id),
+        getEquipmentByBid(bid.id),
+      ]);
+
+      return {
+        bid,
+        scope,
+        contractor,
+        scores,
+        equipment,
+        lineItems,
+      };
     })
-    .eq('project_id', projectId)
-    .select()
-    .maybeSingle();
+  );
 
-  if (error) throw error;
-  return data;
-}
+  // Get analysis
+  const analysis = await getLatestAnalysis(projectId);
 
-export async function saveProjectRequirements(
-  projectId: string,
-  requirements: Partial<ProjectRequirements>
-): Promise<ProjectRequirements> {
-  const existing = await getProjectRequirements(projectId);
+  // Get rebates
+  const rebates = await getProjectRebates(projectId);
 
-  if (existing) {
-    const updated = await updateProjectRequirements(projectId, {
-      ...requirements,
-      completed_at: new Date().toISOString(),
-    });
-    if (!updated) throw new Error('Failed to update requirements');
-    return updated;
-  }
+  // Calculate stats from bid_scope pricing
+  const prices = bidsWithDetails
+    .map((b) => b.scope?.total_bid_amount)
+    .filter((p): p is number => p != null && p > 0);
 
-  return createProjectRequirements(projectId, {
-    ...requirements,
-    completed_at: new Date().toISOString(),
-  });
+  const stats = {
+    totalBids: bids.length,
+    averagePrice: prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : 0,
+    lowestPrice: prices.length > 0 ? Math.min(...prices) : 0,
+    highestPrice: prices.length > 0 ? Math.max(...prices) : 0,
+    bestValueBidId: bidsWithDetails.reduce((best, row) =>
+      (row.scores?.value_score || 0) > (best?.scores?.value_score || 0) ? row : best,
+      bidsWithDetails[0]
+    )?.bid.id || null,
+    bestQualityBidId: bidsWithDetails.reduce((best, row) =>
+      (row.scores?.quality_score || 0) > (best?.scores?.quality_score || 0) ? row : best,
+      bidsWithDetails[0]
+    )?.bid.id || null,
+  };
+
+  return {
+    project,
+    bids: bidsWithDetails,
+    analysis,
+    rebates,
+    stats,
+  };
 }
 
 // ============================================
@@ -1334,3 +1054,192 @@ export async function deletePdfFromStorage(filePath: string): Promise<void> {
   if (error) throw error;
 }
 
+// ============================================
+// PROJECT REQUIREMENTS
+// ============================================
+
+export async function getProjectRequirements(
+  projectId: string
+): Promise<ProjectRequirements | null> {
+  const { data, error } = await supabase
+    .from('project_requirements')
+    .select('*')
+    .eq('project_id', projectId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createProjectRequirements(
+  projectId: string,
+  requirements: Partial<ProjectRequirements> = {}
+): Promise<ProjectRequirements> {
+  const { data, error } = await supabase
+    .from('project_requirements')
+    .insert({
+      project_id: projectId,
+      priority_price: requirements.priority_price ?? 3,
+      priority_warranty: requirements.priority_warranty ?? 3,
+      priority_efficiency: requirements.priority_efficiency ?? 3,
+      priority_timeline: requirements.priority_timeline ?? 3,
+      priority_reputation: requirements.priority_reputation ?? 3,
+      timeline_urgency: requirements.timeline_urgency ?? 'flexible',
+      specific_concerns: requirements.specific_concerns ?? [],
+      must_have_features: requirements.must_have_features ?? [],
+      nice_to_have_features: requirements.nice_to_have_features ?? [],
+      ...requirements,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateProjectRequirements(
+  projectId: string,
+  updates: Partial<ProjectRequirements>
+): Promise<ProjectRequirements | null> {
+  const { data, error } = await supabase
+    .from('project_requirements')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('project_id', projectId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function saveProjectRequirements(
+  projectId: string,
+  requirements: Partial<ProjectRequirements>
+): Promise<ProjectRequirements> {
+  const existing = await getProjectRequirements(projectId);
+
+  if (existing) {
+    const updated = await updateProjectRequirements(projectId, {
+      ...requirements,
+      completed_at: new Date().toISOString(),
+    });
+    if (!updated) throw new Error('Failed to update requirements');
+    return updated;
+  }
+
+  return createProjectRequirements(projectId, {
+    ...requirements,
+    completed_at: new Date().toISOString(),
+  });
+}
+
+// ============================================
+// BID FAQs
+// ============================================
+
+export async function getFaqsByBid(bidId: string): Promise<BidFaq[]> {
+  const { data, error } = await supabase
+    .from('bid_faqs')
+    .select('*')
+    .eq('bid_id', bidId)
+    .order('display_order', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createBidFaq(
+  bidId: string,
+  faqData: Partial<BidFaq>
+): Promise<BidFaq> {
+  const { data, error } = await supabase
+    .from('bid_faqs')
+    .insert({
+      bid_id: bidId,
+      ...faqData,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function bulkCreateBidFaqs(
+  bidId: string,
+  faqs: Partial<BidFaq>[]
+): Promise<BidFaq[]> {
+  const faqsToInsert = faqs.map(faq => ({
+    bid_id: bidId,
+    ...faq,
+  }));
+
+  const { data, error } = await supabase
+    .from('bid_faqs')
+    .insert(faqsToInsert)
+    .select();
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateBidFaq(
+  faqId: string,
+  updates: Partial<BidFaq>
+): Promise<BidFaq | null> {
+  const { data, error } = await supabase
+    .from('bid_faqs')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', faqId)
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteBidFaq(faqId: string): Promise<void> {
+  const { error } = await supabase
+    .from('bid_faqs')
+    .delete()
+    .eq('id', faqId);
+
+  if (error) throw error;
+}
+
+export async function getFaqsByProject(
+  projectId: string,
+  bids: Array<{ bid: Bid }>
+): Promise<import('../types').ProjectFaqData> {
+  const overallFaqsPromise = supabase
+    .from('project_faqs')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('display_order', { ascending: true });
+
+  const bidFaqsPromises = bids.map(async (bidData, index) => {
+    const faqs = await getFaqsByBid(bidData.bid.id);
+    return {
+      bid_id: bidData.bid.id,
+      bid_index: index,
+      contractor_name: bidData.bid.contractor_name || `Bid ${index + 1}`,
+      faqs,
+    };
+  });
+
+  const [overallResult, ...bidFaqResults] = await Promise.all([
+    overallFaqsPromise,
+    ...bidFaqsPromises,
+  ]);
+
+  return {
+    overall: overallResult.data || [],
+    by_bid: bidFaqResults,
+  };
+}

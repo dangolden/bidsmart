@@ -3,22 +3,238 @@ import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
 import { verifyHmacSignature, createCallbackPayload } from "../_shared/hmac.ts";
 import {
-  type MindPalCallbackPayload,
+  type MindPalCallbackPayloadV2,
+  type MindPalBidResult,
   type MindPalFaqItem,
   type MindPalQuestionItem,
   mapConfidenceToLevel,
   mapLineItemType,
-  isAccessory,
-  inferSystemRole,
-  inferFuelType,
 } from "../_shared/types.ts";
 
-interface ExtendedCallbackPayload extends MindPalCallbackPayload {
+interface ExtendedCallbackPayload extends MindPalCallbackPayloadV2 {
   faqs?: MindPalFaqItem[];
   questions?: MindPalQuestionItem[];
 }
 
 const MINDPAL_CALLBACK_SECRET = Deno.env.get("MINDPAL_CALLBACK_SECRET");
+
+/**
+ * Process a single bid result from the MindPal callback.
+ * - UPDATE bids: status → 'completed', contractor_name, processing_attempts
+ * - UPSERT bid_scope: ALL extracted pricing/scope/warranty/timeline data
+ * - UPSERT bid_contractors: contractor info
+ * - INSERT bid_equipment: equipment records
+ * - INSERT bid_scores: score records
+ */
+async function processBidResult(
+  bidResult: MindPalBidResult,
+  projectId: string
+): Promise<{ bidId: string; success: boolean; error?: string }> {
+  const { bid_id } = bidResult;
+
+  try {
+    // Verify the bid exists and belongs to this project
+    const { data: existingBid, error: bidLookupError } = await supabaseAdmin
+      .from("bids")
+      .select("id, project_id, processing_attempts")
+      .eq("id", bid_id)
+      .maybeSingle();
+
+    if (bidLookupError || !existingBid) {
+      throw new Error(`Bid ${bid_id} not found`);
+    }
+
+    if (existingBid.project_id !== projectId) {
+      throw new Error(`Bid ${bid_id} does not belong to project ${projectId}`);
+    }
+
+    const confidenceLevel = mapConfidenceToLevel(bidResult.overall_confidence);
+    const contractorName = bidResult.contractor_info?.company_name || "Unknown Contractor";
+
+    // 1. UPDATE bids stub: status → completed, contractor_name
+    const { error: bidUpdateError } = await supabaseAdmin
+      .from("bids")
+      .update({
+        status: "completed",
+        contractor_name: contractorName,
+        processing_attempts: (existingBid.processing_attempts || 0) + 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", bid_id);
+
+    if (bidUpdateError) {
+      throw new Error(`Failed to update bid ${bid_id}: ${bidUpdateError.message}`);
+    }
+
+    // 2. UPSERT bid_scope: ALL extracted data
+    const scopeData: Record<string, unknown> = {
+      bid_id,
+      // System type
+      system_type: bidResult.scope_of_work ? "heat_pump" : null,
+
+      // Pricing
+      total_bid_amount: bidResult.pricing?.total_amount,
+      labor_cost: bidResult.pricing?.labor_cost,
+      equipment_cost: bidResult.pricing?.equipment_cost,
+      materials_cost: bidResult.pricing?.materials_cost,
+      permit_cost: bidResult.pricing?.permit_cost,
+      disposal_cost: bidResult.pricing?.disposal_cost,
+      electrical_cost: bidResult.pricing?.electrical_cost,
+      total_before_rebates: bidResult.pricing?.price_before_rebates,
+      estimated_rebates: bidResult.pricing?.rebates_mentioned?.reduce(
+        (sum, r) => sum + (r.amount || 0),
+        0
+      ),
+      total_after_rebates: bidResult.pricing?.price_after_rebates,
+
+      // Payment terms
+      deposit_required: bidResult.payment_terms?.deposit_amount,
+      deposit_percentage: bidResult.payment_terms?.deposit_percentage,
+      payment_schedule: bidResult.payment_terms?.payment_schedule,
+      financing_offered: bidResult.payment_terms?.financing_offered || false,
+      financing_terms: bidResult.payment_terms?.financing_terms,
+
+      // Warranty
+      labor_warranty_years: bidResult.warranty?.labor_warranty_years,
+      equipment_warranty_years: bidResult.warranty?.equipment_warranty_years,
+      compressor_warranty_years: bidResult.warranty?.compressor_warranty_years,
+      additional_warranty_details: bidResult.warranty?.warranty_details,
+
+      // Timeline
+      estimated_days: bidResult.timeline?.estimated_days,
+      start_date_available: bidResult.timeline?.start_date_available,
+      bid_date: bidResult.dates?.bid_date || bidResult.dates?.quote_date,
+      valid_until: bidResult.dates?.valid_until || bidResult.timeline?.bid_valid_until,
+
+      // Extraction metadata
+      extraction_confidence: confidenceLevel,
+      extraction_notes: bidResult.extraction_notes
+        ?.map((n) => `[${n.type}] ${n.message}`)
+        .join("\n"),
+
+      // Scope summary
+      summary: bidResult.scope_of_work?.summary,
+      inclusions: bidResult.scope_of_work?.inclusions,
+      exclusions: bidResult.scope_of_work?.exclusions,
+
+      // Scope booleans
+      permit_included: bidResult.scope_of_work?.permit_included,
+      disposal_included: bidResult.scope_of_work?.disposal_included,
+      electrical_included: bidResult.scope_of_work?.electrical_work_included,
+      ductwork_included: bidResult.scope_of_work?.ductwork_included,
+      thermostat_included: bidResult.scope_of_work?.thermostat_included,
+      manual_j_included: bidResult.scope_of_work?.manual_j_included,
+      commissioning_included: bidResult.scope_of_work?.commissioning_included,
+      air_handler_included: bidResult.scope_of_work?.air_handler_included,
+      line_set_included: bidResult.scope_of_work?.line_set_included,
+      disconnect_included: bidResult.scope_of_work?.disconnect_included,
+      pad_included: bidResult.scope_of_work?.pad_included,
+      drain_line_included: bidResult.scope_of_work?.drain_line_included,
+
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error: scopeError } = await supabaseAdmin
+      .from("bid_scope")
+      .upsert(scopeData, { onConflict: "bid_id" });
+
+    if (scopeError) {
+      console.error(`Failed to upsert bid_scope for ${bid_id}:`, scopeError);
+    }
+
+    // 3. UPSERT bid_contractors
+    if (bidResult.contractor_info) {
+      const contractorData: Record<string, unknown> = {
+        bid_id,
+        name: bidResult.contractor_info.company_name,
+        company: bidResult.contractor_info.company_name,
+        contact_name: bidResult.contractor_info.contact_name,
+        phone: bidResult.contractor_info.phone,
+        email: bidResult.contractor_info.email,
+        website: bidResult.contractor_info.website,
+        license: bidResult.contractor_info.license_number,
+        license_state: bidResult.contractor_info.license_state,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: contractorError } = await supabaseAdmin
+        .from("bid_contractors")
+        .upsert(contractorData, { onConflict: "bid_id" });
+
+      if (contractorError) {
+        console.error(`Failed to upsert bid_contractors for ${bid_id}:`, contractorError);
+      }
+    }
+
+    // 4. INSERT bid_equipment (delete existing first for idempotency)
+    if (bidResult.equipment && bidResult.equipment.length > 0) {
+      // Remove existing equipment for this bid (idempotent re-runs)
+      await supabaseAdmin
+        .from("bid_equipment")
+        .delete()
+        .eq("bid_id", bid_id);
+
+      const equipment = bidResult.equipment.map((eq) => ({
+        bid_id,
+        equipment_type: eq.equipment_type,
+        brand: eq.brand,
+        model_number: eq.model_number,
+        model_name: eq.model_name,
+        capacity_btu: eq.capacity_btu,
+        capacity_tons: eq.capacity_tons,
+        seer_rating: eq.seer_rating,
+        seer2_rating: eq.seer2_rating,
+        hspf_rating: eq.hspf_rating,
+        hspf2_rating: eq.hspf2_rating,
+        eer_rating: eq.eer_rating,
+        variable_speed: eq.variable_speed,
+        stages: eq.stages === "single" ? 1 : eq.stages === "two" ? 2 : eq.stages === "variable" ? 99 : null,
+        refrigerant_type: eq.refrigerant,
+        sound_level_db: eq.sound_level_db,
+        voltage: eq.voltage,
+        energy_star_certified: eq.energy_star,
+        energy_star_most_efficient: eq.energy_star_most_efficient,
+        equipment_cost: eq.equipment_cost,
+        confidence: mapConfidenceToLevel(eq.confidence || bidResult.overall_confidence),
+      }));
+
+      const { error: equipmentError } = await supabaseAdmin
+        .from("bid_equipment")
+        .insert(equipment);
+
+      if (equipmentError) {
+        console.error(`Failed to create equipment for ${bid_id}:`, equipmentError);
+      }
+    }
+
+    return { bidId: bid_id, success: true };
+  } catch (error) {
+    // On failure: update bid status to 'failed' with error details
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    try {
+      const { data: currentBid } = await supabaseAdmin
+        .from("bids")
+        .select("processing_attempts")
+        .eq("id", bid_id)
+        .maybeSingle();
+
+      await supabaseAdmin
+        .from("bids")
+        .update({
+          status: "failed",
+          last_error: errorMessage,
+          processing_attempts: ((currentBid?.processing_attempts as number) || 0) + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", bid_id);
+    } catch (updateError) {
+      console.error(`Failed to mark bid ${bid_id} as failed:`, updateError);
+    }
+
+    return { bidId: bid_id, success: false, error: errorMessage };
+  }
+}
 
 Deno.serve(async (req: Request) => {
   try {
@@ -35,47 +251,37 @@ Deno.serve(async (req: Request) => {
     }
 
     const payload: ExtendedCallbackPayload = await req.json();
-    const { request_id: pdfUploadId, signature, timestamp } = payload;
+    const { request_id, project_id, signature, timestamp } = payload;
 
-    if (!pdfUploadId || !signature || !timestamp) {
+    if (!request_id || !signature || !timestamp) {
       return errorResponse("Missing required fields: request_id, signature, or timestamp");
     }
 
-    const expectedPayload = createCallbackPayload(pdfUploadId, timestamp);
+    // HMAC verification
+    const expectedPayload = createCallbackPayload(request_id, timestamp);
     const isValid = await verifyHmacSignature(expectedPayload, signature, MINDPAL_CALLBACK_SECRET);
 
     if (!isValid) {
-      console.error("Invalid HMAC signature for request:", pdfUploadId);
+      console.error("Invalid HMAC signature for request:", request_id);
       return errorResponse("Invalid signature", 401);
     }
 
+    // Timestamp freshness check
     const timestampDate = new Date(timestamp);
     const now = new Date();
     const ageMs = now.getTime() - timestampDate.getTime();
-    const maxAgeMs = 60 * 60 * 1000;
+    const maxAgeMs = 60 * 60 * 1000; // 1 hour
 
     if (ageMs > maxAgeMs) {
-      console.error("Expired timestamp for request:", pdfUploadId);
+      console.error("Expired timestamp for request:", request_id);
       return errorResponse("Expired request", 401);
     }
 
-    const { data: pdfUpload, error: pdfError } = await supabaseAdmin
-      .from("pdf_uploads")
-      .select("*, projects!inner(id)")
-      .eq("id", pdfUploadId)
-      .maybeSingle();
-
-    if (pdfError || !pdfUpload) {
-      console.error("PDF upload not found:", pdfUploadId);
-      return errorResponse("PDF upload not found", 404);
-    }
-
-    const projectId = pdfUpload.project_id;
-
+    // Store raw extraction for debugging
     const { data: extraction, error: extractionError } = await supabaseAdmin
       .from("mindpal_extractions")
       .insert({
-        pdf_upload_id: pdfUploadId,
+        pdf_upload_id: request_id, // Use request_id as reference
         raw_json: payload,
         parsed_successfully: false,
         extracted_at: new Date().toISOString(),
@@ -87,238 +293,62 @@ Deno.serve(async (req: Request) => {
       console.error("Failed to store extraction:", extractionError);
     }
 
+    // Handle top-level failure
     if (payload.status === "failed") {
-      await supabaseAdmin
-        .from("pdf_uploads")
-        .update({
-          status: "failed",
-          error_message: payload.error?.message || "Extraction failed",
-          mindpal_status: "failed",
-          processing_completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", pdfUploadId);
+      console.error("MindPal extraction failed:", payload.error);
 
-      if (extraction) {
-        await supabaseAdmin
-          .from("mindpal_extractions")
-          .update({
-            parsed_successfully: false,
-            parsing_errors: [payload.error?.message || "Extraction failed"],
-          })
-          .eq("id", extraction.id);
+      // Mark all bids in this batch as failed
+      if (payload.bids && payload.bids.length > 0) {
+        for (const bidResult of payload.bids) {
+          await supabaseAdmin
+            .from("bids")
+            .update({
+              status: "failed",
+              last_error: payload.error?.message || "Extraction failed",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", bidResult.bid_id);
+        }
       }
 
       return jsonResponse({ success: true, status: "failed" });
     }
 
-    const confidenceLevel = mapConfidenceToLevel(payload.overall_confidence);
-
-    // ── V2 Insert 1: bids (core bid record) ──
-    const { data: bid, error: bidError } = await supabaseAdmin
-      .from("bids")
-      .insert({
-        project_id: projectId,
-        pdf_upload_id: pdfUploadId,
-        contractor_name: payload.contractor_info?.company_name || "Unknown Contractor",
-        system_type: "heat_pump",
-        total_bid_amount: payload.pricing?.total_amount || 0,
-        labor_cost: payload.pricing?.labor_cost,
-        equipment_cost: payload.pricing?.equipment_cost,
-        materials_cost: payload.pricing?.materials_cost,
-        permit_cost: payload.pricing?.permit_cost,
-        disposal_cost: payload.pricing?.disposal_cost,
-        electrical_cost: payload.pricing?.electrical_cost,
-        total_before_rebates: payload.pricing?.price_before_rebates,
-        estimated_rebates: payload.pricing?.rebates_mentioned?.reduce(
-          (sum, r) => sum + (r.amount || 0),
-          0
-        ),
-        total_after_rebates: payload.pricing?.price_after_rebates,
-        deposit_required: payload.payment_terms?.deposit_amount,
-        deposit_percentage: payload.payment_terms?.deposit_percentage,
-        payment_schedule: payload.payment_terms?.payment_schedule,
-        financing_offered: payload.payment_terms?.financing_offered || false,
-        financing_terms: payload.payment_terms?.financing_terms,
-        labor_warranty_years: payload.warranty?.labor_warranty_years,
-        equipment_warranty_years: payload.warranty?.equipment_warranty_years,
-        compressor_warranty_years: payload.warranty?.compressor_warranty_years,
-        additional_warranty_details: payload.warranty?.warranty_details,
-        estimated_days: payload.timeline?.estimated_days,
-        start_date_available: payload.timeline?.start_date_available,
-        bid_date: payload.dates?.bid_date || payload.dates?.quote_date,
-        valid_until: payload.dates?.valid_until || payload.timeline?.bid_valid_until,
-        extraction_confidence: confidenceLevel,
-        extraction_notes: payload.extraction_notes
-          ?.map((n) => `[${n.type}] ${n.message}`)
-          .join("\n"),
-        verified_by_user: false,
-        is_favorite: false,
-      })
-      .select()
-      .single();
-
-    if (bidError) {
-      console.error("Failed to create bid:", bidError);
-      await supabaseAdmin
-        .from("pdf_uploads")
-        .update({
-          status: "failed",
-          error_message: `Failed to create bid: ${bidError.message}`,
-          processing_completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", pdfUploadId);
-
-      return errorResponse("Failed to create bid record", 500);
+    // Resolve projectId — use from payload or look up from first bid
+    let resolvedProjectId = project_id;
+    if (!resolvedProjectId && payload.bids?.length > 0) {
+      const { data: firstBid } = await supabaseAdmin
+        .from("bids")
+        .select("project_id")
+        .eq("id", payload.bids[0].bid_id)
+        .maybeSingle();
+      resolvedProjectId = firstBid?.project_id;
     }
 
-    // ── V2 Insert 2: bid_contractors (1:1 contractor identity) ──
-    const { error: contractorError } = await supabaseAdmin
-      .from("bid_contractors")
-      .insert({
-        bid_id: bid.id,
-        name: payload.contractor_info?.company_name || "Unknown Contractor",
-        company: payload.contractor_info?.company_name,
-        contact_name: payload.contractor_info?.contact_name,
-        phone: payload.contractor_info?.phone,
-        email: payload.contractor_info?.email,
-        website: payload.contractor_info?.website,
-        license: payload.contractor_info?.license_number,
-        license_state: payload.contractor_info?.license_state,
-      });
-
-    if (contractorError) {
-      console.error("Failed to create bid_contractor:", contractorError);
+    if (!resolvedProjectId) {
+      return errorResponse("Could not resolve project_id", 400);
     }
 
-    // ── V2 Insert 3: bid_scope (1:1 scope + line_items + electrical + accessories JSONB) ──
-    const lineItemsJsonb = payload.line_items?.map((item) => ({
-      item_type: mapLineItemType(item.item_type),
-      description: item.description,
-      amount: item.total_price,
-      quantity: item.quantity || 1,
-      unit_price: item.unit_price,
-      is_included: true,
-      notes: item.source_text,
-    })) ?? [];
+    // Process each bid result
+    const results: Array<{ bidId: string; success: boolean; error?: string }> = [];
 
-    // Build accessories JSONB from equipment items classified as accessories
-    const accessoriesJsonb = payload.equipment
-      ?.filter((eq) => isAccessory(eq.equipment_type))
-      .map((eq) => ({
-        type: eq.equipment_type,
-        name: eq.model_name || eq.equipment_type,
-        brand: eq.brand,
-        model_number: eq.model_number,
-        description: eq.model_name,
-        cost: eq.equipment_cost,
-      })) ?? [];
-
-    const { error: scopeError } = await supabaseAdmin
-      .from("bid_scope")
-      .insert({
-        bid_id: bid.id,
-        summary: payload.scope_of_work?.summary,
-        inclusions: payload.scope_of_work?.inclusions || [],
-        exclusions: payload.scope_of_work?.exclusions || [],
-        permit_included: payload.scope_of_work?.permit_included,
-        disposal_included: payload.scope_of_work?.disposal_included,
-        electrical_included: payload.scope_of_work?.electrical_work_included,
-        ductwork_included: payload.scope_of_work?.ductwork_included,
-        thermostat_included: payload.scope_of_work?.thermostat_included,
-        manual_j_included: payload.scope_of_work?.manual_j_included,
-        commissioning_included: payload.scope_of_work?.commissioning_included,
-        air_handler_included: payload.scope_of_work?.air_handler_included,
-        line_set_included: payload.scope_of_work?.line_set_included,
-        disconnect_included: payload.scope_of_work?.disconnect_included,
-        pad_included: payload.scope_of_work?.pad_included,
-        drain_line_included: payload.scope_of_work?.drain_line_included,
-        // Electrical sub-fields (from payload.electrical)
-        panel_assessment_included: payload.electrical?.panel_assessment_included,
-        panel_upgrade_included: payload.electrical?.panel_upgrade_included,
-        dedicated_circuit_included: payload.electrical?.dedicated_circuit_included,
-        electrical_permit_included: payload.electrical?.electrical_permit_included,
-        load_calculation_included: payload.electrical?.load_calculation_included,
-        existing_panel_amps: payload.electrical?.existing_panel_amps,
-        proposed_panel_amps: payload.electrical?.proposed_panel_amps,
-        breaker_size_required: payload.electrical?.breaker_size_required,
-        panel_upgrade_cost: payload.electrical?.panel_upgrade_cost,
-        electrical_notes: payload.electrical?.electrical_notes,
-        // JSONB columns
-        accessories: accessoriesJsonb.length > 0 ? accessoriesJsonb : null,
-        line_items: lineItemsJsonb,
-      });
-
-    if (scopeError) {
-      console.error("Failed to create bid_scope:", scopeError);
-    }
-
-    // ── V2 Insert 4: bid_scores (calculated via RPC) ──
-    try {
-      const { error: scoresError } = await supabaseAdmin
-        .rpc("calculate_bid_scores", { p_bid_id: bid.id });
-
-      if (scoresError) {
-        console.error("Failed to calculate bid_scores:", scoresError);
-        // Fallback: create empty row so views don't break
-        await supabaseAdmin.from("bid_scores").insert({ bid_id: bid.id });
-      }
-    } catch (scoreErr) {
-      console.error("Error calling calculate_bid_scores RPC:", scoreErr);
-      // Fallback: create empty row so views don't break
-      await supabaseAdmin.from("bid_scores").insert({ bid_id: bid.id });
-    }
-
-    // ── bid_equipment (1:N — major equipment only, accessories go to bid_scope.accessories) ──
-    const majorEquipment = payload.equipment?.filter((eq) => !isAccessory(eq.equipment_type)) ?? [];
-
-    if (majorEquipment.length > 0) {
-      const equipment = majorEquipment.map((eq) => ({
-        bid_id: bid.id,
-        equipment_type: eq.equipment_type,
-        system_role: inferSystemRole(eq.equipment_type),
-        fuel_type: inferFuelType(eq.equipment_type),
-        brand: eq.brand,
-        model_number: eq.model_number,
-        model_name: eq.model_name,
-        capacity_btu: eq.capacity_btu,
-        capacity_tons: eq.capacity_tons,
-        seer_rating: eq.seer_rating,
-        seer2_rating: eq.seer2_rating,
-        hspf_rating: eq.hspf_rating,
-        hspf2_rating: eq.hspf2_rating,
-        eer_rating: eq.eer_rating,
-        afue_rating: eq.afue_rating,
-        variable_speed: eq.variable_speed,
-        stages: eq.stages === "single" ? 1 : eq.stages === "two" ? 2 : eq.stages === "variable" ? 99 : null,
-        refrigerant_type: eq.refrigerant,
-        sound_level_db: eq.sound_level_db,
-        voltage: eq.voltage,
-        energy_star_certified: eq.energy_star,
-        energy_star_most_efficient: eq.energy_star_most_efficient,
-        equipment_cost: eq.equipment_cost,
-        confidence: mapConfidenceToLevel(eq.confidence || payload.overall_confidence),
-      }));
-
-      const { error: equipmentError } = await supabaseAdmin
-        .from("bid_equipment")
-        .insert(equipment);
-
-      if (equipmentError) {
-        console.error("Failed to create equipment:", equipmentError);
+    if (payload.bids && payload.bids.length > 0) {
+      for (const bidResult of payload.bids) {
+        const result = await processBidResult(bidResult, resolvedProjectId);
+        results.push(result);
+        console.log(`Bid ${bidResult.bid_id}: ${result.success ? "✅" : "❌"} ${result.error || ""}`);
       }
     }
 
-    // ── bid_faqs (V2 column names) ──
+    // Process batch-level FAQs (if any)
     if (payload.faqs && payload.faqs.length > 0) {
       const faqRecords = payload.faqs.map((faq) => ({
-        bid_id: bid.id,
-        question: faq.question,
-        answer: faq.answer,
-        category: faq.category,
+        bid_id: faq.bid_id,
+        faq_key: faq.faq_key,
+        question_text: faq.question_text,
+        answer_text: faq.answer_text,
         answer_confidence: faq.answer_confidence,
-        sources: faq.sources,
+        is_answered: faq.is_answered,
         display_order: faq.display_order,
       }));
 
@@ -331,97 +361,77 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // ── contractor_questions (renamed from bid_questions, v8 fields restored) ──
+    // Process batch-level questions (if any)
     if (payload.questions && payload.questions.length > 0) {
       const questionRecords = payload.questions.map((q) => ({
-        bid_id: bid.id,
+        bid_id: q.bid_id,
         question_text: q.question_text,
         question_category: q.question_category,
-        question_tier: q.question_tier || "clarification",
         priority: q.priority,
-        context: q.context,
-        triggered_by: q.triggered_by,
-        good_answer_looks_like: q.good_answer_looks_like,
-        concerning_answer_looks_like: q.concerning_answer_looks_like,
-        missing_field: q.missing_field,
-        generation_notes: q.generation_notes,
         is_answered: false,
         auto_generated: true,
+        missing_field: q.missing_field,
         display_order: q.display_order,
       }));
 
       const { error: questionsError } = await supabaseAdmin
-        .from("contractor_questions")
-        .upsert(questionRecords, { onConflict: "bid_id,question_text" });
+        .from("bid_questions")
+        .insert(questionRecords);
 
       if (questionsError) {
         console.error("Failed to create questions:", questionsError);
       }
     }
 
-    // ── project_incentives (stub — populated when MindPal Incentive Finder is configured) ──
-    if (payload.incentives && payload.incentives.length > 0) {
-      const incentiveRecords = payload.incentives.map((inc) => ({
-        project_id: projectId,
-        source: "ai_discovered" as const,
-        program_name: inc.program_name,
-        program_type: inc.program_type,
-        amount_min: inc.amount_min,
-        amount_max: inc.amount_max,
-        amount_description: inc.amount_description,
-        equipment_types_eligible: inc.equipment_types_eligible || ["heat_pump"],
-        eligibility_requirements: inc.eligibility_requirements,
-        income_qualified: inc.income_qualified || false,
-        application_url: inc.application_url,
-        verification_source: inc.verification_source,
-        can_stack: inc.can_stack,
-        confidence: inc.confidence || "medium",
-      }));
-
-      const { error: incentiveError } = await supabaseAdmin
-        .from("project_incentives")
-        .insert(incentiveRecords);
-
-      if (incentiveError) {
-        console.error("Failed to create incentives:", incentiveError);
-      }
-    } else if (payload.incentives === undefined) {
-      // Incentive data not present in payload — expected until Incentive Finder node is configured
-      console.log("No incentive data in payload (Incentive Finder not configured yet)");
-    }
-
-    const needsReview = payload.overall_confidence < 70 || payload.status === "partial";
-
-    await supabaseAdmin
-      .from("pdf_uploads")
-      .update({
-        status: needsReview ? "review_needed" : "extracted",
-        extracted_bid_id: bid.id,
-        extraction_confidence: payload.overall_confidence,
-        mindpal_status: "completed",
-        processing_completed_at: new Date().toISOString(),
-        error_message: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", pdfUploadId);
-
+    // Update mindpal_extractions as successful
     if (extraction) {
+      const successCount = results.filter((r) => r.success).length;
       await supabaseAdmin
         .from("mindpal_extractions")
         .update({
-          parsed_successfully: true,
-          mapped_bid_id: bid.id,
-          overall_confidence: payload.overall_confidence,
-          field_confidences: payload.field_confidences,
+          parsed_successfully: successCount > 0,
+          overall_confidence: payload.bids?.[0]?.overall_confidence,
           processed_at: new Date().toISOString(),
         })
         .eq("id", extraction.id);
     }
 
+    // Update pdf_uploads status for completed bids
+    for (const result of results) {
+      if (result.success) {
+        // Find and update the pdf_upload linked to this bid
+        const { data: bid } = await supabaseAdmin
+          .from("bids")
+          .select("pdf_upload_id")
+          .eq("id", result.bidId)
+          .maybeSingle();
+
+        if (bid?.pdf_upload_id) {
+          const bidResult = payload.bids?.find((b) => b.bid_id === result.bidId);
+          const needsReview = (bidResult?.overall_confidence || 0) < 70;
+
+          await supabaseAdmin
+            .from("pdf_uploads")
+            .update({
+              status: needsReview ? "review_needed" : "extracted",
+              extracted_bid_id: result.bidId,
+              extraction_confidence: bidResult?.overall_confidence,
+              mindpal_status: "completed",
+              error_message: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", bid.pdf_upload_id);
+        }
+      }
+    }
+
+    // Check if all project PDFs are done → update project status
+    const successfulBids = results.filter((r) => r.success).length;
+
     const { data: allProjectPdfs } = await supabaseAdmin
       .from("pdf_uploads")
       .select("id, status")
-      .eq("project_id", projectId);
+      .eq("project_id", resolvedProjectId);
 
     const allComplete = allProjectPdfs?.every(
       (pdf) => pdf.status === "extracted" || pdf.status === "verified" || pdf.status === "review_needed" || pdf.status === "failed"
@@ -438,8 +448,9 @@ Deno.serve(async (req: Request) => {
           status: "comparing",
           updated_at: new Date().toISOString(),
         })
-        .eq("id", projectId);
+        .eq("id", resolvedProjectId);
 
+      // Trigger completion notification
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -453,7 +464,7 @@ Deno.serve(async (req: Request) => {
                 "Authorization": `Bearer ${supabaseServiceKey}`,
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ project_id: projectId }),
+              body: JSON.stringify({ project_id: resolvedProjectId }),
             }
           );
 
@@ -468,8 +479,11 @@ Deno.serve(async (req: Request) => {
 
     return jsonResponse({
       success: true,
-      status: needsReview ? "review_needed" : "extracted",
-      bidId: bid.id,
+      status: "processed",
+      bidsProcessed: results.length,
+      bidsSuccessful: successfulBids,
+      bidsFailed: results.length - successfulBids,
+      results,
       projectComplete: allComplete && successfulCount >= 2,
     });
 

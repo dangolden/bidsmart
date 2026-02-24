@@ -3,7 +3,7 @@ import { Upload, FileText, CheckCircle2, Clock, AlertCircle, ArrowRight, Users, 
 import { usePhase } from '../../context/PhaseContext';
 import { useUser } from '../../hooks/useUser';
 import { saveProjectRequirements, updateProjectDataSharingConsent, updateProject, validatePdfFile, updateProjectNotificationSettings } from '../../lib/database/bidsmartService';
-import { uploadPdfFile, startBatchAnalysis, pollBatchExtractionStatus, type BatchExtractionStatus } from '../../lib/services/mindpalService';
+import { uploadPdfFile, startBatchAnalysis, pollBatchExtractionStatus, type BatchExtractionStatus, type DocumentForAnalysis } from '../../lib/services/mindpalService';
 import { AnalysisSubmissionInterstitial } from '../AnalysisSubmissionInterstitial';
 import { useAnalysisNotification } from '../../hooks/useAnalysisNotification';
 import { NotificationToast } from '../NotificationToast';
@@ -40,6 +40,8 @@ interface UploadedPdf {
   id: string;
   file: File;
   pdfUploadId?: string;
+  bidId?: string;
+  storagePath?: string;
   status: 'pending' | 'uploading' | 'uploaded' | 'error';
   progress: number;
   error?: string;
@@ -138,7 +140,7 @@ export function GatherPhase() {
     };
   }, [analysisState]);
 
-  const existingBidsCount = bids.filter(b => b.bid.total_bid_amount > 0 && b.bid.contractor_name).length;
+  const existingBidsCount = bids.filter(b => b.bid.status === 'completed' && b.bid.contractor_name && b.bid.contractor_name !== 'TBD').length;
   const validPendingCount = uploadedPdfs.filter(p => p.status === 'pending' || p.status === 'uploaded').length;
   const totalBidCount = validPendingCount + existingBidsCount;
   const canContinue = totalBidCount >= 1;
@@ -248,31 +250,44 @@ export function GatherPhase() {
 
         setAnalysisState('uploading');
 
-        // Upload each PDF to Supabase Storage
+        // Generate a shared request_id for this batch
+        const batchRequestId = crypto.randomUUID();
+
+        // Upload each PDF to Supabase Storage + create bid stubs
         const pdfUploadIds: string[] = [];
+        const documents: DocumentForAnalysis[] = [];
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           console.log(`Uploading ${file.name} (${i + 1}/${files.length})`);
-          
-          const uploadResult = await uploadPdfFile(activeProjectId, file);
+
+          const uploadResult = await uploadPdfFile(activeProjectId, file, batchRequestId);
           if (uploadResult.error || !uploadResult.pdfUploadId) {
             setAnalysisState('error');
             setAnalysisError(uploadResult.error || `Failed to upload ${file.name}`);
             return;
           }
           pdfUploadIds.push(uploadResult.pdfUploadId);
+
+          // V2: Track bid_id ↔ pdf_upload_id pairing for MindPal
+          if (uploadResult.bidId) {
+            documents.push({
+              bid_id: uploadResult.bidId,
+              pdf_upload_id: uploadResult.pdfUploadId,
+            });
+          }
         }
 
-        console.log('All PDFs uploaded, starting analysis with IDs:', pdfUploadIds);
+        console.log('All PDFs uploaded, starting analysis with IDs:', pdfUploadIds, 'documents:', documents);
         setAnalysisState('analyzing');
 
-        // Start analysis with the uploaded PDF IDs
+        // Start analysis with V2 documents array (bid_id + pdf_upload_id pairs)
         const analysisResult = await startBatchAnalysis(
           activeProjectId,
           pdfUploadIds,
           priorities,
           user.email,
-          projectDetails
+          projectDetails,
+          documents.length > 0 ? documents : undefined
         );
 
         if (!analysisResult.success) {
@@ -724,7 +739,7 @@ export function GatherPhase() {
         {existingBidsCount > 0 && (
           <div className="mt-6 space-y-3">
             <h3 className="text-sm font-medium text-gray-700">Previously Analyzed Bids ({existingBidsCount})</h3>
-            {bids.filter(b => b.bid.total_bid_amount > 0).map((item) => (
+            {bids.filter(b => b.bid.status === 'completed' && b.bid.contractor_name && b.bid.contractor_name !== 'TBD').map((item) => (
               <div
                 key={item.bid.id}
                 className="flex items-center justify-between p-4 bg-green-50 rounded-lg"
@@ -733,10 +748,10 @@ export function GatherPhase() {
                   <FileText className="w-5 h-5 text-switch-green-600" />
                   <div>
                     <p className="font-medium text-gray-900">
-                      {item.bid.contractor_name || item.contractor?.company || 'Unknown Contractor'}
+                      {item.bid.contractor_name || 'Unknown Contractor'}
                     </p>
                     <p className="text-sm text-gray-500">
-                      ${item.bid.total_bid_amount.toLocaleString()}
+                      {item.bid.status === 'completed' ? 'Analysis complete' : item.bid.status}
                     </p>
                   </div>
                 </div>

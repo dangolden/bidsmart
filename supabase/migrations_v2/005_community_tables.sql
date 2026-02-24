@@ -123,15 +123,16 @@ CREATE POLICY "Service role full access to community_bids"
 
 -- ============================================================
 -- FUNCTION: populate_community_data()
--- Trigger function called when a bid's project has
--- data_sharing_consent = true. Upserts anonymized data.
+-- Trigger function called AFTER UPDATE ON bids when status
+-- transitions to 'completed'. At that point, bid_scope is
+-- guaranteed to exist (populated by MindPal callback).
+-- All pricing/timeline data now read from bid_scope, not bids.
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION populate_community_data()
 RETURNS TRIGGER AS $$
 DECLARE
   v_project RECORD;
-  v_bid RECORD;
   v_bid_scope RECORD;
   v_bid_contractors RECORD;
   v_community_contractor_id UUID;
@@ -142,8 +143,12 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- Get bid scope data
+  -- Get bid scope data (must exist — trigger only fires on status='completed')
   SELECT * INTO v_bid_scope FROM bid_scope WHERE bid_id = NEW.id;
+  IF NOT FOUND THEN
+    RETURN NEW;  -- Safety guard: skip if bid_scope somehow missing
+  END IF;
+
   -- Get contractor data
   SELECT * INTO v_bid_contractors FROM bid_contractors WHERE bid_id = NEW.id;
 
@@ -169,7 +174,7 @@ BEGIN
   ON CONFLICT DO NOTHING
   RETURNING id INTO v_community_contractor_id;
 
-  -- Upsert community_bids
+  -- Upsert community_bids (all pricing/timeline from bid_scope now)
   INSERT INTO community_bids (
     community_contractor_id,
     source_bid_id,
@@ -186,15 +191,15 @@ BEGIN
   VALUES (
     v_community_contractor_id,
     NEW.id,
-    NEW.bid_date,
-    NEW.total_bid_amount,
-    NEW.labor_cost,
-    NEW.equipment_cost,
+    v_bid_scope.bid_date,
+    v_bid_scope.total_bid_amount,
+    v_bid_scope.labor_cost,
+    v_bid_scope.equipment_cost,
     COALESCE(v_bid_scope.permit_included, false),
     COALESCE(v_bid_scope.electrical_included, false),
     COALESCE(v_bid_scope.ductwork_included, false),
-    NEW.labor_warranty_years,
-    NEW.estimated_days
+    v_bid_scope.labor_warranty_years,
+    v_bid_scope.estimated_days
   )
   ON CONFLICT (source_bid_id) DO UPDATE SET
     total_bid_amount = EXCLUDED.total_bid_amount,
