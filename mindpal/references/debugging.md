@@ -38,7 +38,7 @@ The Question Generator was reduced from a 7-category system with detailed output
 ### 2. Output Schema = Frontend/Database Contract
 Every field in an agent's JSON output schema maps directly to a database column or UI component. Dropping a field breaks things silently — no error, just missing data in the UI.
 
-**Rule:** Check `contractor_bids`, `bid_line_items`, `bid_equipment`, `bid_questions`, `mindpal_extractions` schema before changing any agent output format.
+**Rule:** Check `bids`, `bid_scope`, `bid_contractors`, `bid_equipment`, `contractor_questions`, `bid_scores`, `mindpal_extractions` schema before changing any agent output format.
 
 ### 3. Empty Arrays: Bug Is Almost Always Upstream
 When the Code Node (JSON Assembler) produces empty arrays, the bug is NOT in the Assembler. Look upstream:

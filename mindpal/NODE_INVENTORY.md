@@ -88,7 +88,7 @@ the foundation that all downstream nodes build on.
 | Equipment Researcher | Equipment brand/model/specs → enriches via web → outputs `bid_equipment` JSON |
 | Scope Extractor | Scope inclusions/exclusions/details + pricing/warranty/timeline → outputs `bid_scope` JSON (69 columns) |
 | Contractor Researcher | Contractor name/company/license → enriches via web → outputs `bid_contractors` JSON |
-| Incentive Finder | Location, equipment types → researches incentives → outputs `incentive_programs` JSON |
+| Incentive Finder | Location, equipment types → researches incentives → outputs `project_incentives` JSON |
 | All other nodes | Reference as background context for their specific tasks |
 
 ### Schema Docs Needed
@@ -209,7 +209,7 @@ question generation.
 |---|---|
 | **Type** | LOOP |
 | **Input** | `@[Bid Data Extractor]` — unstructured context, one bid per iteration |
-| **Populates** | `contractor_bids` (enriches contractor reputation fields) |
+| **Populates** | `bid_contractors` (enriches contractor reputation fields) |
 | **Web Search** | ON |
 | **Model** | Claude Sonnet or Gemini 2.0 Pro |
 
@@ -219,7 +219,7 @@ context and researches their online reputation: Google reviews, Yelp, BBB rating
 license verification, certifications, red flags.
 
 ### Target Table
-**`contractor_bids`** — enriches these specific columns (~20):
+**`bid_contractors`** — enriches these specific columns (~20):
 
 | Column | Type | What to Research |
 |--------|------|-----------------|
@@ -260,7 +260,7 @@ license verification, certifications, red flags.
 |---|---|
 | **Type** | AGENT (not Loop) |
 | **Input** | `@[Bid Data Extractor]` + `@[Equipment Researcher]` |
-| **Populates** | `incentive_programs` (N rows) + `contractor_bids` (incentive summary fields) |
+| **Populates** | `project_incentives` (N rows per project) |
 | **Web Search** | ON |
 | **Model** | Claude Sonnet or Gemini 2.0 Pro |
 
@@ -276,7 +276,7 @@ searches and produce conflicting results. One research pass covers all.
 
 ### Target Tables
 
-**`incentive_programs`** — 15 agent-output columns per incentive found:
+**`project_incentives`** — 15 agent-output columns per incentive found:
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -296,7 +296,7 @@ searches and produce conflicting results. One research pass covers all.
 | `research_confidence` | TEXT | high/medium/low |
 | `research_notes` | TEXT | Research notes |
 
-**`contractor_bids`** — incentive summary fields (written per bid):
+**`project_incentives`** — incentive summary fields (written per project):
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -306,7 +306,7 @@ searches and produce conflicting results. One research pass covers all.
 | `incentive_ren` | TEXT | Regional Energy Network |
 | `incentive_total_potential_low` | DECIMAL(12,2) | Minimum total incentive estimate |
 | `incentive_total_potential_high` | DECIMAL(12,2) | Maximum total incentive estimate |
-| `incentive_programs_found_count` | INTEGER | Number of programs found |
+| `programs_found_count` | INTEGER | Number of programs found |
 | `incentive_research_confidence` | TEXT | Research confidence |
 | `incentive_research_notes` | TEXT | Research notes |
 
@@ -323,7 +323,7 @@ searches and produce conflicting results. One research pass covers all.
 |---|---|
 | **Type** | AGENT (not Loop) |
 | **Input** | `@[Equipment Researcher]` + `@[Contractor Researcher]` + `@[Incentive Finder]` + user priorities |
-| **Populates** | `contractor_bids` (score fields) |
+| **Populates** | `bid_scores` (1:1 per bid) |
 | **Web Search** | OFF |
 | **Model** | GPT-4o or Claude Sonnet |
 
@@ -338,7 +338,7 @@ cheaper than Bid B" and "Bid C has the highest efficiency." The Scoring Engine n
 ALL bids simultaneously to produce relative rankings.
 
 ### Target Table
-**`contractor_bids`** — score fields per bid:
+**`bid_scores`** — score fields per bid:
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -350,8 +350,9 @@ ALL bids simultaneously to produce relative rankings.
 | `scoring_notes` | TEXT | Explanation of scoring |
 | `ranking_recommendation` | TEXT | Overall recommendation text |
 
-### Schema Doc Needed
-- Part of `docs/CONTRACTOR_BIDS_SCHEMA.md` — ❌ NOT YET CREATED
+### Schema Doc
+- `docs/SCHEMA_V2_COMPLETE.html` — ✅ bid_scores table documented
+- `docs/FIELD_DESCRIPTIONS.md` — ✅ bid_scores field descriptions
 
 ### Build Priority: **6th**
 

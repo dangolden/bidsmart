@@ -68,7 +68,7 @@ What goes where when configuring this node in MindPal:
 | `cca` | TEXT. Community Choice Aggregation name (common in CA, MA, IL). | No CCA in this area |
 | `ren` | TEXT. Regional Energy Network (CA only — BayREN, SoCalREN). | Not in California, or no REN |
 
-### Summary (written to contractor_bids summary columns via Code Node)
+### Summary (written to project_incentives summary columns via Code Node)
 
 | Field | Format & Rules | When Null |
 |---|---|---|
@@ -743,7 +743,7 @@ The programs list is inserted once per `project_id` (NOT duplicated per bid). In
 
 - Does NOT process bids one at a time — it receives and processes ALL bids simultaneously
 - Does NOT modify equipment specs, pricing, contractor ratings, scope, or electrical fields
-- Does NOT create `bid_questions`, `bid_faqs`, or `project_faqs` rows
+- Does NOT create `contractor_questions`, `bid_faqs`, or `project_faqs` rows
 - Does NOT score bids or produce recommendations
 - Does NOT include rebates already mentioned on the bid PDFs (those are captured by Bid Extractor in `rebates_mentioned`) — this node only researches externally verifiable programs
 

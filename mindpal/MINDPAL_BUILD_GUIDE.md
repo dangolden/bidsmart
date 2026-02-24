@@ -269,7 +269,7 @@ that run before it.
    → Schema doc: SCHEMA_V2_COMPLETE.html ✅
 
 5. Incentive Finder (AGENT)
-   → Target: incentive_programs + bid_scope (incentive summary fields)
+   → Target: project_incentives (project-level, not per-bid)
    → Input: @[Bid Data Extractor] + @[Equipment Researcher]
    → Schema doc: SCHEMA_V2_COMPLETE.html ✅
 
@@ -300,11 +300,14 @@ After all AI nodes complete, a **Code Node** handles the actual Supabase insert:
 
 1. Receives outputs from all nodes as string inputs
 2. Parses each (JSON.parse with markdown stripping)
-3. Inserts `contractor_bids` first (merging Scope Extractor + Contractor Researcher outputs) → gets `bid_id` back
-4. Uses `bid_id` as FK for `bid_equipment`, `bid_line_items`, `bid_questions`, `bid_faqs`
-5. Inserts `incentive_programs` and `project_faqs` with `project_id`
+3. Updates `bids` identity stub (status → completed, contractor_name)
+4. UPSERTs `bid_scope` (69 columns — all extracted data)
+5. UPSERTs `bid_contractors` (company info, reputation)
+6. DELETE + INSERT `bid_equipment` (idempotent re-runs)
+7. UPSERTs `bid_scores`, `contractor_questions`
+8. INSERTs `bid_faqs`, `project_faqs`, `project_incentives`
 
-This Code Node is deterministic — no AI, just HTTP calls to Supabase REST API.
+> **V2 Note:** `bid_id` is pre-created — no INSERT needed for `bids`. All child tables use the existing `bid_id` as FK.
 
 ---
 
