@@ -75,11 +75,12 @@ export function ComparePhase() {
 
   // Deduplicate bids by contractor name — if the same company submitted multiple PDFs,
   // merge them into one column using the bid that has the most data.
+  const PLACEHOLDER_NAMES = new Set(['tbd', 'unknown', 'unknown contractor', '']);
   const deduplicatedBids = (() => {
     const seen = new Map<string, typeof bids[0] & { mergedBidCount?: number }>();
     for (const b of bids) {
       const rawKey = (b.bid.contractor_name || '').trim().toLowerCase();
-      const key = rawKey || `__unnamed_${b.bid.id}`;
+      const key = !rawKey || PLACEHOLDER_NAMES.has(rawKey) ? `__unnamed_${b.bid.id}` : rawKey;
       const existing = seen.get(key);
       if (!existing) {
         seen.set(key, { ...b, mergedBidCount: 1 });
