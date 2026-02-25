@@ -1033,7 +1033,7 @@ export async function getExtractionByPdfUpload(
 
 export async function getActiveRebates(): Promise<RebateProgram[]> {
   const { data, error } = await supabase
-    .from('rebate_programs')
+    .from('incentive_program_database')
     .select('*')
     .eq('is_active', true)
     .order('program_name');
@@ -1044,7 +1044,7 @@ export async function getActiveRebates(): Promise<RebateProgram[]> {
 
 export async function getRebatesByState(stateCode: string): Promise<RebateProgram[]> {
   const { data, error } = await supabase
-    .from('rebate_programs')
+    .from('incentive_program_database')
     .select('*')
     .eq('is_active', true)
     .or(`available_nationwide.eq.true,available_states.cs.{${stateCode}}`);
@@ -1057,7 +1057,7 @@ export async function getIncentivesByZip(_zip: string, stateCode?: string): Prom
   // If we have a state, filter by it; otherwise return all active nationwide programs
   if (stateCode) {
     const { data, error } = await supabase
-      .from('rebate_programs')
+      .from('incentive_program_database')
       .select('*')
       .eq('is_active', true)
       .or(`available_nationwide.eq.true,available_states.cs.{${stateCode}}`)
@@ -1069,7 +1069,7 @@ export async function getIncentivesByZip(_zip: string, stateCode?: string): Prom
 
   // Fallback: return nationwide programs
   const { data, error } = await supabase
-    .from('rebate_programs')
+    .from('incentive_program_database')
     .select('*')
     .eq('is_active', true)
     .eq('available_nationwide', true)

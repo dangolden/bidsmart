@@ -11,8 +11,8 @@ interface AnalysisSuccessScreenProps {
   onViewResults: () => void;
 }
 
-const POLLING_DELAY_MS = 5 * 60 * 1000; // 5 minutes before polling starts
-const POLLING_INTERVAL_MS = 30 * 1000; // 30 seconds between polls
+const POLLING_DELAY_MS = 90 * 1000; // 90 seconds before polling starts
+const POLLING_INTERVAL_MS = 15 * 1000; // 15 seconds between polls
 
 function playNotificationSound() {
   const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
@@ -166,7 +166,7 @@ export function AnalysisSuccessScreen({
                   )}
                   {pollingActive && (
                     <p className="text-xs text-amber-700">
-                      ✓ Checking for results every 30 seconds...
+                      ✓ Checking for results every 15 seconds...
                     </p>
                   )}
                 </div>
