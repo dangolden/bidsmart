@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, Re
 import type { Project, ContractorBid, BidEquipment, BidScope, BidContractor, BidScore, ProjectRequirements, BidQuestion } from '../lib/types';
 import {
   createProject,
+  getProject,
   getProjectsWithPublicDemos,
   getBidsByProject,
   getEquipmentByBid,
@@ -123,8 +124,24 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
           if (foundProject) {
             projectId = initialProjectId;
             project = foundProject;
+
+            // If project list returned a stale status (still analyzing), do a fresh direct fetch
+            // to get the latest status — avoids routing to Gather when project is actually ready
+            if (project.status !== 'comparing' && project.status !== 'completed') {
+              const freshProject = await getProject(initialProjectId);
+              if (freshProject) {
+                project = freshProject;
+              }
+            }
           } else {
-            throw new Error('Project not found');
+            // Project not in user's list — try direct fetch (handles edge cases)
+            const directProject = await getProject(initialProjectId);
+            if (directProject) {
+              projectId = initialProjectId;
+              project = directProject;
+            } else {
+              throw new Error('Project not found');
+            }
           }
         } else if (initialProjectId === 'new') {
           projectId = null;
