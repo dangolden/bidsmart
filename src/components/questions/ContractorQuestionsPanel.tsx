@@ -7,10 +7,18 @@ import { TierToggle } from './TierToggle';
 import { CategoryFilter } from './CategoryFilter';
 import { QuestionCard } from './QuestionCard';
 import { CraftEmailModal } from './CraftEmailModal';
-import type { BidQuestion, BidWithChildren } from '../../lib/types';
+import type { BidQuestion, Bid, BidContractor, BidEquipment, BidScope, BidScore } from '../../lib/types';
+
+interface BidEntry {
+  bid: Bid;
+  contractor?: BidContractor | null;
+  equipment: BidEquipment[];
+  scope?: BidScope | null;
+  scores?: BidScore | null;
+}
 
 interface ContractorQuestionsPanelProps {
-  bids: BidWithChildren[];
+  bids: BidEntry[];
   questions: BidQuestion[];
 }
 

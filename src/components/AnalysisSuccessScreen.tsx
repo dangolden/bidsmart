@@ -3,6 +3,7 @@ import { CheckCircle2, Clock, Mail, Play, ArrowLeft, Volume2, VolumeX, Bell, Arr
 import { AlphaBanner } from './AlphaBanner';
 import { IncentivesPanel } from './IncentivesPanel';
 import { getProject } from '../lib/database/bidsmartService';
+import { zipToState } from '../lib/utils/zipToState';
 
 interface AnalysisSuccessScreenProps {
   email: string;
@@ -44,15 +45,28 @@ export function AnalysisSuccessScreen({
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [pollingActive, setPollingActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(POLLING_DELAY_MS / 1000);
+  const [projectZip, setProjectZip] = useState<string | null>(null);
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasPlayedSound = useRef(false);
 
+  // Fetch project zip on mount for IncentivesPanel
+  useEffect(() => {
+    if (projectId) {
+      getProject(projectId).then(p => {
+        if (p?.property_zip) setProjectZip(p.property_zip);
+      });
+    }
+  }, [projectId]);
+
   const checkProjectStatus = useCallback(async () => {
     if (!projectId) return;
-    
+
     try {
       const project = await getProject(projectId);
+      if (project?.property_zip && !projectZip) {
+        setProjectZip(project.property_zip);
+      }
       if (project && (project.status === 'comparing' || project.status === 'completed')) {
         setIsComplete(true);
         if (soundEnabled && !hasPlayedSound.current) {
@@ -67,7 +81,7 @@ export function AnalysisSuccessScreen({
     } catch (error) {
       console.error('Error checking project status:', error);
     }
-  }, [projectId, soundEnabled]);
+  }, [projectId, soundEnabled, projectZip]);
 
   useEffect(() => {
     // Countdown timer until polling starts
@@ -241,7 +255,7 @@ export function AnalysisSuccessScreen({
               <h3 className="text-lg font-semibold text-gray-900 mb-3">
                 While you wait — available rebates & incentives
               </h3>
-              <IncentivesPanel userZip={null} userState={null} />
+              <IncentivesPanel userZip={projectZip} userState={projectZip ? zipToState(projectZip) : null} />
             </div>
           )}
 

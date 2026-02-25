@@ -232,6 +232,9 @@ export function GatherPhase() {
       if (projectDetails.trim()) {
         await updateProject(activeProjectId, { project_details: projectDetails });
       }
+      if (zipCode) {
+        await updateProject(activeProjectId, { property_zip: zipCode });
+      }
 
       if (uploadedPdfs.length > 0) {
         setAnalysisState('uploading');
