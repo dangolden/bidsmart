@@ -1053,9 +1053,23 @@ export async function getRebatesByState(stateCode: string): Promise<RebateProgra
   return data || [];
 }
 
-export async function getIncentivesByZip(_zip: string, stateCode?: string): Promise<IncentiveProgramDB[]> {
-  // If we have a state, filter by it; otherwise return all active nationwide programs
+export async function getIncentivesByZip(zip: string, stateCode?: string): Promise<IncentiveProgramDB[]> {
+  if (zip && zip.length === 5) {
+    // Primary path: filter by zip code match OR nationwide
+    // Also include state-only programs (where available_zip_codes is null but available_states matches)
+    const { data, error } = await supabase
+      .from('incentive_program_database')
+      .select('*')
+      .eq('is_active', true)
+      .or(`available_nationwide.eq.true,available_zip_codes.cs.{${zip}}${stateCode ? `,and(available_zip_codes.is.null,available_states.cs.{${stateCode}})` : ''}`)
+      .order('program_name');
+
+    if (error) throw error;
+    return (data || []) as IncentiveProgramDB[];
+  }
+
   if (stateCode) {
+    // Fallback: no zip but have state — use state + nationwide
     const { data, error } = await supabase
       .from('incentive_program_database')
       .select('*')
@@ -1067,7 +1081,7 @@ export async function getIncentivesByZip(_zip: string, stateCode?: string): Prom
     return (data || []) as IncentiveProgramDB[];
   }
 
-  // Fallback: return nationwide programs
+  // Last resort: nationwide only
   const { data, error } = await supabase
     .from('incentive_program_database')
     .select('*')
