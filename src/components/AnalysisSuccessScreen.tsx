@@ -168,11 +168,12 @@ export function AnalysisSuccessScreen({
                 <Clock className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold text-amber-900 mb-2">
-                    Expected Time: 20-30 minutes
+                    Sit back and relax!
                   </p>
                   <p className="text-sm text-amber-800 mb-3">
-                    Our technology performs research and analysis involving sometimes 
-                    hundreds of searches to give you the most comprehensive comparison.
+                    Our AI is reading every line of your bids, researching equipment specs,
+                    and checking for available rebates. This takes 10–30 minutes depending
+                    on how many bids you have — we'll ping you when it's ready.
                   </p>
                   {!pollingActive && (
                     <p className="text-xs text-amber-700">
