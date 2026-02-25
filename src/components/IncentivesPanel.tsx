@@ -154,10 +154,6 @@ export function IncentivesPanel({ userZip, userState }: IncentivesPanelProps) {
     });
   };
 
-  const totalPotentialSavings = incentives.reduce((sum, inc) => {
-    return sum + (Number(inc.max_rebate) || Number(inc.rebate_amount) || 0);
-  }, 0);
-
   // --- Zip input bar ---
   const renderZipBar = () => (
     <div className="bg-white rounded-xl border-2 border-gray-200 p-4">
@@ -483,14 +479,6 @@ export function IncentivesPanel({ userZip, userState }: IncentivesPanelProps) {
             <div className="text-sm text-gray-600">
               {incentives.length} incentive program{incentives.length !== 1 ? 's' : ''} available
             </div>
-            {totalPotentialSavings > 0 && (
-              <div className="text-right">
-                <span className="text-sm text-gray-500">Total Potential Savings</span>
-                <p className="text-2xl font-bold text-switch-green-700">
-                  {formatCurrency(totalPotentialSavings)}
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </div>

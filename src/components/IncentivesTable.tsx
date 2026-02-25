@@ -26,11 +26,6 @@ export function IncentivesTable({ rebatePrograms, selectedIncentives, onToggleIn
     return Number(incentive.max_rebate) || Number(incentive.rebate_amount) || 0;
   };
 
-  const totalSelectedAmount = Array.from(selectedIncentives).reduce((sum, id) => {
-    const incentive = rebatePrograms.find(i => i.id === id);
-    return sum + (incentive ? getAmount(incentive) : 0);
-  }, 0);
-
   if (rebatePrograms.length === 0) {
     return null;
   }
@@ -189,12 +184,6 @@ export function IncentivesTable({ rebatePrograms, selectedIncentives, onToggleIn
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-600">
             {selectedIncentives.size} of {rebatePrograms.length} selected
-          </div>
-          <div className="text-right">
-            <span className="text-sm text-gray-500">Estimated Total Savings</span>
-            <p className="text-2xl font-bold text-switch-green-700">
-              {formatCurrency(totalSelectedAmount)}
-            </p>
           </div>
         </div>
       </div>
