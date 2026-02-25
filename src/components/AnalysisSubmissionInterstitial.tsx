@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Mail, Clock, Upload, Zap, CheckCircle2, Loader2, Bell, BellOff, FlaskConical, MapPin } from 'lucide-react';
+import { Mail, Clock, Upload, Zap, CheckCircle2, Loader2, Bell, BellOff, FlaskConical, MapPin, Info } from 'lucide-react';
+import { zipToState } from '../lib/utils/zipToState';
 
 interface AnalysisSubmissionInterstitialProps {
   email: string;
@@ -193,6 +194,14 @@ export function AnalysisSubmissionInterstitial({
                   disabled={isSaving}
                 />
               </div>
+              {zip.length === 5 && zipToState(zip) && zipToState(zip) !== 'CA' && (
+                <div className="flex items-start gap-2 mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-800">
+                    Our incentive database is currently built for California. Nationwide programs will still be shown, but local incentives for your area may not be available yet.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Notification Preferences */}

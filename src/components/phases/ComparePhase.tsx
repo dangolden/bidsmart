@@ -3,6 +3,7 @@ import { ArrowRight, Award, Zap, DollarSign, Star, CheckCircle, XCircle, Chevron
 import { usePhase } from '../../context/PhaseContext';
 import { useUser } from '../../hooks/useUser';
 import { formatCurrency, formatDate } from '../../lib/utils/formatters';
+import { ElectricalComparisonTable } from '../ElectricalComparisonTable';
 
 type CompareTab = 'equipment' | 'contractors' | 'costs';
 
@@ -1225,6 +1226,16 @@ export function ComparePhase() {
             </table>
           </div>
         </div>
+      )}
+
+      {activeTab === 'costs' && (
+        <ElectricalComparisonTable
+          rows={deduplicatedBids.map(b => ({
+            bidId: b.bid.id,
+            contractorName: b.bid.contractor_name,
+            scope: b.scope,
+          }))}
+        />
       )}
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">

@@ -93,12 +93,18 @@ interface UploadedPdf {
 
 type AnalysisState = 'idle' | 'uploading' | 'analyzing' | 'submitted' | 'complete' | 'error' | 'timeout';
 
+interface WaitingForProject {
+  id: string;
+  email?: string;
+}
+
 interface UnifiedHomePageProps {
   user: UserExt;
   onSelectProject: (projectId: string) => void;
+  waitingForProject?: WaitingForProject | null;
 }
 
-export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps) {
+export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: UnifiedHomePageProps) {
   const [uploadedPdfs, setUploadedPdfs] = useState<UploadedPdf[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -144,6 +150,15 @@ export function UnifiedHomePage({ user, onSelectProject }: UnifiedHomePageProps)
     checkForDraftProject();
     loadDemoProject();
   }, [user.id]);
+
+  // Restore waiting screen when returning from banner "View waiting page"
+  useEffect(() => {
+    if (waitingForProject) {
+      setDraftProjectId(waitingForProject.id);
+      setNotificationEmail(waitingForProject.email || '');
+      setAnalysisState('submitted');
+    }
+  }, [waitingForProject]);
 
   const loadDemoProject = async () => {
     try {

@@ -25,20 +25,7 @@ export function ElectricalComparisonTable({ rows, className = '' }: ElectricalCo
   );
 
   if (!hasAnyElectricalData) {
-    return (
-      <div className={`bg-amber-50 border-2 border-amber-200 rounded-lg p-4 ${className}`}>
-        <div className="flex items-start gap-2">
-          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-amber-900">Limited Electrical Information</p>
-            <p className="text-sm text-amber-700 mt-1">
-              None of the bids include detailed electrical requirements.
-              Consider asking contractors about electrical panel capacity and upgrade needs.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const getStatusIcon = (value: boolean | null | undefined) => {

@@ -6,19 +6,15 @@ import { DecidePhase } from './phases/DecidePhase';
 import { VerifyPhase } from './phases/VerifyPhase';
 import { AlphaBanner } from './AlphaBanner';
 import { DemoBanner } from './DemoBanner';
-import { ProcessingBanner } from './ProcessingBanner';
 import type { UserExt } from '../lib/types';
 
 interface BidSmartFlowProps {
   user: UserExt;
   projectId?: string;
   onNavigateHome?: () => void;
-  processingProject?: {
-    email?: string;
-  } | null;
 }
 
-function PhaseContentWrapper({ onNavigateHome, processingProject }: { onNavigateHome?: () => void; processingProject?: { email?: string } | null }) {
+function PhaseContentWrapper({ onNavigateHome }: { onNavigateHome?: () => void }) {
   const { currentPhase, loading, error, project, isDemoMode } = usePhase();
 
   const content = (
@@ -29,7 +25,6 @@ function PhaseContentWrapper({ onNavigateHome, processingProject }: { onNavigate
     <>
       <AlphaBanner />
       <PhaseLayout onNavigateHome={onNavigateHome} projectName={project?.project_name} isDemoMode={isDemoMode}>
-        {isDemoMode && processingProject && <ProcessingBanner email={processingProject.email} />}
         {isDemoMode && <DemoBanner onStartOwn={onNavigateHome} />}
         {content}
       </PhaseLayout>
@@ -78,10 +73,10 @@ function PhaseContent({ loading, error, currentPhase, isDemoMode }: { loading: b
   }
 }
 
-export function BidSmartFlow({ user, projectId, onNavigateHome, processingProject }: BidSmartFlowProps) {
+export function BidSmartFlow({ user, projectId, onNavigateHome }: BidSmartFlowProps) {
   return (
     <PhaseProvider userId={user.id} initialProjectId={projectId}>
-      <PhaseContentWrapper onNavigateHome={onNavigateHome} processingProject={processingProject} />
+      <PhaseContentWrapper onNavigateHome={onNavigateHome} />
     </PhaseProvider>
   );
 }

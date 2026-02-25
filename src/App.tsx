@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useUser } from './hooks/useUser';
 import { UnifiedHomePage } from './components/UnifiedHomePage';
 import { BidSmartFlow } from './components/BidSmartFlow';
+import { ProcessingBanner } from './components/ProcessingBanner';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminLogin, getStoredAdminSession, clearAdminSession, type AdminUser } from './components/AdminLogin';
 import { supabase } from './lib/supabaseClient';
@@ -29,14 +30,15 @@ function App() {
   const { user, loading, error } = useUser();
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [processingProject, setProcessingProject] = useState<ProcessingProject | null>(null);
+  const [showWaitingFor, setShowWaitingFor] = useState<ProcessingProject | null>(null);
   const [adminUser, setAdminUser] = useState<AdminUser | null>(() => getStoredAdminSession());
-  
+
   // Initialize state based on URL path
   const initialPath = window.location.pathname;
   const [showAdmin, setShowAdmin] = useState(initialPath === '/admin');
   const [showHome, setShowHome] = useState(initialPath !== '/admin');
 
-  // Check for processing project in localStorage and verify it's still processing
+  // Check for processing project in localStorage and verify it's still active
   useEffect(() => {
     const checkProcessingProject = async () => {
       try {
@@ -44,21 +46,22 @@ function App() {
         if (!stored) return;
 
         const parsed = JSON.parse(stored) as ProcessingProject;
-        
-        // Verify the project is still in analyzing status
+
+        // Verify the project exists and hasn't been cancelled
         const { data: project } = await supabase
           .from('projects')
           .select('id, status, notification_email')
           .eq('id', parsed.id)
           .single();
 
-        if (project && (project.status === 'analyzing' || project.status === 'uploading')) {
+        if (project && project.status !== 'cancelled' && project.status !== 'draft') {
+          // Keep the processing banner active — it polls for completion itself
           setProcessingProject({
             id: project.id,
             email: project.notification_email,
           });
         } else {
-          // Project is no longer processing, clear it
+          // Project doesn't exist or was cancelled, clear it
           localStorage.removeItem(PROCESSING_PROJECT_KEY);
           setProcessingProject(null);
         }
@@ -74,6 +77,7 @@ function App() {
     setActiveProjectId(projectId);
     setStoredProjectId(projectId);
     setShowHome(false);
+    setShowWaitingFor(null);
   };
 
   const handleNavigateHome = () => {
@@ -81,7 +85,31 @@ function App() {
     setStoredProjectId(null);
     setShowHome(true);
     setShowAdmin(false);
+    setShowWaitingFor(null);
     window.history.pushState({}, '', '/');
+  };
+
+  const handleViewResults = () => {
+    if (!processingProject) return;
+    const projectId = processingProject.id;
+    setProcessingProject(null);
+    localStorage.removeItem(PROCESSING_PROJECT_KEY);
+    handleSelectProject(projectId);
+  };
+
+  const handleViewWaiting = () => {
+    if (!processingProject) return;
+    // Navigate to home and tell UnifiedHomePage to show waiting screen
+    setActiveProjectId(null);
+    setStoredProjectId(null);
+    setShowHome(true);
+    setShowAdmin(false);
+    setShowWaitingFor(processingProject);
+  };
+
+  const handleDismissBanner = () => {
+    setProcessingProject(null);
+    localStorage.removeItem(PROCESSING_PROJECT_KEY);
   };
 
   if (loading) {
@@ -123,27 +151,55 @@ function App() {
       return <AdminLogin onLoginSuccess={(admin) => setAdminUser(admin)} />;
     }
     return (
-      <AdminDashboard 
+      <AdminDashboard
         onBack={() => {
           clearAdminSession();
           setAdminUser(null);
           handleNavigateHome();
-        }} 
-        userEmail={adminUser.email} 
+        }}
+        userEmail={adminUser.email}
       />
     );
   }
+
+  // Don't show processing banner if user is already viewing their processing project
+  const showBanner = processingProject && activeProjectId !== processingProject.id;
 
   if (showHome || !activeProjectId) {
     return (
-      <UnifiedHomePage
-        user={user}
-        onSelectProject={handleSelectProject}
-      />
+      <>
+        {showBanner && (
+          <ProcessingBanner
+            projectId={processingProject.id}
+            email={processingProject.email}
+            onViewResults={handleViewResults}
+            onViewWaiting={handleViewWaiting}
+            onDismiss={handleDismissBanner}
+          />
+        )}
+        <UnifiedHomePage
+          user={user}
+          onSelectProject={handleSelectProject}
+          waitingForProject={showWaitingFor}
+        />
+      </>
     );
   }
 
-  return <BidSmartFlow user={user} projectId={activeProjectId} onNavigateHome={handleNavigateHome} processingProject={processingProject} />;
+  return (
+    <>
+      {showBanner && (
+        <ProcessingBanner
+          projectId={processingProject.id}
+          email={processingProject.email}
+          onViewResults={handleViewResults}
+          onViewWaiting={handleViewWaiting}
+          onDismiss={handleDismissBanner}
+        />
+      )}
+      <BidSmartFlow user={user} projectId={activeProjectId} onNavigateHome={handleNavigateHome} />
+    </>
+  );
 }
 
 export default App;

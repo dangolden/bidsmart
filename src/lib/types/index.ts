@@ -149,6 +149,9 @@ export interface Project {
   // Project details
   project_details?: string | null;
 
+  // Property location
+  property_zip?: string | null;
+
   // Demo project flags
   is_demo: boolean;
   is_public_demo?: boolean;
