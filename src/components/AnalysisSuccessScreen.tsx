@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { CheckCircle2, Clock, Mail, Play, ArrowLeft, Volume2, VolumeX, Bell, ArrowRight } from 'lucide-react';
 import { AlphaBanner } from './AlphaBanner';
+import { IncentivesPanel } from './IncentivesPanel';
 import { getProject } from '../lib/database/bidsmartService';
 
 interface AnalysisSuccessScreenProps {
@@ -234,6 +235,16 @@ export function AnalysisSuccessScreen({
             </div>
           </div>
           
+          {/* Incentives Panel — give user something useful while they wait */}
+          {!isComplete && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                While you wait — available rebates & incentives
+              </h3>
+              <IncentivesPanel userZip={null} userState={null} />
+            </div>
+          )}
+
           {/* CTAs */}
           <div className="space-y-3 mb-6">
             <button
