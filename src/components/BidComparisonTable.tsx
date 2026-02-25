@@ -323,6 +323,14 @@ export function BidComparisonTable({ projectId: _projectId, rows, requirements }
   const bestSeer = getBestValue(bids.map(b => getSeerRating(b.id)));
   const bestHspf = getBestValue(bids.map(b => getHspfRating(b.id)));
 
+  // Returns true if at least one bid has a meaningful value for the given getter
+  function anyBidHas(getter: (bid: FlatBidRow) => unknown): boolean {
+    return sortedBids.some(bid => {
+      const v = getter(bid);
+      return v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0);
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Early returns
   // ---------------------------------------------------------------------------
@@ -483,68 +491,74 @@ export function BidComparisonTable({ projectId: _projectId, rows, requirements }
               {view === 'specs' && (
                 <>
                   {/* SEER Rating */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">
-                      <div className="flex items-center gap-1">
-                        <Zap className="w-4 h-4 text-amber-500" />
-                        SEER / SEER2
-                      </div>
-                      <span className="text-xs text-gray-400 font-normal">Cooling efficiency</span>
-                    </td>
-                    {sortedBids.map((bid) => {
-                      const seer = getSeerRating(bid.id);
-                      return (
-                        <td key={bid.id} className={isBestValue(seer, bestSeer) ? 'best-value' : ''}>
-                          {seer ? (
-                            <>
-                              <span className="font-semibold">{seer}</span>
-                              {isBestValue(seer, bestSeer) && (
-                                <span className="ml-2 text-xs text-green-600 font-medium">BEST</span>
-                              )}
-                            </>
-                          ) : '\u2014'}
-                        </td>
-                      );
-                    })}
-                  </tr>
+                  {anyBidHas(b => getSeerRating(b.id)) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">
+                        <div className="flex items-center gap-1">
+                          <Zap className="w-4 h-4 text-amber-500" />
+                          SEER / SEER2
+                        </div>
+                        <span className="text-xs text-gray-400 font-normal">Cooling efficiency</span>
+                      </td>
+                      {sortedBids.map((bid) => {
+                        const seer = getSeerRating(bid.id);
+                        return (
+                          <td key={bid.id} className={isBestValue(seer, bestSeer) ? 'best-value' : ''}>
+                            {seer ? (
+                              <>
+                                <span className="font-semibold">{seer}</span>
+                                {isBestValue(seer, bestSeer) && (
+                                  <span className="ml-2 text-xs text-green-600 font-medium">BEST</span>
+                                )}
+                              </>
+                            ) : '\u2014'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  )}
 
                   {/* HSPF Rating */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">
-                      <div className="flex items-center gap-1">
-                        <ThermometerSun className="w-4 h-4 text-orange-500" />
-                        HSPF / HSPF2
-                      </div>
-                      <span className="text-xs text-gray-400 font-normal">Heating efficiency</span>
-                    </td>
-                    {sortedBids.map((bid) => {
-                      const hspf = getHspfRating(bid.id);
-                      return (
-                        <td key={bid.id} className={isBestValue(hspf, bestHspf) ? 'best-value' : ''}>
-                          {hspf ? (
-                            <>
-                              <span className="font-semibold">{hspf}</span>
-                              {isBestValue(hspf, bestHspf) && (
-                                <span className="ml-2 text-xs text-green-600 font-medium">BEST</span>
-                              )}
-                            </>
-                          ) : '\u2014'}
-                        </td>
-                      );
-                    })}
-                  </tr>
+                  {anyBidHas(b => getHspfRating(b.id)) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">
+                        <div className="flex items-center gap-1">
+                          <ThermometerSun className="w-4 h-4 text-orange-500" />
+                          HSPF / HSPF2
+                        </div>
+                        <span className="text-xs text-gray-400 font-normal">Heating efficiency</span>
+                      </td>
+                      {sortedBids.map((bid) => {
+                        const hspf = getHspfRating(bid.id);
+                        return (
+                          <td key={bid.id} className={isBestValue(hspf, bestHspf) ? 'best-value' : ''}>
+                            {hspf ? (
+                              <>
+                                <span className="font-semibold">{hspf}</span>
+                                {isBestValue(hspf, bestHspf) && (
+                                  <span className="ml-2 text-xs text-green-600 font-medium">BEST</span>
+                                )}
+                              </>
+                            ) : '\u2014'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  )}
 
                   {/* Capacity */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Capacity (tons)</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {getCapacity(bid.id)?.toFixed(1) || '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => getCapacity(b.id)) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Capacity (tons)</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {getCapacity(bid.id)?.toFixed(1) || '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
-                  {/* Variable Speed */}
+                  {/* Variable Speed — always show: it's a meaningful Yes/No comparison */}
                   <tr>
                     <td className="sticky left-0 bg-white font-medium">Variable Speed</td>
                     {sortedBids.map((bid) => (
@@ -558,7 +572,7 @@ export function BidComparisonTable({ projectId: _projectId, rows, requirements }
                     ))}
                   </tr>
 
-                  {/* Energy Star */}
+                  {/* Energy Star — always show */}
                   <tr>
                     <td className="sticky left-0 bg-white font-medium">ENERGY STAR</td>
                     {sortedBids.map((bid) => (
@@ -575,135 +589,158 @@ export function BidComparisonTable({ projectId: _projectId, rows, requirements }
                     ))}
                   </tr>
 
-                  {/* Advanced Specs Header */}
-                  <tr className="bg-gray-50">
-                    <td className="sticky left-0 bg-gray-50 font-medium text-gray-500 text-sm pt-4">
-                      Advanced Specs
-                    </td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id} className="text-gray-400 text-sm pt-4">{'\u2014'}</td>
-                    ))}
-                  </tr>
+                  {/* Advanced Specs Header — only show if any advanced field has data */}
+                  {(anyBidHas(b => getRefrigerantType(b.id)) ||
+                    anyBidHas(b => getSoundLevel(b.id)) ||
+                    anyBidHas(b => getEerRating(b.id)) ||
+                    anyBidHas(b => getCop(b.id)) ||
+                    anyBidHas(b => getAmperageDraw(b.id)) ||
+                    anyBidHas(b => getMinCircuitAmperage(b.id))) && (
+                    <tr className="bg-gray-50">
+                      <td className="sticky left-0 bg-gray-50 font-medium text-gray-500 text-sm pt-4">
+                        Advanced Specs
+                      </td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id} className="text-gray-400 text-sm pt-4">{'\u2014'}</td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Refrigerant Type */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Refrigerant</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {getRefrigerantType(bid.id) || '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => getRefrigerantType(b.id)) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Refrigerant</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {getRefrigerantType(bid.id) || '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Noise Level */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Noise Level</td>
-                    {sortedBids.map((bid) => {
-                      const sound = getSoundLevel(bid.id);
-                      return (
-                        <td key={bid.id}>
-                          {sound ? `${sound} dB` : '\u2014'}
-                        </td>
-                      );
-                    })}
-                  </tr>
+                  {anyBidHas(b => getSoundLevel(b.id)) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Noise Level</td>
+                      {sortedBids.map((bid) => {
+                        const sound = getSoundLevel(bid.id);
+                        return (
+                          <td key={bid.id}>
+                            {sound ? `${sound} dB` : '\u2014'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  )}
 
                   {/* EER Rating */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">
-                      EER Rating
-                      <span className="text-xs text-gray-400 font-normal block">Energy efficiency</span>
-                    </td>
-                    {sortedBids.map((bid) => {
-                      const eer = getEerRating(bid.id);
-                      return (
-                        <td key={bid.id}>
-                          {eer ? eer.toFixed(1) : '\u2014'}
-                        </td>
-                      );
-                    })}
-                  </tr>
+                  {anyBidHas(b => getEerRating(b.id)) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">
+                        EER Rating
+                        <span className="text-xs text-gray-400 font-normal block">Energy efficiency</span>
+                      </td>
+                      {sortedBids.map((bid) => {
+                        const eer = getEerRating(bid.id);
+                        return (
+                          <td key={bid.id}>
+                            {eer ? eer.toFixed(1) : '\u2014'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  )}
 
                   {/* COP */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">
-                      COP
-                      <span className="text-xs text-gray-400 font-normal block">Heating coefficient</span>
-                    </td>
-                    {sortedBids.map((bid) => {
-                      const cop = getCop(bid.id);
-                      return (
-                        <td key={bid.id}>
-                          {cop ? cop.toFixed(1) : '\u2014'}
-                        </td>
-                      );
-                    })}
-                  </tr>
+                  {anyBidHas(b => getCop(b.id)) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">
+                        COP
+                        <span className="text-xs text-gray-400 font-normal block">Heating coefficient</span>
+                      </td>
+                      {sortedBids.map((bid) => {
+                        const cop = getCop(bid.id);
+                        return (
+                          <td key={bid.id}>
+                            {cop ? cop.toFixed(1) : '\u2014'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  )}
 
                   {/* Amperage Draw */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Amperage Draw</td>
-                    {sortedBids.map((bid) => {
-                      const amps = getAmperageDraw(bid.id);
-                      return (
-                        <td key={bid.id}>
-                          {amps ? `${amps}A` : '\u2014'}
-                        </td>
-                      );
-                    })}
-                  </tr>
+                  {anyBidHas(b => getAmperageDraw(b.id)) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Amperage Draw</td>
+                      {sortedBids.map((bid) => {
+                        const amps = getAmperageDraw(bid.id);
+                        return (
+                          <td key={bid.id}>
+                            {amps ? `${amps}A` : '\u2014'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  )}
 
                   {/* Min Circuit Amps */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Min Circuit Amps</td>
-                    {sortedBids.map((bid) => {
-                      const minAmps = getMinCircuitAmperage(bid.id);
-                      return (
-                        <td key={bid.id}>
-                          {minAmps ? `${minAmps}A` : '\u2014'}
-                        </td>
-                      );
-                    })}
-                  </tr>
+                  {anyBidHas(b => getMinCircuitAmperage(b.id)) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Min Circuit Amps</td>
+                      {sortedBids.map((bid) => {
+                        const minAmps = getMinCircuitAmperage(bid.id);
+                        return (
+                          <td key={bid.id}>
+                            {minAmps ? `${minAmps}A` : '\u2014'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  )}
                 </>
               )}
 
               {view === 'contractor' && (
                 <>
                   {/* Years in Business */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Years in Business</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.years_in_business ? (
-                          <span className={bid.years_in_business >= 10 ? 'text-green-600 font-medium' : ''}>
-                            {bid.years_in_business} years
-                          </span>
-                        ) : '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.years_in_business) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Years in Business</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.years_in_business ? (
+                            <span className={bid.years_in_business >= 10 ? 'text-green-600 font-medium' : ''}>
+                              {bid.years_in_business} years
+                            </span>
+                          ) : '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Google Rating */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Google Rating</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.google_rating ? (
-                          <span className={bid.google_rating >= 4.5 ? 'text-green-600 font-medium' : ''}>
-                            {bid.google_rating.toFixed(1)} \u2B50
-                            {bid.google_review_count && (
-                              <span className="text-gray-400 text-sm ml-1">
-                                ({bid.google_review_count})
-                              </span>
-                            )}
-                          </span>
-                        ) : '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.google_rating) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Google Rating</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.google_rating ? (
+                            <span className={bid.google_rating >= 4.5 ? 'text-green-600 font-medium' : ''}>
+                              {bid.google_rating.toFixed(1)} \u2B50
+                              {bid.google_review_count && (
+                                <span className="text-gray-400 text-sm ml-1">
+                                  ({bid.google_review_count})
+                                </span>
+                              )}
+                            </span>
+                          ) : '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
-                  {/* License */}
+                  {/* License — always show: missing license is a meaningful signal */}
                   <tr>
                     <td className="sticky left-0 bg-white font-medium">License #</td>
                     {sortedBids.map((bid) => (
@@ -724,88 +761,98 @@ export function BidComparisonTable({ projectId: _projectId, rows, requirements }
                   </tr>
 
                   {/* Certifications */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Certifications</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.certifications && bid.certifications.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {bid.certifications.map((cert, i) => (
-                              <span key={i} className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                                {cert}
-                              </span>
-                            ))}
-                          </div>
-                        ) : '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.certifications) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Certifications</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.certifications && bid.certifications.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {bid.certifications.map((cert, i) => (
+                                <span key={i} className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                  {cert}
+                                </span>
+                              ))}
+                            </div>
+                          ) : '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Insurance */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Insurance Verified</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.insurance_verified ? (
-                          <Check className="w-5 h-5 text-green-600" />
-                        ) : (
-                          <span className="text-gray-400">Unknown</span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.insurance_verified) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Insurance Verified</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.insurance_verified ? (
+                            <Check className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <span className="text-gray-400">Unknown</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Yelp Rating */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Yelp Rating</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.yelp_rating ? (
-                          <span className={bid.yelp_rating >= 4.5 ? 'text-green-600 font-medium' : ''}>
-                            {bid.yelp_rating.toFixed(1)} \u2B50
-                            {bid.yelp_review_count && (
-                              <span className="text-gray-400 text-sm ml-1">
-                                ({bid.yelp_review_count})
-                              </span>
-                            )}
-                          </span>
-                        ) : '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.yelp_rating) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Yelp Rating</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.yelp_rating ? (
+                            <span className={bid.yelp_rating >= 4.5 ? 'text-green-600 font-medium' : ''}>
+                              {bid.yelp_rating.toFixed(1)} \u2B50
+                              {bid.yelp_review_count && (
+                                <span className="text-gray-400 text-sm ml-1">
+                                  ({bid.yelp_review_count})
+                                </span>
+                              )}
+                            </span>
+                          ) : '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* BBB Rating */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">BBB Rating</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.bbb_rating ? (
-                          <span className="flex items-center gap-1">
-                            <span className="font-medium">{bid.bbb_rating}</span>
-                            {bid.bbb_accredited && (
-                              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Accredited</span>
-                            )}
-                          </span>
-                        ) : '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.bbb_rating) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">BBB Rating</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.bbb_rating ? (
+                            <span className="flex items-center gap-1">
+                              <span className="font-medium">{bid.bbb_rating}</span>
+                              {bid.bbb_accredited && (
+                                <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Accredited</span>
+                              )}
+                            </span>
+                          ) : '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Bonded */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Bonded</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.bonded ? (
-                          <Check className="w-5 h-5 text-green-600" />
-                        ) : (
-                          <span className="text-gray-400">Unknown</span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.bonded) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Bonded</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.bonded ? (
+                            <Check className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <span className="text-gray-400">Unknown</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
-                  {/* Red Flags */}
+                  {/* Red Flags — always show */}
                   <tr>
                     <td className="sticky left-0 bg-white font-medium">Issues Identified</td>
                     {sortedBids.map((bid) => (
@@ -823,132 +870,154 @@ export function BidComparisonTable({ projectId: _projectId, rows, requirements }
                   </tr>
 
                   {/* Positive Indicators */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">
-                      <div className="flex items-center gap-1">
-                        <ThumbsUp className="w-4 h-4 text-green-500" />
-                        Positive Indicators
-                      </div>
-                    </td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.positive_indicators && bid.positive_indicators.length > 0 ? (
-                          <span className="inline-flex items-center gap-1 text-green-600 font-medium">
-                            <Check className="w-4 h-4" />
-                            {bid.positive_indicators.length} positive{bid.positive_indicators.length !== 1 ? 's' : ''}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">{'\u2014'}</span>
-                        )}
+                  {anyBidHas(b => b.positive_indicators) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">
+                        <div className="flex items-center gap-1">
+                          <ThumbsUp className="w-4 h-4 text-green-500" />
+                          Positive Indicators
+                        </div>
                       </td>
-                    ))}
-                  </tr>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.positive_indicators && bid.positive_indicators.length > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-green-600 font-medium">
+                              <Check className="w-4 h-4" />
+                              {bid.positive_indicators.length} positive{bid.positive_indicators.length !== 1 ? 's' : ''}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">{'\u2014'}</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Company Size */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">
-                      <div className="flex items-center gap-1">
-                        <Building2 className="w-4 h-4 text-gray-500" />
-                        Company Size
-                      </div>
-                    </td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.employee_count || '\u2014'}
+                  {anyBidHas(b => b.employee_count) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">
+                        <div className="flex items-center gap-1">
+                          <Building2 className="w-4 h-4 text-gray-500" />
+                          Company Size
+                        </div>
                       </td>
-                    ))}
-                  </tr>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.employee_count || '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Service Area */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4 text-gray-500" />
-                        Service Area
-                      </div>
-                    </td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.service_area ? (
-                          <span className="text-sm truncate max-w-[150px] block" title={bid.service_area}>
-                            {bid.service_area.length > 30 ? `${bid.service_area.substring(0, 30)}...` : bid.service_area}
-                          </span>
-                        ) : '\u2014'}
+                  {anyBidHas(b => b.service_area) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-4 h-4 text-gray-500" />
+                          Service Area
+                        </div>
                       </td>
-                    ))}
-                  </tr>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.service_area ? (
+                            <span className="text-sm truncate max-w-[150px] block" title={bid.service_area}>
+                              {bid.service_area.length > 30 ? `${bid.service_area.substring(0, 30)}...` : bid.service_area}
+                            </span>
+                          ) : '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
                 </>
               )}
 
               {view === 'pricing' && (
                 <>
                   {/* Equipment Cost */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Equipment</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>{formatCurrency(bid.equipment_cost)}</td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.equipment_cost) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Equipment</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>{formatCurrency(bid.equipment_cost)}</td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Labor Cost */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Labor</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>{formatCurrency(bid.labor_cost)}</td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.labor_cost) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Labor</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>{formatCurrency(bid.labor_cost)}</td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Materials */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Materials</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>{formatCurrency(bid.materials_cost)}</td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.materials_cost) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Materials</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>{formatCurrency(bid.materials_cost)}</td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Permits */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Permits</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>{formatCurrency(bid.permit_cost)}</td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.permit_cost) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Permits</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>{formatCurrency(bid.permit_cost)}</td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Disposal */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Disposal</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>{formatCurrency(bid.disposal_cost)}</td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.disposal_cost) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Disposal</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>{formatCurrency(bid.disposal_cost)}</td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Electrical Work */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Electrical Work</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>{formatCurrency(bid.electrical_cost)}</td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.electrical_cost) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Electrical Work</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>{formatCurrency(bid.electrical_cost)}</td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Rebates */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium text-green-600">Est. Rebates</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id} className="text-green-600">
-                        {bid.estimated_rebates ? `-${formatCurrency(bid.estimated_rebates)}` : '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.estimated_rebates) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium text-green-600">Est. Rebates</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id} className="text-green-600">
+                          {bid.estimated_rebates ? `-${formatCurrency(bid.estimated_rebates)}` : '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
-                  {/* After Rebates */}
-                  <tr className="bg-green-50">
-                    <td className="sticky left-0 bg-green-50 font-medium">After Rebates</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id} className="font-semibold">
-                        {formatCurrency(bid.total_after_rebates || bid.total_bid_amount)}
-                      </td>
-                    ))}
-                  </tr>
+                  {/* After Rebates — only if different from total */}
+                  {anyBidHas(b => b.total_after_rebates) && (
+                    <tr className="bg-green-50">
+                      <td className="sticky left-0 bg-green-50 font-medium">After Rebates</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id} className="font-semibold">
+                          {formatCurrency(bid.total_after_rebates || bid.total_bid_amount)}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
                 </>
               )}
 
@@ -967,7 +1036,10 @@ export function BidComparisonTable({ projectId: _projectId, rows, requirements }
                     { key: 'line_set_included', label: 'Refrigerant Line Set' },
                     { key: 'pad_included', label: 'Equipment Pad' },
                     { key: 'drain_line_included', label: 'Condensate Drain Line' },
-                  ] as const).map((item) => (
+                  ] as const).filter((item) =>
+                    // Skip rows where every bid has null (not even false — truly unknown)
+                    sortedBids.some(bid => bid[item.key] !== null && bid[item.key] !== undefined)
+                  ).map((item) => (
                     <tr key={item.key}>
                       <td className="sticky left-0 bg-white font-medium">{item.label}</td>
                       {sortedBids.map((bid) => {
@@ -994,151 +1066,171 @@ export function BidComparisonTable({ projectId: _projectId, rows, requirements }
               {view === 'electrical' && (
                 <>
                   {/* Panel Assessment */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">
-                      <div className="flex items-center gap-1">
-                        <Plug className="w-4 h-4 text-amber-500" />
-                        Panel Assessment
-                      </div>
-                    </td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.panel_assessment_included === true ? (
-                          <Check className="w-5 h-5 text-green-600" />
-                        ) : bid.panel_assessment_included === false ? (
-                          <X className="w-5 h-5 text-red-400" />
-                        ) : (
-                          <HelpCircle className="w-5 h-5 text-gray-300" />
-                        )}
+                  {anyBidHas(b => b.panel_assessment_included) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">
+                        <div className="flex items-center gap-1">
+                          <Plug className="w-4 h-4 text-amber-500" />
+                          Panel Assessment
+                        </div>
                       </td>
-                    ))}
-                  </tr>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.panel_assessment_included === true ? (
+                            <Check className="w-5 h-5 text-green-600" />
+                          ) : bid.panel_assessment_included === false ? (
+                            <X className="w-5 h-5 text-red-400" />
+                          ) : (
+                            <HelpCircle className="w-5 h-5 text-gray-300" />
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Panel Upgrade Needed */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Panel Upgrade Needed</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.panel_upgrade_included === true ? (
-                          <span className="text-amber-600 font-medium">Yes</span>
-                        ) : bid.panel_upgrade_included === false ? (
-                          <span className="text-green-600">No</span>
-                        ) : (
-                          <HelpCircle className="w-5 h-5 text-gray-300" />
-                        )}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.panel_upgrade_included) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Panel Upgrade Needed</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.panel_upgrade_included === true ? (
+                            <span className="text-amber-600 font-medium">Yes</span>
+                          ) : bid.panel_upgrade_included === false ? (
+                            <span className="text-green-600">No</span>
+                          ) : (
+                            <HelpCircle className="w-5 h-5 text-gray-300" />
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Panel Upgrade Cost */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Upgrade Cost</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.panel_upgrade_cost ? (
-                          formatCurrency(bid.panel_upgrade_cost)
-                        ) : '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.panel_upgrade_cost) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Upgrade Cost</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.panel_upgrade_cost ? (
+                            formatCurrency(bid.panel_upgrade_cost)
+                          ) : '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Current Panel Amps */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Current Panel</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.existing_panel_amps ? (
-                          <span>{bid.existing_panel_amps}A</span>
-                        ) : '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.existing_panel_amps) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Current Panel</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.existing_panel_amps ? (
+                            <span>{bid.existing_panel_amps}A</span>
+                          ) : '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Required Panel Amps */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Required Panel</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.proposed_panel_amps ? (
-                          <span>{bid.proposed_panel_amps}A</span>
-                        ) : '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.proposed_panel_amps) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Required Panel</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.proposed_panel_amps ? (
+                            <span>{bid.proposed_panel_amps}A</span>
+                          ) : '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Breaker Size Required */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Breaker Size</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.breaker_size_required ? (
-                          <span>{bid.breaker_size_required}A</span>
-                        ) : '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.breaker_size_required) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Breaker Size</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.breaker_size_required ? (
+                            <span>{bid.breaker_size_required}A</span>
+                          ) : '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Dedicated Circuit */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Dedicated Circuit</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.dedicated_circuit_included === true ? (
-                          <Check className="w-5 h-5 text-green-600" />
-                        ) : bid.dedicated_circuit_included === false ? (
-                          <X className="w-5 h-5 text-red-400" />
-                        ) : (
-                          <HelpCircle className="w-5 h-5 text-gray-300" />
-                        )}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.dedicated_circuit_included) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Dedicated Circuit</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.dedicated_circuit_included === true ? (
+                            <Check className="w-5 h-5 text-green-600" />
+                          ) : bid.dedicated_circuit_included === false ? (
+                            <X className="w-5 h-5 text-red-400" />
+                          ) : (
+                            <HelpCircle className="w-5 h-5 text-gray-300" />
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Electrical Permit */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Electrical Permit</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.electrical_permit_included === true ? (
-                          <Check className="w-5 h-5 text-green-600" />
-                        ) : bid.electrical_permit_included === false ? (
-                          <X className="w-5 h-5 text-red-400" />
-                        ) : (
-                          <HelpCircle className="w-5 h-5 text-gray-300" />
-                        )}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.electrical_permit_included) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Electrical Permit</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.electrical_permit_included === true ? (
+                            <Check className="w-5 h-5 text-green-600" />
+                          ) : bid.electrical_permit_included === false ? (
+                            <X className="w-5 h-5 text-red-400" />
+                          ) : (
+                            <HelpCircle className="w-5 h-5 text-gray-300" />
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Load Calculation */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Load Calculation</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.load_calculation_included === true ? (
-                          <Check className="w-5 h-5 text-green-600" />
-                        ) : bid.load_calculation_included === false ? (
-                          <X className="w-5 h-5 text-red-400" />
-                        ) : (
-                          <HelpCircle className="w-5 h-5 text-gray-300" />
-                        )}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.load_calculation_included) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Load Calculation</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.load_calculation_included === true ? (
+                            <Check className="w-5 h-5 text-green-600" />
+                          ) : bid.load_calculation_included === false ? (
+                            <X className="w-5 h-5 text-red-400" />
+                          ) : (
+                            <HelpCircle className="w-5 h-5 text-gray-300" />
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
 
                   {/* Electrical Notes */}
-                  <tr>
-                    <td className="sticky left-0 bg-white font-medium">Notes</td>
-                    {sortedBids.map((bid) => (
-                      <td key={bid.id}>
-                        {bid.electrical_notes ? (
-                          <span className="text-sm text-gray-600 truncate max-w-[200px] block" title={bid.electrical_notes}>
-                            {bid.electrical_notes.length > 50 ? `${bid.electrical_notes.substring(0, 50)}...` : bid.electrical_notes}
-                          </span>
-                        ) : '\u2014'}
-                      </td>
-                    ))}
-                  </tr>
+                  {anyBidHas(b => b.electrical_notes) && (
+                    <tr>
+                      <td className="sticky left-0 bg-white font-medium">Notes</td>
+                      {sortedBids.map((bid) => (
+                        <td key={bid.id}>
+                          {bid.electrical_notes ? (
+                            <span className="text-sm text-gray-600 truncate max-w-[200px] block" title={bid.electrical_notes}>
+                              {bid.electrical_notes.length > 50 ? `${bid.electrical_notes.substring(0, 50)}...` : bid.electrical_notes}
+                            </span>
+                          ) : '\u2014'}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
                 </>
               )}
 
@@ -1193,22 +1285,24 @@ export function BidComparisonTable({ projectId: _projectId, rows, requirements }
                 ))}
               </tr>
 
-              {/* Financing */}
-              <tr>
-                <td className="sticky left-0 bg-white font-medium">Financing</td>
-                {sortedBids.map((bid) => (
-                  <td key={bid.id}>
-                    {bid.financing_offered ? (
-                      <span className="text-green-600 flex items-center gap-1">
-                        <Check className="w-4 h-4" />
-                        Available
-                      </span>
-                    ) : (
-                      <X className="w-5 h-5 text-gray-300" />
-                    )}
-                  </td>
-                ))}
-              </tr>
+              {/* Financing — only show if at least one bid has a value */}
+              {anyBidHas(b => b.financing_offered) && (
+                <tr>
+                  <td className="sticky left-0 bg-white font-medium">Financing</td>
+                  {sortedBids.map((bid) => (
+                    <td key={bid.id}>
+                      {bid.financing_offered ? (
+                        <span className="text-green-600 flex items-center gap-1">
+                          <Check className="w-4 h-4" />
+                          Available
+                        </span>
+                      ) : (
+                        <X className="w-5 h-5 text-gray-300" />
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -35,7 +35,7 @@ export function DecidePhase() {
 
   const loadRebatePrograms = async () => {
     const { data } = await supabase
-      .from('rebate_programs')
+      .from('incentive_program_database')
       .select('*')
       .eq('is_active', true)
       .order('program_name');

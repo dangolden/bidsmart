@@ -172,7 +172,20 @@ export function PhaseProvider({ children, userId, initialProjectId }: PhaseProvi
           4: 'locked',
         };
 
-        if (storedState && storedState.projectId === projectId) {
+        const projectIsReady =
+          project?.status === 'comparing' || project?.status === 'completed';
+
+        if (projectIsReady) {
+          // Workflow complete — unlock all phases, default to Compare
+          phaseStatus[1] = 'completed';
+          phaseStatus[2] = 'active';
+          phaseStatus[3] = 'active';
+          phaseStatus[4] = 'active';
+          // Use stored phase if user has navigated forward, otherwise default to Compare
+          currentPhase = (storedState && storedState.projectId === projectId && storedState.currentPhase >= 2)
+            ? storedState.currentPhase
+            : 2;
+        } else if (storedState && storedState.projectId === projectId) {
           currentPhase = storedState.currentPhase;
           phaseStatus = storedState.phaseStatus;
         } else if (bidsWithEquipment.length >= 2 && requirements?.completed_at) {

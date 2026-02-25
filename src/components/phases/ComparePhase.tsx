@@ -72,8 +72,41 @@ export function ComparePhase() {
     },
   ];
 
+  // Deduplicate bids by contractor name — if the same company submitted multiple PDFs,
+  // merge them into one column using the bid that has the most data.
+  const deduplicatedBids = (() => {
+    const seen = new Map<string, typeof bids[0] & { mergedBidCount?: number }>();
+    for (const b of bids) {
+      const rawKey = (b.bid.contractor_name || '').trim().toLowerCase();
+      const key = rawKey || `__unnamed_${b.bid.id}`;
+      const existing = seen.get(key);
+      if (!existing) {
+        seen.set(key, { ...b, mergedBidCount: 1 });
+      } else {
+        // Keep whichever bid has scope data; if both do, keep the one with the higher total amount
+        const existingHasScope = !!existing.scope;
+        const incomingHasScope = !!b.scope;
+        let winner = existing;
+        if (!existingHasScope && incomingHasScope) {
+          winner = { ...b, mergedBidCount: (existing.mergedBidCount || 1) + 1 };
+        } else if (existingHasScope && incomingHasScope) {
+          const existingAmount = existing.scope?.total_bid_amount ?? 0;
+          const incomingAmount = b.scope?.total_bid_amount ?? 0;
+          winner = {
+            ...(incomingAmount > existingAmount ? b : existing),
+            mergedBidCount: (existing.mergedBidCount || 1) + 1,
+          };
+        } else {
+          winner = { ...existing, mergedBidCount: (existing.mergedBidCount || 1) + 1 };
+        }
+        seen.set(key, winner);
+      }
+    }
+    return Array.from(seen.values());
+  })();
+
   const getEquipmentData = () => {
-    return bids.map((b) => {
+    return deduplicatedBids.map((b) => {
       const mainEquipment = b.equipment.find(
         (e) => e.equipment_type === 'outdoor_unit' || e.equipment_type === 'heat_pump'
       ) || b.equipment[0];
@@ -102,7 +135,7 @@ export function ComparePhase() {
   };
 
   const getContractorData = () => {
-    return bids.map((b) => {
+    return deduplicatedBids.map((b) => {
       const c = b.contractor;
       const sc = b.scores;
       return {
@@ -135,7 +168,7 @@ export function ComparePhase() {
   };
 
   const getCostData = () => {
-    return bids.map((b) => {
+    return deduplicatedBids.map((b) => {
       const sc = b.scope;
       return {
         bidId: b.bid.id,
@@ -162,7 +195,7 @@ export function ComparePhase() {
   };
 
   const getScopeData = () => {
-    return bids.map((b) => {
+    return deduplicatedBids.map((b) => {
       const sc = b.scope;
       return {
         bidId: b.bid.id,
@@ -301,7 +334,7 @@ export function ComparePhase() {
     }
   };
 
-  const bidCount = bids.length;
+  const bidCount = deduplicatedBids.length;
   const tableMinWidth = `calc(${LABEL_COL_WIDTH} + (${bidCount} * ${BID_COL_MIN_WIDTH}))`;
 
   const labelCellStyle = { width: LABEL_COL_WIDTH, minWidth: LABEL_COL_WIDTH, maxWidth: LABEL_COL_WIDTH };
@@ -418,11 +451,19 @@ export function ComparePhase() {
                     <th style={labelCellStyle} className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
                       Specification
                     </th>
-                    {equipmentData.map((e, idx) => (
-                      <th key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < equipmentData.length - 1 ? 'border-r border-gray-700' : ''}`}>
-                        {e.contractor}
-                      </th>
-                    ))}
+                    {equipmentData.map((e, idx) => {
+                      const dedupBid = deduplicatedBids[idx];
+                      return (
+                        <th key={e.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < equipmentData.length - 1 ? 'border-r border-gray-700' : ''}`}>
+                          {e.contractor}
+                          {dedupBid?.mergedBidCount && dedupBid.mergedBidCount > 1 && (
+                            <span className="block text-xs font-normal text-gray-400 mt-0.5">
+                              {dedupBid.mergedBidCount} bids merged
+                            </span>
+                          )}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -610,11 +651,19 @@ export function ComparePhase() {
                     <th style={labelCellStyle} className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
                       Information
                     </th>
-                    {contractorData.map((c, idx) => (
-                      <th key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < contractorData.length - 1 ? 'border-r border-gray-700' : ''}`}>
-                        {c.contractor}
-                      </th>
-                    ))}
+                    {contractorData.map((c, idx) => {
+                      const dedupBid = deduplicatedBids[idx];
+                      return (
+                        <th key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < contractorData.length - 1 ? 'border-r border-gray-700' : ''}`}>
+                          {c.contractor}
+                          {dedupBid?.mergedBidCount && dedupBid.mergedBidCount > 1 && (
+                            <span className="block text-xs font-normal text-gray-400 mt-0.5">
+                              {dedupBid.mergedBidCount} bids merged
+                            </span>
+                          )}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -861,11 +910,19 @@ export function ComparePhase() {
                     <th style={labelCellStyle} className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
                       Cost Item
                     </th>
-                    {costData.map((c, idx) => (
-                      <th key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < costData.length - 1 ? 'border-r border-gray-700' : ''}`}>
-                        {c.contractor}
-                      </th>
-                    ))}
+                    {costData.map((c, idx) => {
+                      const dedupBid = deduplicatedBids[idx];
+                      return (
+                        <th key={c.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < costData.length - 1 ? 'border-r border-gray-700' : ''}`}>
+                          {c.contractor}
+                          {dedupBid?.mergedBidCount && dedupBid.mergedBidCount > 1 && (
+                            <span className="block text-xs font-normal text-gray-400 mt-0.5">
+                              {dedupBid.mergedBidCount} bids merged
+                            </span>
+                          )}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -1115,11 +1172,19 @@ export function ComparePhase() {
                   <th style={labelCellStyle} className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
                     Scope Item
                   </th>
-                  {scopeData.map((s, idx) => (
-                    <th key={s.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < scopeData.length - 1 ? 'border-r border-gray-700' : ''}`}>
-                      {s.contractor}
-                    </th>
-                  ))}
+                  {scopeData.map((s, idx) => {
+                    const dedupBid = deduplicatedBids[idx];
+                    return (
+                      <th key={s.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < scopeData.length - 1 ? 'border-r border-gray-700' : ''}`}>
+                        {s.contractor}
+                        {dedupBid?.mergedBidCount && dedupBid.mergedBidCount > 1 && (
+                          <span className="block text-xs font-normal text-gray-400 mt-0.5">
+                            {dedupBid.mergedBidCount} bids merged
+                          </span>
+                        )}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
