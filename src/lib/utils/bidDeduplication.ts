@@ -15,6 +15,19 @@ export interface DeduplicatedBidEntry extends BidEntry {
 export const PLACEHOLDER_NAMES = new Set(['tbd', 'unknown', 'unknown contractor', '']);
 
 /**
+ * Return a display-friendly contractor name.
+ * Replaces stub/placeholder values like 'TBD' with a numbered label.
+ */
+export function getContractorDisplayName(name: string | null | undefined, index?: number): string {
+  const trimmed = (name || '').trim();
+  const lower = trimmed.toLowerCase();
+  if (!trimmed || PLACEHOLDER_NAMES.has(lower)) {
+    return index != null ? `Contractor ${index + 1}` : 'Contractor';
+  }
+  return trimmed;
+}
+
+/**
  * Deduplicate bids by contractor name — if the same company submitted multiple PDFs,
  * merge them into one column using the bid that has the most data.
  */

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Star, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { deduplicateBids, type BidEntry } from '../../lib/utils/bidDeduplication';
+import { deduplicateBids, getContractorDisplayName, type BidEntry } from '../../lib/utils/bidDeduplication';
 import { getHighestValue, isHighlighted, LABEL_COL_WIDTH, BID_COL_MIN_WIDTH } from '../../lib/utils/comparisonHelpers';
 
 interface ContractorsTabProps {
@@ -12,11 +12,11 @@ export function ContractorsTab({ bids }: ContractorsTabProps) {
 
   const deduplicatedBids = deduplicateBids(bids);
 
-  const contractorData = deduplicatedBids.map((b) => {
+  const contractorData = deduplicatedBids.map((b, idx) => {
     const c = b.contractor;
     return {
       bidId: b.bid.id,
-      contractor: b.bid.contractor_name || 'Unknown',
+      contractor: getContractorDisplayName(b.bid.contractor_name, idx),
       yearsInBusiness: c?.years_in_business,
       yearEstablished: c?.year_established,
       googleRating: c?.google_rating,

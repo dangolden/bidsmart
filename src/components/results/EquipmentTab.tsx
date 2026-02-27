@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Star, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { deduplicateBids, type BidEntry } from '../../lib/utils/bidDeduplication';
+import { deduplicateBids, getContractorDisplayName, type BidEntry } from '../../lib/utils/bidDeduplication';
 import { getHighestValue, isHighlighted, LABEL_COL_WIDTH, BID_COL_MIN_WIDTH } from '../../lib/utils/comparisonHelpers';
 
 interface EquipmentTabProps {
@@ -12,14 +12,14 @@ export function EquipmentTab({ bids }: EquipmentTabProps) {
 
   const deduplicatedBids = deduplicateBids(bids);
 
-  const equipmentData = deduplicatedBids.map((b) => {
+  const equipmentData = deduplicatedBids.map((b, idx) => {
     const mainEquipment = b.equipment.find(
       (e) => e.equipment_type === 'outdoor_unit' || e.equipment_type === 'heat_pump'
     ) || b.equipment[0];
 
     return {
       bidId: b.bid.id,
-      contractor: b.bid.contractor_name || 'Unknown',
+      contractor: getContractorDisplayName(b.bid.contractor_name, idx),
       brand: mainEquipment?.brand || '-',
       model: mainEquipment?.model_number || mainEquipment?.model_name || '-',
       seer2: mainEquipment?.seer2_rating || mainEquipment?.seer_rating,

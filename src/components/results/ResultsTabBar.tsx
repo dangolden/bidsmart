@@ -85,6 +85,12 @@ export function ResultsTabBar({
           const isActive = activeTab === tab.key;
           const waiting = isTabWaiting(tab.key);
 
+          // Inactive text: dark for ready tabs, light grey for waiting tabs
+          const inactiveTextClass = waiting
+            ? 'border-transparent text-gray-300 hover:text-gray-400 hover:border-gray-200'
+            : 'border-transparent text-gray-700 hover:text-gray-900 hover:border-gray-300';
+          const inactiveIconClass = waiting ? 'text-gray-300' : 'text-gray-500';
+
           return (
             <button
               key={tab.key}
@@ -93,11 +99,11 @@ export function ResultsTabBar({
                 flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors
                 ${isActive
                   ? 'border-switch-green-600 text-switch-green-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : inactiveTextClass
                 }
               `}
             >
-              <span className={isActive ? 'text-switch-green-600' : 'text-gray-400'}>
+              <span className={isActive ? 'text-switch-green-600' : inactiveIconClass}>
                 {tab.icon}
               </span>
               {tab.label}

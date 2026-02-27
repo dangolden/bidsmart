@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Star, CheckCircle, XCircle, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { deduplicateBids, type BidEntry } from '../../lib/utils/bidDeduplication';
+import { deduplicateBids, getContractorDisplayName, type BidEntry } from '../../lib/utils/bidDeduplication';
 import { getHighestValue, isHighlighted, LABEL_COL_WIDTH, BID_COL_MIN_WIDTH, SCOPE_ITEMS } from '../../lib/utils/comparisonHelpers';
 import { formatCurrency, formatDate } from '../../lib/utils/formatters';
 import { ElectricalComparisonTable } from '../ElectricalComparisonTable';
@@ -18,11 +18,11 @@ export function CostScopeTab({ bids }: CostScopeTabProps) {
     return formatDate(dateString) || '-';
   };
 
-  const costData = deduplicatedBids.map((b) => {
+  const costData = deduplicatedBids.map((b, idx) => {
     const sc = b.scope;
     return {
       bidId: b.bid.id,
-      contractor: b.bid.contractor_name || 'Unknown',
+      contractor: getContractorDisplayName(b.bid.contractor_name, idx),
       totalAmount: sc?.total_bid_amount ?? 0,
       equipmentCost: sc?.equipment_cost,
       laborCost: sc?.labor_cost,
@@ -44,11 +44,11 @@ export function CostScopeTab({ bids }: CostScopeTabProps) {
     };
   });
 
-  const scopeData = deduplicatedBids.map((b) => {
+  const scopeData = deduplicatedBids.map((b, idx) => {
     const sc = b.scope;
     return {
       bidId: b.bid.id,
-      contractor: b.bid.contractor_name || 'Unknown',
+      contractor: getContractorDisplayName(b.bid.contractor_name, idx),
       permit: sc?.permit_included,
       permitDetail: sc?.permit_detail,
       disposal: sc?.disposal_included,
