@@ -902,7 +902,7 @@ export interface BidConfiguration {
   updated_at: string;
 }
 
-export type ResultsTab = 'incentives' | 'equipment' | 'contractors' | 'cost-scope' | 'questions';
+export type ResultsTab = 'incentives' | 'equipment' | 'contractors' | 'cost-scope' | 'questions' | 'verify';
 
 export type AnalysisStatus = 'processing' | 'partial' | 'complete' | 'failed' | 'timeout';
 

@@ -1,10 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, FileText, X, Clock, CheckCircle2, AlertCircle, ArrowRight, Users, Shield, Info, Mail, Loader2, ChevronRight, Mic, MicOff } from 'lucide-react';
+import { Upload, FileText, X, Clock, CheckCircle2, AlertCircle, ArrowRight, Users, Shield, Info, Mail, MapPin, Loader2, ChevronRight, Mic, MicOff } from 'lucide-react';
 import type { UserExt } from '../lib/types';
 import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
-import { AnalysisSuccessScreen } from './AnalysisSuccessScreen';
-import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject, getPublicDemoProjects } from '../lib/database/bidsmartService';
+import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject } from '../lib/database/bidsmartService';
 import { uploadPdfFile, startBatchAnalysis, type DocumentForAnalysis } from '../lib/services/mindpalService';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import SwitchLogo from '../assets/switchlogo.svg';
@@ -86,6 +85,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
   const [dataSharingConsent, setDataSharingConsent] = useState(true);
   const [showPrivacyDetails, setShowPrivacyDetails] = useState(false);
   const [notificationEmail, setNotificationEmail] = useState('');
+  const [propertyZip, setPropertyZip] = useState('');
 
   const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -93,7 +93,6 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
   const analysisTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
-  const [demoProjectId, setDemoProjectId] = useState<string | null>(null);
   const [showPriorities, setShowPriorities] = useState(true);
   const [showProjectDetails, setShowProjectDetails] = useState(true);
   const [isHeaderSticky, setIsHeaderSticky] = useState(false);
@@ -113,7 +112,6 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
 
   useEffect(() => {
     checkForDraftProject();
-    loadDemoProject();
   }, [user.id]);
 
   // Restore waiting screen when returning from banner "View waiting page"
@@ -125,16 +123,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
     }
   }, [waitingForProject]);
 
-  const loadDemoProject = async () => {
-    try {
-      const demos = await getPublicDemoProjects();
-      if (demos.length > 0) {
-        setDemoProjectId(demos[0].id);
-      }
-    } catch (err) {
-      console.error('Failed to load demo project:', err);
-    }
-  };
+  // Demo projects are handled by TryTheToolSection via onSelectProject
 
   useEffect(() => {
     const handleScroll = () => {
@@ -201,6 +190,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
   const validPendingCount = uploadedPdfs.filter(p => p.status === 'pending' || p.status === 'uploaded').length;
   const canContinue = validPendingCount >= 1;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notificationEmail.trim());
+  const isZipValid = /^\d{5}$/.test(propertyZip.trim());
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
@@ -288,7 +278,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
   };
 
   const handleAnalyze = async () => {
-    if (!canContinue || !isEmailValid) return;
+    if (!canContinue || !isEmailValid || !isZipValid) return;
 
     setAnalysisError(null);
 
@@ -307,9 +297,12 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
 
       await updateProjectDataSharingConsent(projectId, dataSharingConsent);
 
+      // Save zip code and project details
+      const projectUpdates: Record<string, string> = { property_zip: propertyZip.trim() };
       if (projectDetails.trim()) {
-        await updateProject(projectId, { project_details: projectDetails });
+        projectUpdates.project_details = projectDetails;
       }
+      await updateProject(projectId, projectUpdates);
 
       await updateProject(projectId, { status: 'collecting_bids' });
 
@@ -376,38 +369,14 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
         // Ignore localStorage errors
       }
 
-      // Show success screen - analysis takes 20-30 minutes
-      setAnalysisState('submitted');
+      // Go directly to ResultsView — AnalysisStatusBanner will show processing state
+      onSelectProject(projectId);
     } catch (err) {
       console.error('Failed to process:', err);
       setAnalysisState('error');
       setAnalysisError(err instanceof Error ? err.message : 'An unexpected error occurred');
     }
   };
-
-  if (analysisState === 'submitted') {
-    return (
-      <AnalysisSuccessScreen
-        email={notificationEmail}
-        projectId={draftProjectId || ''}
-        onViewDemo={() => {
-          if (demoProjectId) {
-            onSelectProject(demoProjectId);
-          }
-        }}
-        onReturnHome={() => {
-          setAnalysisState('idle');
-          setUploadedPdfs([]);
-          setDraftProjectId(null);
-        }}
-        onViewResults={() => {
-          if (draftProjectId) {
-            onSelectProject(draftProjectId);
-          }
-        }}
-      />
-    );
-  }
 
   if (analysisState === 'analyzing' || analysisState === 'uploading') {
     return (
@@ -769,39 +738,64 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
           </div>
 
           <div className="mt-8 pt-6 border-t border-gray-100">
-            <div className="mb-4">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <p className="text-xs text-gray-500 mb-2">
-                Used to retrieve your analysis later and notify you when processing is complete
-              </p>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  id="email"
-                  type="email"
-                  value={notificationEmail}
-                  onChange={(e) => setNotificationEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label htmlFor="zip" className="block text-sm font-medium text-gray-700 mb-1">
+                  Property Zip Code
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Used to find available rebates and incentives
+                </p>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="zip"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={5}
+                    value={propertyZip}
+                    onChange={(e) => setPropertyZip(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                    placeholder="90210"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Address
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Used to retrieve your analysis and notify you when ready
+                </p>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="email"
+                    type="email"
+                    value={notificationEmail}
+                    onChange={(e) => setNotificationEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
+                  />
+                </div>
               </div>
             </div>
 
             <button
               onClick={handleAnalyze}
-              disabled={!canContinue || !isEmailValid}
+              disabled={!canContinue || !isEmailValid || !isZipValid}
               className="btn btn-primary w-full flex items-center justify-center gap-2 py-3"
             >
               Analyze My Bids
               <ArrowRight className="w-4 h-4" />
             </button>
 
-            {(!canContinue || !isEmailValid) && (
+            {(!canContinue || !isEmailValid || !isZipValid) && (
               <p className="text-center text-sm text-gray-500 mt-3">
                 {!canContinue
                   ? 'Upload at least 1 bid to continue'
+                  : !isZipValid
+                  ? 'Enter a valid 5-digit zip code to continue'
                   : 'Enter a valid email address to continue'}
               </p>
             )}

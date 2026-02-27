@@ -1,4 +1,4 @@
-import { DollarSign, Zap, Award, ClipboardList, MessageCircle } from 'lucide-react';
+import { DollarSign, Zap, Award, ClipboardList, MessageCircle, ClipboardCheck } from 'lucide-react';
 import type { ResultsTab, AnalysisStatus } from '../../lib/types';
 
 interface TabDef {
@@ -38,6 +38,12 @@ const TABS: TabDef[] = [
     label: 'Questions',
     subtitle: 'Specific questions to ask each contractor before deciding',
     icon: <MessageCircle className="w-5 h-5" />,
+  },
+  {
+    key: 'verify',
+    label: 'Verify',
+    subtitle: 'Quality installation checklist and contractor review after your project',
+    icon: <ClipboardCheck className="w-5 h-5" />,
   },
 ];
 

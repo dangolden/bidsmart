@@ -180,13 +180,6 @@ function ResultsViewContent({ onNavigateHome }: { onNavigateHome?: () => void })
   // Bids from ProjectContext already match BidEntry shape (ContractorBid = Bid)
   const bidEntries = bids;
 
-  // IncentivesTab needs bid scores
-  const bidScores = bids.map(b => ({
-    bidId: b.bid.id,
-    contractorName: b.bid.contractor_name,
-    scores: b.scores,
-  }));
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -237,6 +230,7 @@ function ResultsViewContent({ onNavigateHome }: { onNavigateHome?: () => void })
           status={analysisStatus}
           analyzedBidCount={analyzedBidCount}
           totalBidCount={totalBidCount}
+          notificationEmail={project?.notification_email ?? undefined}
         />
 
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -254,7 +248,6 @@ function ResultsViewContent({ onNavigateHome }: { onNavigateHome?: () => void })
             {activeTab === 'incentives' && (
               <IncentivesTab
                 propertyZip={project?.property_zip}
-                bidScores={bidScores}
               />
             )}
             {activeTab === 'equipment' && (
@@ -272,6 +265,9 @@ function ResultsViewContent({ onNavigateHome }: { onNavigateHome?: () => void })
                 questions={questions}
                 refreshQuestions={refreshQuestions}
               />
+            )}
+            {activeTab === 'verify' && projectId && (
+              <PostInstallationSection projectId={projectId} alwaysOpen />
             )}
           </div>
         </div>
@@ -336,8 +332,6 @@ function ResultsViewContent({ onNavigateHome }: { onNavigateHome?: () => void })
           </div>
         )}
 
-        {/* Post-installation section */}
-        {projectId && <PostInstallationSection projectId={projectId} />}
       </div>
     </div>
   );
