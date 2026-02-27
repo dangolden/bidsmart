@@ -7,6 +7,7 @@ import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent
 import { uploadPdfFile, startBatchAnalysis, type DocumentForAnalysis } from '../lib/services/mindpalService';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import SwitchLogo from '../assets/switchlogo.svg';
+import SIOLogo from '../assets/sio_horizontal_logo.jpg';
 
 const SESSION_ID_KEY = 'bidsmart_session_id';
 
@@ -28,7 +29,7 @@ interface PrioritySliderProps {
 
 function PrioritySlider({ label, value, onChange, description }: PrioritySliderProps) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-gray-700">{label}</label>
         <span className="text-sm text-gray-500">{value}/5</span>
@@ -481,19 +482,16 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             <Upload className="w-5 h-5 text-switch-green-600" />
             Start a New Bid Comparison
           </h2>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-gray-600 mb-3">
             Upload your contractor bid documents to compare (PDF, DOC, or DOCX).
           </p>
 
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-            <div className="flex gap-3">
-              <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-amber-800">One-Time Analysis</p>
-                <p className="text-sm text-amber-700 mt-1">
-                  Upload all the bids you want to compare before clicking Analyze. All bids will be analyzed together.
-                </p>
-              </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
+            <div className="flex gap-2">
+              <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-700">
+                <span className="font-medium text-amber-800">One-Time Analysis:</span> Upload all bids you want to compare before clicking Analyze.
+              </p>
             </div>
           </div>
 
@@ -525,27 +523,28 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
             className={`
-              border-2 border-dashed rounded-xl p-5 text-center transition-colors cursor-pointer
+              border-2 border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer
               ${dragActive ? 'border-switch-green-500 bg-switch-green-50' : 'border-gray-300 hover:border-gray-400'}
             `}
           >
-            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <FileText className="w-5 h-5 text-gray-400" />
+            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <FileText className="w-4 h-4 text-gray-400" />
             </div>
-            <p className="text-gray-600 mb-1.5 text-sm">Drag and drop bid documents here</p>
-            <p className="text-sm text-gray-400 mb-3">or</p>
-            <button
-              type="button"
-              className="btn btn-secondary text-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-            >
-              Browse Files
-            </button>
-            <p className="text-xs text-gray-400 mt-3">
-              Supported formats: PDF, DOC, DOCX (max 25MB each)
+            <p className="text-gray-600 text-sm mb-1">
+              Drag and drop bid documents here, or{' '}
+              <button
+                type="button"
+                className="text-switch-green-600 hover:text-switch-green-700 font-medium underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
+              >
+                browse files
+              </button>
+            </p>
+            <p className="text-xs text-gray-400">
+              PDF, DOC, DOCX (max 25MB each)
             </p>
           </div>
 
@@ -580,15 +579,15 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             </div>
           )}
 
-          <div className="mt-8 pt-6 border-t border-gray-100">
+          <div className="mt-4 pt-4 border-t border-gray-100">
             <button
               type="button"
               onClick={() => setShowPriorities(!showPriorities)}
-              className="w-full flex items-center justify-between text-left p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center justify-between text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <div>
-                <h3 className="font-medium text-gray-900">What Matters Most to You?</h3>
-                <p className="text-sm text-gray-500">Set your priorities for the comparison (optional)</p>
+                <h3 className="font-medium text-gray-900 text-sm">What Matters Most to You?</h3>
+                <p className="text-xs text-gray-500">Set your priorities for the comparison (optional)</p>
               </div>
               <svg className={`w-5 h-5 text-gray-400 transition-transform ${showPriorities ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -596,7 +595,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             </button>
 
             {showPriorities && (
-              <div className="mt-4 space-y-6 px-1">
+              <div className="mt-3 space-y-3 px-1">
                 <PrioritySlider
                   label="Upfront Cost"
                   value={priorities.price}
@@ -631,15 +630,15 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             )}
           </div>
 
-          <div className="mt-4">
+          <div className="mt-3">
             <button
               type="button"
               onClick={() => setShowProjectDetails(!showProjectDetails)}
-              className="w-full flex items-center justify-between text-left p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center justify-between text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <div>
-                <h3 className="font-medium text-gray-900">Tell Us About Your Project</h3>
-                <p className="text-sm text-gray-500">Share details for better recommendations (optional)</p>
+                <h3 className="font-medium text-gray-900 text-sm">Tell Us About Your Project</h3>
+                <p className="text-xs text-gray-500">Share details for better recommendations (optional)</p>
               </div>
               <svg className={`w-5 h-5 text-gray-400 transition-transform ${showProjectDetails ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -684,7 +683,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             )}
           </div>
 
-          <div className="mt-6 bg-gray-50 rounded-xl border border-gray-200 p-5">
+          <div className="mt-4 bg-gray-50 rounded-xl border border-gray-200 p-4">
             <label className="flex items-start gap-3 cursor-pointer group">
               <div className="pt-0.5">
                 <input
@@ -737,13 +736,13 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             </label>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-gray-100">
+          <div className="mt-4 pt-4 border-t border-gray-100">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
                 <label htmlFor="zip" className="block text-sm font-medium text-gray-700 mb-1">
                   Property Zip Code
                 </label>
-                <p className="text-xs text-gray-500 mb-2">
+                <p className="text-xs text-gray-500 mb-1">
                   Used to find available rebates and incentives
                 </p>
                 <div className="relative">
@@ -756,7 +755,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
                     value={propertyZip}
                     onChange={(e) => setPropertyZip(e.target.value.replace(/\D/g, '').slice(0, 5))}
                     placeholder="90210"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -764,7 +763,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                   Email Address
                 </label>
-                <p className="text-xs text-gray-500 mb-2">
+                <p className="text-xs text-gray-500 mb-1">
                   Used to retrieve your analysis and notify you when ready
                 </p>
                 <div className="relative">
@@ -775,7 +774,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
                     value={notificationEmail}
                     onChange={(e) => setNotificationEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -802,9 +801,12 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 text-center mt-6 pb-4">
-          Powered by TheSwitchIsOn.org
-        </p>
+        <div className="text-center mt-4 pb-4">
+          <a href="https://switchison.org" target="_blank" rel="noopener noreferrer" className="inline-flex flex-col items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors">
+            <span className="text-xs">Powered by</span>
+            <img src={SIOLogo} alt="SwitchIsOn" className="h-6 w-auto opacity-60 hover:opacity-100 transition-opacity" />
+          </a>
+        </div>
       </div>
     </div>
   );
