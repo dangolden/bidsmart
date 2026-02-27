@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useUser } from './hooks/useUser';
 import { UnifiedHomePage } from './components/UnifiedHomePage';
-import { BidSmartFlow } from './components/BidSmartFlow';
+import { ResultsView } from './components/results/ResultsView';
 import { ProcessingBanner } from './components/ProcessingBanner';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminLogin, getStoredAdminSession, clearAdminSession, type AdminUser } from './components/AdminLogin';
@@ -197,7 +197,7 @@ function App() {
           onDismiss={handleDismissBanner}
         />
       )}
-      <BidSmartFlow user={user} projectId={activeProjectId} onNavigateHome={handleNavigateHome} />
+      <ResultsView user={user} projectId={activeProjectId} onNavigateHome={handleNavigateHome} />
     </>
   );
 }

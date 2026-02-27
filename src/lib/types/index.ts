@@ -887,6 +887,26 @@ export interface MindPalExtractionResponse {
 }
 
 // ============================================
+// MULTI-CONFIG TYPES
+// ============================================
+
+export interface BidConfiguration {
+  id: string;
+  bid_id: string;
+  config_index: number;
+  config_label: string | null;
+  system_type: string | null;
+  is_primary: boolean;
+  is_comparable: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ResultsTab = 'incentives' | 'equipment' | 'contractors' | 'cost-scope' | 'questions';
+
+export type AnalysisStatus = 'processing' | 'partial' | 'complete' | 'failed' | 'timeout';
+
+// ============================================
 // UI COMPONENT TYPES
 // ============================================
 

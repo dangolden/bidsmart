@@ -1,0 +1,53 @@
+import type { Bid, BidEquipment, BidScope, BidContractor, BidScore } from '../types';
+
+export interface BidEntry {
+  bid: Bid;
+  equipment: BidEquipment[];
+  scope?: BidScope | null;
+  contractor?: BidContractor | null;
+  scores?: BidScore | null;
+}
+
+export interface DeduplicatedBidEntry extends BidEntry {
+  mergedBidCount?: number;
+}
+
+export const PLACEHOLDER_NAMES = new Set(['tbd', 'unknown', 'unknown contractor', '']);
+
+/**
+ * Deduplicate bids by contractor name — if the same company submitted multiple PDFs,
+ * merge them into one column using the bid that has the most data.
+ */
+export function deduplicateBids(bids: BidEntry[]): DeduplicatedBidEntry[] {
+  const seen = new Map<string, DeduplicatedBidEntry>();
+
+  for (const b of bids) {
+    const rawKey = (b.bid.contractor_name || '').trim().toLowerCase();
+    const key = !rawKey || PLACEHOLDER_NAMES.has(rawKey) ? `__unnamed_${b.bid.id}` : rawKey;
+    const existing = seen.get(key);
+
+    if (!existing) {
+      seen.set(key, { ...b, mergedBidCount: 1 });
+    } else {
+      const existingHasScope = !!existing.scope;
+      const incomingHasScope = !!b.scope;
+      let winner: DeduplicatedBidEntry = existing;
+
+      if (!existingHasScope && incomingHasScope) {
+        winner = { ...b, mergedBidCount: (existing.mergedBidCount || 1) + 1 };
+      } else if (existingHasScope && incomingHasScope) {
+        const existingAmount = existing.scope?.total_bid_amount ?? 0;
+        const incomingAmount = b.scope?.total_bid_amount ?? 0;
+        winner = {
+          ...(incomingAmount > existingAmount ? b : existing),
+          mergedBidCount: (existing.mergedBidCount || 1) + 1,
+        };
+      } else {
+        winner = { ...existing, mergedBidCount: (existing.mergedBidCount || 1) + 1 };
+      }
+      seen.set(key, winner);
+    }
+  }
+
+  return Array.from(seen.values());
+}

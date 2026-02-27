@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { MessageCircle, Mail, Info, Maximize2, Minimize2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
-import { usePhase } from '../../context/PhaseContext';
 import { useQuestionFilters } from '../../hooks/useQuestionFilters';
 import { TierToggle } from './TierToggle';
 import { CategoryFilter } from './CategoryFilter';
@@ -20,10 +19,11 @@ interface BidEntry {
 interface ContractorQuestionsPanelProps {
   bids: BidEntry[];
   questions: BidQuestion[];
+  refreshQuestions?: () => Promise<void>;
 }
 
-export function ContractorQuestionsPanel({ bids, questions }: ContractorQuestionsPanelProps) {
-  const { refreshQuestions } = usePhase();
+export function ContractorQuestionsPanel({ bids, questions, refreshQuestions: refreshQuestionsProp }: ContractorQuestionsPanelProps) {
+  const refreshQuestions = refreshQuestionsProp || (async () => {});
   const [emailModalBidId, setEmailModalBidId] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 

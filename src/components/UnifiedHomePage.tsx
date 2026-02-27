@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, BarChart3, CheckCircle, ClipboardCheck, FileText, X, Clock, CheckCircle2, AlertCircle, ArrowRight, Users, Shield, Info, Mail, Loader2, ChevronRight, Mic, MicOff } from 'lucide-react';
+import { Upload, FileText, X, Clock, CheckCircle2, AlertCircle, ArrowRight, Users, Shield, Info, Mail, Loader2, ChevronRight, Mic, MicOff } from 'lucide-react';
 import type { UserExt } from '../lib/types';
 import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
@@ -19,41 +19,6 @@ function getOrCreateSessionId(): string {
   }
   return sessionId;
 }
-
-const PHASES = [
-  {
-    number: 1,
-    label: 'GATHER',
-    title: 'Upload & Prioritize',
-    description: 'Upload contractor bids and set your priorities',
-    icon: Upload,
-    color: 'bg-switch-green-100 text-switch-green-700',
-  },
-  {
-    number: 2,
-    label: 'COMPARE',
-    title: 'Analyze Options',
-    description: 'Compare equipment, costs, and contractors side-by-side',
-    icon: BarChart3,
-    color: 'bg-blue-100 text-blue-700',
-  },
-  {
-    number: 3,
-    label: 'DECIDE',
-    title: 'Make Your Choice',
-    description: 'Review incentives and select your contractor',
-    icon: CheckCircle,
-    color: 'bg-amber-100 text-amber-700',
-  },
-  {
-    number: 4,
-    label: 'VERIFY',
-    title: 'Quality Check',
-    description: 'Ensure proper installation with our checklist',
-    icon: ClipboardCheck,
-    color: 'bg-teal-100 text-teal-700',
-  },
-];
 
 interface PrioritySliderProps {
   label: string;
@@ -538,47 +503,6 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
               </span>
             </div>
           )}
-          <div className="flex items-center justify-between mb-3">
-            {PHASES.map((phase, index) => {
-              const isActive = phase.number === 1;
-
-              return (
-                <div key={phase.number} className="flex items-center flex-1">
-                  <div className="flex items-center gap-2 transition-all min-w-0">
-                    <div
-                      className={`
-                        w-10 h-10 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors flex-shrink-0
-                        ${isActive ? 'bg-switch-green-600 text-white' : 'bg-gray-200 text-gray-400'}
-                      `}
-                    >
-                      {phase.number}
-                    </div>
-                    <span
-                      className={`
-                        text-xs sm:text-sm font-medium hidden md:block truncate
-                        ${isActive ? 'text-gray-900' : 'text-gray-500'}
-                      `}
-                    >
-                      {phase.label}
-                    </span>
-                  </div>
-
-                  {index < PHASES.length - 1 && (
-                    <div className="flex-1 mx-2 sm:mx-3 min-w-[12px]">
-                      <div className="h-0.5 bg-gray-200 transition-colors" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-switch-green-600 transition-all duration-500"
-              style={{ width: '0%' }}
-            />
-          </div>
         </div>
       </div>
 
