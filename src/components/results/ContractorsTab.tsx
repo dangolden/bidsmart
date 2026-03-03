@@ -16,7 +16,7 @@ export function ContractorsTab({ bids }: ContractorsTabProps) {
     const c = b.contractor;
     return {
       bidId: b.bid.id,
-      contractor: getContractorDisplayName(b.bid.contractor_name, idx),
+      contractor: getContractorDisplayName(b.bid.contractor_name, idx, b.contractor),
       yearsInBusiness: c?.years_in_business,
       yearEstablished: c?.year_established,
       googleRating: c?.google_rating,

@@ -19,7 +19,7 @@ export function EquipmentTab({ bids }: EquipmentTabProps) {
 
     return {
       bidId: b.bid.id,
-      contractor: getContractorDisplayName(b.bid.contractor_name, idx),
+      contractor: getContractorDisplayName(b.bid.contractor_name, idx, b.contractor),
       brand: mainEquipment?.brand || '-',
       model: mainEquipment?.model_number || mainEquipment?.model_name || '-',
       seer2: mainEquipment?.seer2_rating || mainEquipment?.seer_rating,

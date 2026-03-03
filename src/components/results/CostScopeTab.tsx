@@ -22,7 +22,7 @@ export function CostScopeTab({ bids }: CostScopeTabProps) {
     const sc = b.scope;
     return {
       bidId: b.bid.id,
-      contractor: getContractorDisplayName(b.bid.contractor_name, idx),
+      contractor: getContractorDisplayName(b.bid.contractor_name, idx, b.contractor),
       totalAmount: sc?.total_bid_amount ?? 0,
       equipmentCost: sc?.equipment_cost,
       laborCost: sc?.labor_cost,
@@ -48,7 +48,7 @@ export function CostScopeTab({ bids }: CostScopeTabProps) {
     const sc = b.scope;
     return {
       bidId: b.bid.id,
-      contractor: getContractorDisplayName(b.bid.contractor_name, idx),
+      contractor: getContractorDisplayName(b.bid.contractor_name, idx, b.contractor),
       permit: sc?.permit_included,
       permitDetail: sc?.permit_detail,
       disposal: sc?.disposal_included,
@@ -390,7 +390,7 @@ export function CostScopeTab({ bids }: CostScopeTabProps) {
       <ElectricalComparisonTable
         rows={deduplicatedBids.map(b => ({
           bidId: b.bid.id,
-          contractorName: b.bid.contractor_name,
+          contractorName: b.contractor?.name?.trim() || b.bid.contractor_name,
           scope: b.scope,
         }))}
       />

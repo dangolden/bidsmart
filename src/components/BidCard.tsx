@@ -6,6 +6,7 @@ import {
 import * as db from '../lib/database/bidsmartService';
 import type { ContractorBid, BidScope, BidContractor, BidScore, PdfUpload } from '../lib/types';
 import { formatCurrency } from '../lib/utils/formatters';
+import { getContractorDisplayName } from '../lib/utils/bidDeduplication';
 
 interface BidCardProps {
   bid: ContractorBid;
@@ -51,7 +52,7 @@ export function BidCard({ bid, scope, contractor, scores, pdfUpload: _pdfUpload,
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-semibold text-gray-900 truncate">{bid.contractor_name}</h3>
+              <h3 className="font-semibold text-gray-900 truncate">{getContractorDisplayName(bid.contractor_name, undefined, contractor)}</h3>
               {/* Switch preferred badge — requires Switch.com integration */}
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-gray-500">

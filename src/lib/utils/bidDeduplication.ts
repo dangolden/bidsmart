@@ -16,9 +16,20 @@ export const PLACEHOLDER_NAMES = new Set(['tbd', 'unknown', 'unknown contractor'
 
 /**
  * Return a display-friendly contractor name.
- * Replaces stub/placeholder values like 'TBD' with a numbered label.
+ * Prefers the researched name from bid_contractors, falls back to
+ * bids.contractor_name, then a numbered label.
  */
-export function getContractorDisplayName(name: string | null | undefined, index?: number): string {
+export function getContractorDisplayName(
+  name: string | null | undefined,
+  index?: number,
+  contractor?: { name?: string | null } | null
+): string {
+  // Prefer the researched name from bid_contractors
+  const contractorName = contractor?.name?.trim();
+  if (contractorName && !PLACEHOLDER_NAMES.has(contractorName.toLowerCase())) {
+    return contractorName;
+  }
+  // Fall back to bids.contractor_name
   const trimmed = (name || '').trim();
   const lower = trimmed.toLowerCase();
   if (!trimmed || PLACEHOLDER_NAMES.has(lower)) {
@@ -35,7 +46,8 @@ export function deduplicateBids(bids: BidEntry[]): DeduplicatedBidEntry[] {
   const seen = new Map<string, DeduplicatedBidEntry>();
 
   for (const b of bids) {
-    const rawKey = (b.bid.contractor_name || '').trim().toLowerCase();
+    const contractorKey = b.contractor?.name?.trim().toLowerCase();
+    const rawKey = contractorKey || (b.bid.contractor_name || '').trim().toLowerCase();
     const key = !rawKey || PLACEHOLDER_NAMES.has(rawKey) ? `__unnamed_${b.bid.id}` : rawKey;
     const existing = seen.get(key);
 

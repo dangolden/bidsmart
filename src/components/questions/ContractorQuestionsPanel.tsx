@@ -264,7 +264,7 @@ export function ContractorQuestionsPanel({ bids, questions, refreshQuestions: re
     <CraftEmailModal
       isOpen={!!emailModalBidId}
       onClose={() => setEmailModalBidId(null)}
-      contractorName={getContractorDisplayName(emailModalBid.bid.contractor_name)}
+      contractorName={getContractorDisplayName(emailModalBid.bid.contractor_name, undefined, emailModalBid.contractor)}
       contractorEmail={emailModalBid.contractor?.email}
       questions={emailModalQuestions}
     />

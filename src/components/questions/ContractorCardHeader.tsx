@@ -13,7 +13,7 @@ interface ContractorCardHeaderProps {
 }
 
 export function ContractorCardHeader({ bid, contractor, index, subtitle, action }: ContractorCardHeaderProps) {
-  const name = getContractorDisplayName(bid.contractor_name, index);
+  const name = getContractorDisplayName(bid.contractor_name, index, contractor);
   const c = contractor;
 
   // Build info chips from available data
