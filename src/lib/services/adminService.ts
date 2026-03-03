@@ -222,6 +222,73 @@ export function isAdminEmail(email: string): boolean {
 }
 
 // ============================================
+// ADMIN SUBMISSIONS
+// ============================================
+
+export interface AdminSubmission {
+  id: string;
+  project_name: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  notification_email: string | null;
+  notify_on_completion: boolean;
+  notification_sent_at: string | null;
+  error_notification_sent_at: string | null;
+  analysis_queued_at: string | null;
+  bids: Array<{
+    id: string;
+    status: string;
+    contractor_name: string | null;
+    last_error: string | null;
+  }>;
+}
+
+export type SubmissionFilter = 'all' | 'awaiting_retry' | 'failed' | 'analyzing' | 'completed';
+
+export async function getSubmissions(): Promise<AdminSubmission[]> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('id, project_name, status, created_at, updated_at, notification_email, notify_on_completion, notification_sent_at, error_notification_sent_at, analysis_queued_at, bids(id, status, contractor_name, last_error)')
+    .not('status', 'eq', 'draft')
+    .order('updated_at', { ascending: false })
+    .limit(200);
+
+  if (error) {
+    console.error('Error fetching submissions:', error);
+    return [];
+  }
+
+  return (data || []) as AdminSubmission[];
+}
+
+export function filterSubmissions(
+  submissions: AdminSubmission[],
+  filter: SubmissionFilter
+): AdminSubmission[] {
+  switch (filter) {
+    case 'awaiting_retry':
+      return submissions.filter(
+        (s) => s.error_notification_sent_at && !s.notification_sent_at
+      );
+    case 'failed':
+      return submissions.filter(
+        (s) =>
+          s.status === 'cancelled' ||
+          s.bids?.some((b) => b.status === 'failed')
+      );
+    case 'analyzing':
+      return submissions.filter((s) => s.status === 'analyzing');
+    case 'completed':
+      return submissions.filter(
+        (s) => s.status === 'comparing' || s.status === 'completed'
+      );
+    default:
+      return submissions;
+  }
+}
+
+// ============================================
 // ADMIN DATA CLEANUP
 // ============================================
 

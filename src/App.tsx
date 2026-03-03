@@ -38,6 +38,37 @@ function App() {
   const [showAdmin, setShowAdmin] = useState(initialPath === '/admin');
   const [showHome, setShowHome] = useState(initialPath !== '/admin');
 
+  // Handle deep link URL params: ?project_id=xxx&email=yyy
+  // This lets completion emails link directly to the report
+  useEffect(() => {
+    if (!user) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const deepLinkProjectId = params.get('project_id');
+
+    if (deepLinkProjectId) {
+      // Validate the project exists before navigating
+      const validateAndNavigate = async () => {
+        try {
+          const { data: project } = await supabase
+            .from('projects')
+            .select('id, status')
+            .eq('id', deepLinkProjectId)
+            .maybeSingle();
+
+          if (project) {
+            handleSelectProject(deepLinkProjectId);
+            // Clean up URL params so they don't persist on refresh
+            window.history.replaceState({}, '', '/');
+          }
+        } catch {
+          // Silently fail — user will just see the homepage
+        }
+      };
+      validateAndNavigate();
+    }
+  }, [user]);
+
   // Check for processing project in localStorage and verify it's still active
   useEffect(() => {
     const checkProcessingProject = async () => {

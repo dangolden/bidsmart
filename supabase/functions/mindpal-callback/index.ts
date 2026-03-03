@@ -19,6 +19,39 @@ interface ExtendedCallbackPayload extends MindPalCallbackPayloadV2 {
 const MINDPAL_CALLBACK_SECRET = Deno.env.get("MINDPAL_CALLBACK_SECRET");
 
 /**
+ * Trigger error alert emails (admin + user) via the send-error-alert edge function.
+ * Best-effort: failures are logged but don't propagate.
+ */
+async function triggerErrorAlert(
+  projectId: string | null,
+  errorType: string,
+  errorDetails: string,
+  failedBidIds: string[]
+): Promise<void> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !supabaseServiceKey) return;
+
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/send-error-alert`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${supabaseServiceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        project_id: projectId,
+        error_type: errorType,
+        error_details: errorDetails,
+        failed_bid_ids: failedBidIds,
+      }),
+    });
+  } catch (err) {
+    console.error("Failed to trigger error alert:", err);
+  }
+}
+
+/**
  * Process a single bid result from the MindPal callback.
  * - UPDATE bids: status → 'completed', contractor_name, processing_attempts
  * - UPSERT bid_scope: ALL extracted pricing/scope/warranty/timeline data
@@ -311,6 +344,14 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      // Trigger error alert (admin + user notification)
+      await triggerErrorAlert(
+        project_id || null,
+        "workflow_failure",
+        payload.error?.message || "MindPal workflow failed",
+        payload.bids?.map((b) => b.bid_id) || []
+      );
+
       return jsonResponse({ success: true, status: "failed" });
     }
 
@@ -338,6 +379,17 @@ Deno.serve(async (req: Request) => {
         results.push(result);
         console.log(`Bid ${bidResult.bid_id}: ${result.success ? "✅" : "❌"} ${result.error || ""}`);
       }
+    }
+
+    // Trigger error alert if any bids failed processing
+    const failedResults = results.filter((r) => !r.success);
+    if (failedResults.length > 0) {
+      await triggerErrorAlert(
+        resolvedProjectId,
+        "bid_processing_error",
+        `${failedResults.length} bid(s) failed processing`,
+        failedResults.map((r) => r.bidId)
+      );
     }
 
     // Process batch-level FAQs (if any)
@@ -494,6 +546,19 @@ Deno.serve(async (req: Request) => {
 
   } catch (error) {
     console.error("Error in mindpal-callback:", error);
+
+    // Best-effort error alert — don't let alert failure mask the original error
+    try {
+      await triggerErrorAlert(
+        null,
+        "internal_error",
+        error instanceof Error ? error.message : "Unknown error",
+        []
+      );
+    } catch {
+      /* don't let alert failure mask original error */
+    }
+
     return errorResponse(
       error instanceof Error ? error.message : "Internal server error",
       500
