@@ -27,9 +27,9 @@ This app lives on its own (not embedded in another product yet). Simple UI, clea
 | Frontend | React + TypeScript |
 | Database | Supabase (Postgres) |
 | Storage | Supabase Storage (signed URLs for PDF access) |
-| AI Workflow | MindPal (v10, 11-12 agents, ~3-5 min per job) |
-| Automation middleware | Make.com (parses MindPal webhook → routes to Supabase) |
-| Edge Functions | Supabase Edge Functions (`start-mindpal-analysis`, `mindpal-callback`) |
+| AI Workflow | MindPal (v18, 11-12 agents, ~3-5 min per job) |
+| DB Writes | MindPal Supabase Post agents (Custom API tools → Supabase REST API) |
+| Edge Functions | Supabase Edge Functions (`start-mindpal-analysis`) |
 | Error alerts | Gmail → dangolden@pandotic.ai |
 
 ### What "Done" Looks Like for a Job
@@ -71,25 +71,24 @@ User uploads PDFs via frontend
   → Frontend calls Edge Function: start-mindpal-analysis
        (payload: job_id, signed PDF URLs, user priorities)
   → MindPal Workflow triggers (async)
-       - Loop Node: extract each PDF → Bid Data Extractor agent
-       - Equipment Researcher → enriches with web-searched specs
-       - Contractor Researcher → reviews, BBB, licensing
-       - Incentive Finder → HEEHRA rebates, federal tax credits, utility programs
-       - Scoring Engine → comparison scores
-       - Question Generator → per-bid questions for homeowner
-       - FAQ Generator → 15 standard comparison FAQs
-       - JSON Assembler (Code Node) → merges all outputs, validates schema
-       - Webhook Node → sends to Make.com
-  → Make.com scenario: extracts clean JSON from MindPal payload
-  → Make.com → Supabase Edge Function: mindpal-callback
-  → Edge Function writes to normalized Supabase tables
+       - Parse Documents JSON (Code Node) → parses input into bid array
+       - Bid Data Extractor (Loop) → extracts each PDF to markdown
+       - Equipment Researcher (Loop) → enriches with web-searched specs
+       - Supabase Post (bid_equipment) → writes to Supabase
+       - Contractor Researcher (Loop) → reviews, BBB, licensing
+       - Supabase Post (bid_contractor) → writes to Supabase
+       - Scope Extractor (Loop) → 69-column scope extraction
+       - Supabase Post (bid_scope) → writes to Supabase
+       - Question Generator (Agent) → per-bid questions for homeowner
+       - Supabase Post (contractor_questions) → writes to Supabase
+       - Update Project Status → sets job to complete
   → Frontend polls/subscribes to job status + output tables
   → UI renders from DB records (no giant JSON in memory)
 ```
 
 ### Key Architecture Rules
 
-- **MindPal results are routed via Make.com → Edge Function** — not direct DB writes
+- **MindPal writes directly to Supabase** via individual "Supabase Post" agents using Custom API tools (PostgREST REST API)
 - **Nodes must be idempotent** — safe to re-run without duplicating records
 - **"Unknown" is explicit** — nodes write `null` + reason, never guess
 - **Heat pump comparison focus** — non-heat-pump items (water heaters, etc.) are recorded as scope differences, not deep-compared
@@ -114,10 +113,11 @@ User uploads PDFs via frontend
 ### Key Tables
 ```
 bids                  — identity stub (status, request_id, storage_key)
-bid_scope             — all extracted data (69 columns)
-bid_equipment         — normalized equipment records
+bid_configurations    — per-bid system options (config_index, config_label, system_type)
+bid_scope             — all extracted data (69 columns, FK to bid_configurations)
+bid_equipment         — normalized equipment records (FK to bid_configurations)
 bid_contractors       — company info, contact, license, ratings
-contractor_questions  — generated questions for homeowner
+contractor_questions  — generated questions for homeowner (FK to bid_configurations)
 mindpal_extractions   — raw extraction data + debug info
 ```
 
@@ -131,26 +131,29 @@ mindpal_extractions   — raw extraction data + debug info
 
 ## Part 5: MindPal Workflow — Current State
 
-### v10 Workflow (current)
+### V3 Workflow (current)
 
 ```javascript
-WORKFLOW_ID: '69860fd696be27d5d9cb4252'
+WORKFLOW_ID: '69a1f41759b4b9a364ba3775'
 
 FIELD_IDS: {
-  documents:       '69860fd696be27d5d9cb4258',  // JSON array of signed PDF URLs
-  user_priorities: '69860fd696be27d5d9cb4255',  // {"price":4,"warranty":3,...}
-  request_id:      '69860fd696be27d5d9cb4257',  // unique string (job_id)
-  callback_url:    '69860fd696be27d5d9cb4256'   // Make.com webhook URL
+  document_urls:   '69a1f41c59b4b9a364ba3790',  // Legacy flat URL array
+  documents_json:  '69a1f41d59b4b9a364ba3794',  // V2: array of {bid_id, doc_url, mime_type}
+  user_priorities: '69a1f41c59b4b9a364ba3791',  // {"price":4,"warranty":3,...}
+  user_notes:      '69a1f41c59b4b9a364ba378f',  // optional user notes
+  project_id:      '69a1f41d59b4b9a364ba3793',  // UUID of the project (REQUIRED)
+  callback_url:    '69a1f41c59b4b9a364ba3792',  // Supabase Edge Function URL
+  request_id:      '69a1f41c59b4b9a364ba378e',  // unique string (batch correlation ID)
 }
 ```
 
 **API endpoint:**
 ```
-POST https://api-v3.mindpal.io/api/v1/workflow-runs?workflow_id=69860fd696be27d5d9cb4252
-Authorization: Bearer {MINDPAL_API_KEY}
+POST https://app.mindpal.space/api/v2/workflow/run?workflow_id=69a1f41759b4b9a364ba3775
+x-api-key: {MINDPAL_API_KEY}
 ```
 
-**⚠️ Known issue:** Question Generator degraded in v10 to single-line instructions. The full v8 spec (7-category system, electrical category, `good_answer_looks_like` fields, `questions_summary` array) must be restored. Full spec in `mindpal/references/bidsmart.md`.
+**Question Generator:** V3 with full 4-tier system, 8 question categories (incl. system_comparison for multi-config), `good_answer_looks_like`/`concerning_answer_looks_like` fields, `questions_summary` array, Scope Extractor input. Spec at `mindpal/nodes/question-generator.md`.
 
 ### How Documents Are Passed to MindPal
 PDFs live in Supabase Storage. The frontend generates **signed URLs** and passes them as a JSON array string to MindPal. MindPal fetches documents via URL. No base64 encoding.
@@ -250,10 +253,10 @@ Every version of this workflow must enforce:
 2. **Output schema = database contract** — every dropped field silently breaks the frontend or DB inserts.
 3. **All Code Node inputs are strings** — always `JSON.parse()`, always strip markdown wrappers before parsing.
 4. **Purple highlight rule** — a MindPal variable reference only works if it displays purple in the UI. Plain text = broken = no data.
-5. **Make.com raw JSON editor** — never use the field mapper UI for dynamic JSON bodies. It adds spaces to `{{variables}}` and silently breaks parsing.
+5. **Supabase Post agent Custom API tools** — each writes directly to one Supabase table. The tool body must include all required fields. New DB columns require updating the tool body.
 6. **Documents are signed URLs** — never encode PDFs as base64. MindPal fetches from Supabase Storage URLs.
 7. **Confidence score thresholds**: >70% healthy | 50-70% marginal | <50% extraction failing upstream.
-8. **Empty arrays in JSON Assembler** — root cause is almost always upstream, not the Code Node itself. Check upstream agent raw output first.
+8. **Empty/missing data in Supabase Post output** — root cause is almost always upstream agent returning incomplete JSON. Check upstream agent raw output first.
 
 ---
 
@@ -311,6 +314,6 @@ Before editing `SCHEMA_V2_COMPLETE.html`, always:
 ---
 
 *Project: Bid Compare*
-*Stack: React + TypeScript, Supabase, MindPal v10, Make.com*
+*Stack: React + TypeScript, Supabase, MindPal v18*
 *Contact: dangolden@pandotic.ai*
 *Last updated: February 2026*

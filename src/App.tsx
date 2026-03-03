@@ -69,6 +69,33 @@ function App() {
     }
   }, [user]);
 
+  // Restore active project from localStorage on page refresh
+  useEffect(() => {
+    if (!user) return;
+    if (activeProjectId) return; // Already set (e.g., from deep link)
+
+    // Don't restore if there's a deep link — let that handler take precedence
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('project_id')) return;
+
+    const stored = localStorage.getItem(ACTIVE_PROJECT_KEY);
+    if (stored) {
+      supabase
+        .from('projects')
+        .select('id, status')
+        .eq('id', stored)
+        .maybeSingle()
+        .then(({ data: project }) => {
+          if (project && project.status !== 'draft' && project.status !== 'cancelled') {
+            setActiveProjectId(stored);
+            setShowHome(false);
+          } else {
+            localStorage.removeItem(ACTIVE_PROJECT_KEY);
+          }
+        });
+    }
+  }, [user]);
+
   // Check for processing project in localStorage and verify it's still active
   useEffect(() => {
     const checkProcessingProject = async () => {

@@ -173,6 +173,7 @@ export function useQuestionFilters(questions: BidQuestion[]) {
 
     // Question selection
     selectedQuestionIds,
+    setSelectedQuestionIds,
     toggleQuestion,
     selectAll,
     selectNone,

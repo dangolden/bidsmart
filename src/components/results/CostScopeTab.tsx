@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Star, CheckCircle, XCircle, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Star, CheckCircle, XCircle, HelpCircle, ChevronDown, ChevronUp, Package } from 'lucide-react';
 import { deduplicateBids, getContractorDisplayName, type BidEntry } from '../../lib/utils/bidDeduplication';
 import { getHighestValue, isHighlighted, LABEL_COL_WIDTH, BID_COL_MIN_WIDTH, SCOPE_ITEMS } from '../../lib/utils/comparisonHelpers';
 import { formatCurrency, formatDate } from '../../lib/utils/formatters';
@@ -73,6 +73,8 @@ export function CostScopeTab({ bids }: CostScopeTabProps) {
       padDetail: sc?.pad_detail,
       drainLine: sc?.drain_line_included,
       drainLineDetail: sc?.drain_line_detail,
+      inclusions: sc?.inclusions || [],
+      lineItems: (sc?.line_items || []) as Array<{item_type?: string; description?: string; amount?: number; quantity?: number; unit_price?: number; is_included?: boolean; notes?: string}>,
       mergedBidCount: (b as ReturnType<typeof deduplicateBids>[0]).mergedBidCount,
     };
   });
@@ -385,6 +387,88 @@ export function CostScopeTab({ bids }: CostScopeTabProps) {
           </table>
         </div>
       </div>
+
+      {/* Additional Items & Inclusions — only show if any bid has data */}
+      {scopeData.some(s => s.inclusions.length > 0 || s.lineItems.length > 0) && (
+        <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
+          <div className="px-5 py-3 border-b-2 border-gray-200 bg-gradient-to-r from-gray-700 to-gray-800">
+            <h2 className="font-semibold text-white flex items-center gap-2">
+              <Package className="w-4 h-4" /> Additional Items & Inclusions
+            </h2>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full" style={{ minWidth: tableMinWidth, tableLayout: 'fixed' }}>
+              <thead>
+                <tr className="bg-gray-900">
+                  <th style={labelCellStyle} className="px-5 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider border-r border-gray-700">
+                    Item
+                  </th>
+                  {scopeData.map((s, idx) => (
+                    <th key={s.bidId} style={bidCellStyle} className={`px-5 py-4 text-left text-sm font-semibold text-white ${idx < scopeData.length - 1 ? 'border-r border-gray-700' : ''}`}>
+                      {s.contractor}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {/* Inclusions row */}
+                {scopeData.some(s => s.inclusions.length > 0) && (
+                  <tr className="border-b border-gray-200">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">What's Included</td>
+                    {scopeData.map((s, idx) => (
+                      <td key={s.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-900 ${idx < scopeData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {s.inclusions.length > 0 ? (
+                          <ul className="text-xs space-y-1.5">
+                            {s.inclusions.slice(0, 6).map((item, i) => (
+                              <li key={i} className="flex items-start gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span className="text-gray-700">{item}</span>
+                              </li>
+                            ))}
+                            {s.inclusions.length > 6 && (
+                              <li className="text-gray-500 pl-5">+{s.inclusions.length - 6} more items</li>
+                            )}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-400">None specified</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                )}
+
+                {/* Line Items row */}
+                {scopeData.some(s => s.lineItems.length > 0) && (
+                  <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <td style={labelCellStyle} className="px-5 py-4 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">Itemized Add-ons</td>
+                    {scopeData.map((s, idx) => (
+                      <td key={s.bidId} style={bidCellStyle} className={`px-5 py-4 text-sm text-gray-900 ${idx < scopeData.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        {s.lineItems.length > 0 ? (
+                          <div className="space-y-1.5">
+                            {s.lineItems.map((item, i) => (
+                              <div key={i} className="flex items-start justify-between gap-2 text-xs">
+                                <span className="text-gray-700">{item.description || item.item_type || 'Item'}</span>
+                                {item.amount != null && (
+                                  <span className="text-gray-900 font-medium whitespace-nowrap">
+                                    ${item.amount.toLocaleString()}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">None</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Electrical Comparison */}
       <ElectricalComparisonTable

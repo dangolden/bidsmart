@@ -29,7 +29,7 @@ export async function verifyEmailAuth(req: Request): Promise<AuthResult | Respon
       userName = tokenResult.name;
     } else if (isParentAuthEnabled()) {
       // Token provided but invalid, and parent auth is required
-      return errorResponse("Invalid or expired authentication token", 401);
+      return errorResponse("Invalid or expired authentication token", 401, req);
     }
   }
 
@@ -37,19 +37,19 @@ export async function verifyEmailAuth(req: Request): Promise<AuthResult | Respon
   if (!userEmail) {
     if (isParentAuthEnabled()) {
       // Parent auth is enabled but no valid token - reject
-      return errorResponse("Authentication token required", 401);
+      return errorResponse("Authentication token required", 401, req);
     }
-    
+
     // Legacy mode: trust X-User-Email header (less secure)
     userEmail = req.headers.get("X-User-Email");
     if (!userEmail) {
-      return errorResponse("Missing authentication", 401);
+      return errorResponse("Missing authentication", 401, req);
     }
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(userEmail)) {
-    return errorResponse("Invalid email format", 400);
+    return errorResponse("Invalid email format", 400, req);
   }
 
   // Get or create user
@@ -62,7 +62,7 @@ export async function verifyEmailAuth(req: Request): Promise<AuthResult | Respon
     }
     
     if (!userExt) {
-      return errorResponse("User not found", 404);
+      return errorResponse("User not found", 404, req);
     }
   }
 
