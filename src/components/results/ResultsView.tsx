@@ -12,6 +12,7 @@ import { ContractorsTab } from './ContractorsTab';
 import { CostScopeTab } from './CostScopeTab';
 import { QuestionsTab } from './QuestionsTab';
 import { PostInstallationSection } from './PostInstallationSection';
+import SwitchLogo from '../../assets/switchlogo.svg';
 import type { UserExt } from '../../lib/types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -191,7 +192,7 @@ function ResultsViewContent({ onNavigateHome }: { onNavigateHome?: () => void })
               className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
             >
               <img
-                src="/switchlogo.svg"
+                src={SwitchLogo}
                 alt="Switch Logo"
                 className="h-8 w-auto"
               />
