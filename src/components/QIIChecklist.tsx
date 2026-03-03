@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   ClipboardCheck, CheckCircle2, Circle, AlertTriangle, Info,
-  ChevronDown, ChevronUp, Printer
+  ChevronDown, ChevronUp, Printer, Download
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import type { ProjectQIIChecklist, QIICategory } from '../lib/types';
@@ -58,7 +58,8 @@ const CATEGORY_INFO: Record<QIICategory, { label: string; description: string; i
 export function QIIChecklist({ projectId }: QIIChecklistProps) {
   const [items, setItems] = useState<ChecklistItemWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedCategory, setExpandedCategory] = useState<QIICategory | null>('pre_installation');
+  const ALL_CATEGORIES = Object.keys(CATEGORY_INFO) as QIICategory[];
+  const [expandedCategories, setExpandedCategories] = useState<Set<QIICategory>>(new Set(ALL_CATEGORIES));
 
   useEffect(() => {
     loadChecklist();
@@ -152,6 +153,24 @@ export function QIIChecklist({ projectId }: QIIChecklistProps) {
     window.print();
   }
 
+  function handleDownloadChecklist() {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const url = `${supabaseUrl}/functions/v1/generate-contractor-checklist?project_id=${projectId}`;
+    window.open(url, '_blank');
+  }
+
+  function toggleCategory(category: QIICategory) {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  }
+
   const progress = getProgress();
   const categories = Object.keys(CATEGORY_INFO) as QIICategory[];
 
@@ -174,10 +193,16 @@ export function QIIChecklist({ projectId }: QIIChecklistProps) {
               Based on ACCA/ANSI Quality Installation standards.
             </p>
           </div>
-          <button onClick={handlePrint} className="btn btn-secondary text-sm print:hidden">
-            <Printer className="w-4 h-4" />
-            Print
-          </button>
+          <div className="flex items-center gap-2 print:hidden">
+            <button onClick={handleDownloadChecklist} className="btn btn-secondary text-sm flex items-center gap-1.5">
+              <Download className="w-4 h-4" />
+              Download PDF
+            </button>
+            <button onClick={handlePrint} className="btn btn-secondary text-sm flex items-center gap-1.5">
+              <Printer className="w-4 h-4" />
+              Print
+            </button>
+          </div>
         </div>
 
         {/* Progress */}
@@ -217,7 +242,7 @@ export function QIIChecklist({ projectId }: QIIChecklistProps) {
         {categories.map((category) => {
           const info = CATEGORY_INFO[category];
           const categoryProgress = getCategoryProgress(category);
-          const isExpanded = expandedCategory === category;
+          const isExpanded = expandedCategories.has(category);
           const categoryItems = getCategoryItems(category);
           const allVerified = categoryProgress.verified === categoryProgress.total;
 
@@ -225,7 +250,7 @@ export function QIIChecklist({ projectId }: QIIChecklistProps) {
             <div key={category} className="card overflow-hidden">
               {/* Category Header */}
               <button
-                onClick={() => setExpandedCategory(isExpanded ? null : category)}
+                onClick={() => toggleCategory(category)}
                 className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center gap-3">

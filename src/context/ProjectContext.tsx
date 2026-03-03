@@ -128,6 +128,12 @@ export function ProjectProvider({ children, userId, projectId: initialProjectId 
     analysisStatus: 'processing',
   });
 
+  // Reset to default tab when navigating to a different project
+  useEffect(() => {
+    localStorage.removeItem(TAB_STORAGE_KEY);
+    setState(prev => ({ ...prev, activeTab: 'incentives' }));
+  }, [initialProjectId]);
+
   useEffect(() => {
     async function initializeProject() {
       try {

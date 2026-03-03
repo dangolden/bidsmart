@@ -173,7 +173,8 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
 
     @media print {
       body {
-        padding: 0.25in;
+        padding: 0.2in;
+        font-size: 9pt;
       }
       .page-break {
         page-break-before: always;
@@ -181,20 +182,52 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
       .no-print {
         display: none;
       }
+      .header { margin-bottom: 12px; padding-bottom: 8px; }
+      h1 { font-size: 14pt; margin: 8px 0 4px 0; }
+      .project-info { padding: 10px; margin-bottom: 16px; }
+      .info-grid { gap: 6px; margin-top: 6px; }
+      .intro { padding: 10px; margin-bottom: 16px; font-size: 8.5pt; }
+      .category { margin-bottom: 12px; }
+      .category-header { padding: 8px 12px; }
+      .category-title { font-size: 11pt; }
+      .category-desc { font-size: 8pt; }
+      .checklist-item { padding: 6px 12px; }
+      .item-text { font-size: 9pt; margin-bottom: 2px; }
+      .item-description { font-size: 8pt; margin-top: 2px; }
+      .item-why { padding: 4px 8px; margin-top: 4px; font-size: 7.5pt; }
+      .contractor-notes { margin-top: 4px; padding-top: 4px; }
+      .notes-lines { height: 12px; }
+      .signature-section { margin-top: 16px; padding-top: 12px; }
+      .signature-grid { gap: 16px; margin-top: 8px; }
+      .signature-box { padding: 10px; }
+      .footer { margin-top: 12px; padding-top: 8px; }
     }
 
     .header {
       text-align: center;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
       border-bottom: 3px solid #10b981;
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .header-logo svg {
+      width: 36px;
+      height: 36px;
     }
 
     .logo-text {
       font-size: 20pt;
       font-weight: bold;
       color: #10b981;
-      margin-bottom: 4px;
+      margin-bottom: 0;
     }
 
     .tagline {
@@ -455,7 +488,18 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
   <button class="print-button no-print" onclick="window.print()">🖨️ Print Checklist</button>
 
   <div class="header">
-    <div class="logo-text">SwitchIsOn.org</div>
+    <div class="header-logo">
+      <svg width="36" height="36" viewBox="0 0 186 188" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g clip-path="url(#clip0)">
+          <path d="M35.4539 136.093L22.3423 122.982C5.65152 106.291 5.65152 79.2259 22.3423 62.5351L42.5578 42.3196L62.7733 22.104C79.4641 5.41324 106.529 5.41324 123.22 22.104L143.435 42.3196L163.651 62.5351C180.342 79.2259 180.342 106.291 163.651 122.982L143.435 143.197L118.218 168.415C104.288 182.344 81.7049 182.344 67.7818 168.415C53.8526 154.486 53.8526 131.902 67.7818 117.979L73.5109 112.25" stroke="#10b981" stroke-width="18.1685" stroke-miterlimit="10"/>
+          <path d="M98.6523 65.3302L115.725 48.2578" stroke="#10b981" stroke-width="18.1685" stroke-miterlimit="10"/>
+          <path d="M120.43 87.1114L137.502 70.0391" stroke="#10b981" stroke-width="18.1685" stroke-miterlimit="10"/>
+          <path d="M134.425 95.572L129.126 82.4483C128.515 80.9343 127.606 79.5595 126.455 78.4088L107.348 59.3016C106.198 58.1509 104.823 57.2365 103.309 56.6308L90.1851 51.3317C87.9503 50.4293 85.4007 50.9501 83.6928 52.6519L71.0294 65.3154C69.9211 66.4237 69.2913 67.9195 69.2731 69.4881L69.261 70.6085C69.0732 86.4878 63.5258 101.834 53.521 114.164C51.583 116.551 51.7647 120.015 53.9389 122.189L58.7535 127.004L63.5682 131.818C65.7423 133.992 69.2065 134.174 71.5926 132.236C83.923 122.231 99.2754 116.684 115.149 116.496L116.269 116.484C117.838 116.466 119.333 115.836 120.442 114.728L133.105 102.064C134.807 100.362 135.328 97.8068 134.425 95.572ZM99.881 93.9732L106.179 100.272L76.1105 108.835L85.9881 98.9574C87.5749 97.3707 87.5749 94.7908 85.9881 93.2041L79.6897 86.9056L109.759 78.3422L99.881 88.2198C98.2943 89.8066 98.2943 92.3865 99.881 93.9732Z" fill="#10b981"/>
+        </g>
+        <defs><clipPath id="clip0"><rect width="184.513" height="187.445" fill="white" transform="translate(0.742188 0.507812)"/></clipPath></defs>
+      </svg>
+      <div class="logo-text">SwitchIsOn.org</div>
+    </div>
     <div class="tagline">Quality Heat Pump Installation Standards</div>
   </div>
 
@@ -525,7 +569,6 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
                 ${item.why_it_matters ? `<div class="item-why"><strong>Why it matters:</strong> ${item.why_it_matters}</div>` : ''}
                 <div class="contractor-notes">
                   <div class="notes-label">CONTRACTOR NOTES / MEASUREMENTS:</div>
-                  <div class="notes-lines"></div>
                   <div class="notes-lines"></div>
                 </div>
               </div>
