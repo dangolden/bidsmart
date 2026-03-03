@@ -173,8 +173,9 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
 
     @media print {
       body {
-        padding: 0.2in;
-        font-size: 9pt;
+        padding: 0.25in 0.35in;
+        font-size: 8.5pt;
+        line-height: 1.3;
       }
       .page-break {
         page-break-before: always;
@@ -182,25 +183,36 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
       .no-print {
         display: none;
       }
-      .header { margin-bottom: 12px; padding-bottom: 8px; }
-      h1 { font-size: 14pt; margin: 8px 0 4px 0; }
-      .project-info { padding: 10px; margin-bottom: 16px; }
-      .info-grid { gap: 6px; margin-top: 6px; }
-      .intro { padding: 10px; margin-bottom: 16px; font-size: 8.5pt; }
-      .category { margin-bottom: 12px; }
-      .category-header { padding: 8px 12px; }
-      .category-title { font-size: 11pt; }
-      .category-desc { font-size: 8pt; }
-      .checklist-item { padding: 6px 12px; }
-      .item-text { font-size: 9pt; margin-bottom: 2px; }
-      .item-description { font-size: 8pt; margin-top: 2px; }
-      .item-why { padding: 4px 8px; margin-top: 4px; font-size: 7.5pt; }
-      .contractor-notes { margin-top: 4px; padding-top: 4px; }
-      .notes-lines { height: 12px; }
-      .signature-section { margin-top: 16px; padding-top: 12px; }
-      .signature-grid { gap: 16px; margin-top: 8px; }
-      .signature-box { padding: 10px; }
-      .footer { margin-top: 12px; padding-top: 8px; }
+      .header { margin-bottom: 8px; padding-bottom: 6px; }
+      .header-logo svg { width: 24px; height: 24px; }
+      .logo-text { font-size: 14pt; }
+      .tagline { font-size: 8pt; }
+      h1 { font-size: 12pt; margin: 4px 0 4px 0; }
+      .project-info { padding: 8px; margin-bottom: 10px; }
+      .info-grid { gap: 4px; margin-top: 4px; }
+      .info-label { font-size: 7pt; margin-bottom: 0; }
+      .info-value { font-size: 9pt; }
+      .intro { padding: 6px 8px; margin-bottom: 10px; font-size: 7.5pt; line-height: 1.4; }
+      .category { margin-bottom: 6px; }
+      .category-header { padding: 4px 8px; }
+      .category-icon { font-size: 12pt; }
+      .category-title { font-size: 9pt; }
+      .category-desc { font-size: 7pt; margin-top: 0; }
+      .checklist-item { padding: 3px 8px; gap: 6px; }
+      .checkbox { width: 13px; height: 13px; border-width: 1.5px; }
+      .item-text { font-size: 8.5pt; margin-bottom: 0; }
+      .item-description { font-size: 7.5pt; margin-top: 1px; line-height: 1.3; }
+      .critical-badge { font-size: 6pt; padding: 1px 4px; }
+      .contractor-notes { margin-top: 2px; padding-top: 2px; border-top: none; }
+      .notes-line-inline { height: 10px; border-bottom: 1px solid #d1d5db; }
+      .notes-label { font-size: 7pt; margin-bottom: 1px; }
+      .signature-section { margin-top: 12px; padding-top: 8px; }
+      .signature-grid { gap: 12px; margin-top: 6px; }
+      .signature-box { padding: 8px; }
+      .signature-label { font-size: 9pt; margin-bottom: 8px; }
+      .signature-line { margin: 16px 0 4px 0; }
+      .signature-text { font-size: 7pt; }
+      .footer { margin-top: 8px; padding-top: 6px; }
     }
 
     .header {
@@ -291,7 +303,7 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
     }
 
     .category {
-      margin-bottom: 24px;
+      margin-bottom: 16px;
       page-break-inside: avoid;
     }
 
@@ -329,10 +341,10 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
     }
 
     .checklist-item {
-      padding: 12px 16px;
+      padding: 8px 12px;
       border-bottom: 1px solid #e5e7eb;
       display: flex;
-      gap: 12px;
+      gap: 8px;
       align-items: flex-start;
     }
 
@@ -385,49 +397,39 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
       line-height: 1.5;
     }
 
-    .item-why {
-      background: #eff6ff;
-      border-left: 3px solid #3b82f6;
-      padding: 8px 10px;
-      margin-top: 6px;
-      font-size: 8.5pt;
-      color: #1e3a8a;
-      line-height: 1.5;
-    }
-
-    .item-why strong {
-      font-weight: 700;
-    }
-
     .contractor-notes {
-      margin-top: 8px;
-      padding-top: 8px;
+      margin-top: 4px;
+      padding-top: 4px;
       border-top: 1px dashed #d1d5db;
     }
 
     .notes-label {
-      font-size: 8pt;
+      font-size: 7.5pt;
       color: #6b7280;
       font-weight: 600;
-      margin-bottom: 4px;
+      display: inline;
     }
 
-    .notes-lines {
+    .notes-line-inline {
+      display: inline-block;
+      width: 70%;
       border-bottom: 1px solid #d1d5db;
-      height: 16px;
+      height: 14px;
+      vertical-align: bottom;
+      margin-left: 4px;
     }
 
     .signature-section {
-      margin-top: 32px;
-      padding-top: 24px;
+      margin-top: 20px;
+      padding-top: 16px;
       border-top: 2px solid #e5e7eb;
     }
 
     .signature-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 32px;
-      margin-top: 16px;
+      gap: 24px;
+      margin-top: 12px;
     }
 
     .signature-box {
@@ -566,10 +568,8 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
                   ${item.is_critical ? '<span class="critical-badge">Critical</span>' : ''}
                 </div>
                 ${item.description ? `<div class="item-description">${item.description}</div>` : ''}
-                ${item.why_it_matters ? `<div class="item-why"><strong>Why it matters:</strong> ${item.why_it_matters}</div>` : ''}
                 <div class="contractor-notes">
-                  <div class="notes-label">CONTRACTOR NOTES / MEASUREMENTS:</div>
-                  <div class="notes-lines"></div>
+                  <span class="notes-label">Notes:</span><span class="notes-line-inline"></span>
                 </div>
               </div>
             </div>

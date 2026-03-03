@@ -10,9 +10,11 @@ interface ContractorCardHeaderProps {
   subtitle?: React.ReactNode;
   /** Action button on the right (e.g. "Craft Email") */
   action?: React.ReactNode;
+  /** Custom Tailwind bg class for the numbered badge (defaults to bg-switch-green-600) */
+  badgeColor?: string;
 }
 
-export function ContractorCardHeader({ bid, contractor, index, subtitle, action }: ContractorCardHeaderProps) {
+export function ContractorCardHeader({ bid, contractor, index, subtitle, action, badgeColor }: ContractorCardHeaderProps) {
   const name = getContractorDisplayName(bid.contractor_name, index, contractor);
   const c = contractor;
 
@@ -60,7 +62,7 @@ export function ContractorCardHeader({ bid, contractor, index, subtitle, action 
       {/* Top row: number badge + name + action */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <div className="w-8 h-8 bg-switch-green-600 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+          <div className={`w-8 h-8 ${badgeColor || 'bg-switch-green-600'} rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0`}>
             {index + 1}
           </div>
           <div className="min-w-0">

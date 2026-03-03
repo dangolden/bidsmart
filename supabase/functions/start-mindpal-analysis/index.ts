@@ -3,23 +3,23 @@ import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabase.ts";
 import { verifyEmailAuth, verifyProjectOwnership } from "../_shared/auth.ts";
 
-// MindPal API configuration (v18 workflow — app.mindpal.space v2 API + data format)
+// MindPal API configuration (V3 workflow — app.mindpal.space v2 API + data format)
 const MINDPAL_API_ENDPOINT = Deno.env.get("MINDPAL_API_ENDPOINT") || "https://app.mindpal.space/api/v2/workflow/run";
 const MINDPAL_API_KEY = Deno.env.get("MINDPAL_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 
 // Workflow ID for BidSmart Analyzer
-const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "699a33ac6787d2e1b0e9ed93";
+const WORKFLOW_ID = Deno.env.get("MINDPAL_WORKFLOW_ID") || "69a1f41759b4b9a364ba3775";
 
-// MindPal field IDs for the workflow inputs (v18 workflow — updated 2026-02-22)
-const DOCUMENT_URLS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENT_URLS_FIELD_ID") || "699a33ad6787d2e1b0e9ed96";
-const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "699a33ad6787d2e1b0e9ed98";
-const USER_NOTES_FIELD_ID = Deno.env.get("MINDPAL_USER_NOTES_FIELD_ID") || "699a33ad6787d2e1b0e9ed9a";
-const PROJECT_ID_FIELD_ID = Deno.env.get("MINDPAL_PROJECT_ID_FIELD_ID") || "699a33ad6787d2e1b0e9ed99";
-const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "699a33ad6787d2e1b0e9ed9b";
-const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "699a33ad6787d2e1b0e9ed97";
+// MindPal field IDs for the workflow inputs (V3 workflow — updated 2026-03-02)
+const DOCUMENT_URLS_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENT_URLS_FIELD_ID") || "69a1f41c59b4b9a364ba3790";
+const USER_PRIORITIES_FIELD_ID = Deno.env.get("MINDPAL_USER_PRIORITIES_FIELD_ID") || "69a1f41c59b4b9a364ba3791";
+const USER_NOTES_FIELD_ID = Deno.env.get("MINDPAL_USER_NOTES_FIELD_ID") || "69a1f41c59b4b9a364ba378f";
+const PROJECT_ID_FIELD_ID = Deno.env.get("MINDPAL_PROJECT_ID_FIELD_ID") || "69a1f41d59b4b9a364ba3793";
+const CALLBACK_URL_FIELD_ID = Deno.env.get("MINDPAL_CALLBACK_URL_FIELD_ID") || "69a1f41c59b4b9a364ba3792";
+const REQUEST_ID_FIELD_ID = Deno.env.get("MINDPAL_REQUEST_ID_FIELD_ID") || "69a1f41c59b4b9a364ba378e";
 // V2: documents_json field — paired bid_id + doc_url for MindPal Loop Node
-const DOCUMENTS_JSON_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENTS_JSON_FIELD_ID") || "699d42f8f6f83a173c0b6d4a";
+const DOCUMENTS_JSON_FIELD_ID = Deno.env.get("MINDPAL_DOCUMENTS_JSON_FIELD_ID") || "69a1f41d59b4b9a364ba3794";
 
 // V2 request body: accepts documents array with bid_ids
 interface DocumentInput {
@@ -154,7 +154,7 @@ Deno.serve(async (req: Request) => {
     if (corsResponse) return corsResponse;
 
     if (req.method !== "POST") {
-      return errorResponse("Method not allowed", 405);
+      return errorResponse("Method not allowed", 405, req);
     }
 
     const authResult = await verifyEmailAuth(req);
@@ -177,11 +177,11 @@ Deno.serve(async (req: Request) => {
 
     // Validate inputs
     if (!projectId) {
-      return errorResponse("Missing projectId");
+      return errorResponse("Missing projectId", 400, req);
     }
 
     if (!userPriorities || typeof userPriorities !== "object") {
-      return errorResponse("Missing or invalid userPriorities");
+      return errorResponse("Missing or invalid userPriorities", 400, req);
     }
 
     // Support both V2 (documents[]) and V1 (pdfUploadIds[]) formats
@@ -196,12 +196,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (documents.length === 0) {
-      return errorResponse("Missing documents or pdfUploadIds array");
+      return errorResponse("Missing documents or pdfUploadIds array", 400, req);
     }
 
     const isOwner = await verifyProjectOwnership(userExtId, projectId);
     if (!isOwner) {
-      return errorResponse("Not authorized to access this project", 403);
+      return errorResponse("Not authorized to access this project", 403, req);
     }
 
     const requestId = generateUUID();
@@ -251,7 +251,7 @@ Deno.serve(async (req: Request) => {
             .eq("id", doc.bid_id);
         }
 
-        return errorResponse(`URL generation failed: ${urlError instanceof Error ? urlError.message : String(urlError)}`);
+        return errorResponse(`URL generation failed: ${urlError instanceof Error ? urlError.message : String(urlError)}`, 400, req);
       }
     }
 
@@ -305,7 +305,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      return errorResponse(`MindPal API failed: ${apiError instanceof Error ? apiError.message : String(apiError)}`);
+      return errorResponse(`MindPal API failed: ${apiError instanceof Error ? apiError.message : String(apiError)}`, 500, req);
     }
 
     // Update project status
@@ -338,12 +338,13 @@ Deno.serve(async (req: Request) => {
       bidIds: documents.map((d) => d.bid_id).filter(Boolean),
       mode: "url",
       message: "Analysis started successfully",
-    });
+    }, 200, req);
   } catch (error) {
     console.error("Error in start-mindpal-analysis:", error);
     return errorResponse(
       error instanceof Error ? error.message : "Internal server error",
-      500
+      500,
+      req
     );
   }
 });

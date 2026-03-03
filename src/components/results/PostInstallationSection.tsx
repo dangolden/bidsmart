@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, ClipboardCheck, Download, FileCheck2, MessageSquare } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
-import { getBidWithChildren } from '../../lib/database/bidsmartService';
+import { getBidsByProject, getBidWithChildren } from '../../lib/database/bidsmartService';
+import { getContractorDisplayName } from '../../lib/utils/bidDeduplication';
 import { ContractorReviewSurvey } from '../ContractorReviewSurvey';
 import type { BidWithChildren } from '../../lib/types';
 
@@ -13,7 +14,8 @@ interface PostInstallationSectionProps {
 export function PostInstallationSection({ projectId, alwaysOpen = false }: PostInstallationSectionProps) {
   const [isOpen, setIsOpen] = useState(alwaysOpen);
   const [loading, setLoading] = useState(false);
-  const [selectedBid, setSelectedBid] = useState<BidWithChildren | null>(null);
+  const [allBids, setAllBids] = useState<BidWithChildren[]>([]);
+  const [selectedContractorBidId, setSelectedContractorBidId] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
 
   // Load data immediately when alwaysOpen, or when section is first opened
@@ -25,24 +27,44 @@ export function PostInstallationSection({ projectId, alwaysOpen = false }: PostI
 
   async function loadProjectData() {
     setLoading(true);
-    const { data: projectData } = await supabase
-      .from('projects')
-      .select('id, selected_bid_id')
-      .eq('id', projectId)
-      .single();
 
-    if (projectData?.selected_bid_id) {
-      try {
-        const bidWithChildren = await getBidWithChildren(projectData.selected_bid_id);
-        setSelectedBid(bidWithChildren);
-      } catch (error) {
-        console.error('Error loading selected bid:', error);
+    try {
+      // Load all bids for the project
+      const bids = await getBidsByProject(projectId);
+
+      // Load children (contractor info) for each bid
+      const bidsWithChildren = await Promise.all(
+        bids.map(async (bid) => {
+          try {
+            return await getBidWithChildren(bid.id);
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const validBids = bidsWithChildren.filter((b): b is BidWithChildren => b !== null);
+      setAllBids(validBids);
+
+      // Pre-select if project has a selected_bid_id
+      const { data: projectData } = await supabase
+        .from('projects')
+        .select('selected_bid_id')
+        .eq('id', projectId)
+        .single();
+
+      if (projectData?.selected_bid_id) {
+        setSelectedContractorBidId(projectData.selected_bid_id);
       }
+    } catch (error) {
+      console.error('Error loading project bids:', error);
     }
 
     setLoading(false);
     setHasLoaded(true);
   }
+
+  const selectedBidForReview = allBids.find(b => b.bid.id === selectedContractorBidId) || null;
 
   function handleDownloadChecklist() {
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-contractor-checklist?project_id=${projectId}`;
@@ -111,18 +133,48 @@ export function PostInstallationSection({ projectId, alwaysOpen = false }: PostI
               </div>
             </div>
 
-            {selectedBid ? (
-              <ContractorReviewSurvey
-                projectId={projectId}
-                contractorBidId={selectedBid.bid.id}
-                onSubmitSuccess={() => {
-                  loadProjectData();
-                }}
-              />
+            {/* Contractor Selector */}
+            {allBids.length > 0 ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Which contractor are you reviewing?
+                  </label>
+                  <select
+                    value={selectedContractorBidId || ''}
+                    onChange={(e) => setSelectedContractorBidId(e.target.value || null)}
+                    className="w-full max-w-md border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-switch-green-500 focus:border-switch-green-500"
+                  >
+                    <option value="">Select a contractor...</option>
+                    {allBids.map((b, idx) => (
+                      <option key={b.bid.id} value={b.bid.id}>
+                        {getContractorDisplayName(b.bid.contractor_name, idx, b.contractor)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedBidForReview ? (
+                  <ContractorReviewSurvey
+                    key={selectedBidForReview.bid.id}
+                    projectId={projectId}
+                    contractorBidId={selectedBidForReview.bid.id}
+                    onSubmitSuccess={() => {
+                      loadProjectData();
+                    }}
+                  />
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                    <p className="text-gray-500 text-sm">
+                      Select a contractor above to leave your review.
+                    </p>
+                  </div>
+                )}
+              </div>
             ) : (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
-                <p className="text-amber-800">
-                  Select a contractor first, then return here to leave a review after installation.
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                <p className="text-gray-500">
+                  No contractors found for this project.
                 </p>
               </div>
             )}

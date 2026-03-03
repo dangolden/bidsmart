@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Home, Download, Mail, Loader2, CheckCircle } from 'lucide-react';
 import { ProjectProvider, useProject } from '../../context/ProjectContext';
 import { useUser } from '../../hooks/useUser';
@@ -178,6 +178,12 @@ function ResultsViewContent({ onNavigateHome }: { onNavigateHome?: () => void })
   const hasCostData = bids.some(b => !!b.scope);
   const hasQuestionData = questions.length > 0;
 
+  // Build display title from user's property address, falling back to project name
+  const displayTitle = useMemo(() => {
+    const parts = [user?.property_address, user?.property_city, user?.property_state].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : project?.project_name;
+  }, [user, project]);
+
   // Bids from ProjectContext already match BidEntry shape (ContractorBid = Bid)
   const bidEntries = bids;
 
@@ -198,11 +204,11 @@ function ResultsViewContent({ onNavigateHome }: { onNavigateHome?: () => void })
               />
             </button>
           )}
-          {project?.project_name && (
+          {displayTitle && (
             <>
               <span className="text-gray-300">/</span>
               <span className="text-sm font-medium text-gray-700 truncate">
-                {project.project_name}
+                {displayTitle}
               </span>
             </>
           )}
