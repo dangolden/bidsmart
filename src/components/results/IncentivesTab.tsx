@@ -14,6 +14,7 @@ interface IncentivesTabProps {
 export function IncentivesTab({ propertyZip }: IncentivesTabProps) {
   const [rebatePrograms, setRebatePrograms] = useState<RebateProgram[]>([]);
   const [selectedIncentives, setSelectedIncentives] = useState<Set<string>>(new Set());
+  const [showLowIncome, setShowLowIncome] = useState(false);
 
   useEffect(() => {
     async function loadRebatePrograms() {
@@ -23,7 +24,8 @@ export function IncentivesTab({ propertyZip }: IncentivesTabProps) {
         const data = await getIncentivesByZip(zip || '', stateCode || undefined);
         if (data) {
           setRebatePrograms(data);
-          setSelectedIncentives(new Set(data.map(p => p.id)));
+          // Only auto-select non-income-qualified programs by default
+          setSelectedIncentives(new Set(data.filter(p => !p.income_qualified).map(p => p.id)));
         }
       } catch (error) {
         console.error('Error loading incentives:', error);
@@ -42,12 +44,47 @@ export function IncentivesTab({ propertyZip }: IncentivesTabProps) {
     setSelectedIncentives(newSelected);
   };
 
+  const lowIncomeCount = rebatePrograms.filter(p => p.income_qualified).length;
+  const visiblePrograms = showLowIncome
+    ? rebatePrograms
+    : rebatePrograms.filter(p => !p.income_qualified);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Low Income Programs Toggle */}
+      {lowIncomeCount > 0 && (
+        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-5 py-3">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-amber-500" />
+            <div>
+              <span className="text-sm font-medium text-amber-900">
+                {lowIncomeCount} Low Income Qualified Program{lowIncomeCount !== 1 ? 's' : ''} available
+              </span>
+              <p className="text-xs text-amber-700 mt-0.5">
+                These programs have income eligibility requirements
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowLowIncome(prev => !prev)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+              showLowIncome ? 'bg-amber-500' : 'bg-gray-300'
+            }`}
+            aria-label="Toggle low income qualified programs"
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                showLowIncome ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      )}
+
       {/* Incentives Table */}
-      {rebatePrograms.length > 0 ? (
+      {visiblePrograms.length > 0 ? (
         <IncentivesTable
-          rebatePrograms={rebatePrograms}
+          rebatePrograms={visiblePrograms}
           selectedIncentives={selectedIncentives}
           onToggleIncentive={toggleIncentive}
         />
