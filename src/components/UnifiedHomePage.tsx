@@ -1,13 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, BarChart3, CheckCircle, ClipboardCheck, FileText, X, Clock, CheckCircle2, AlertCircle, ArrowRight, Users, Shield, Info, Mail, Loader2, ChevronRight, Mic, MicOff } from 'lucide-react';
+import { Upload, FileText, X, Clock, CheckCircle2, AlertCircle, ArrowRight, Users, Shield, Info, Mail, MapPin, Loader2, ChevronRight, Mic, MicOff } from 'lucide-react';
 import type { UserExt } from '../lib/types';
 import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
-import { AnalysisSuccessScreen } from './AnalysisSuccessScreen';
-import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject, getPublicDemoProjects } from '../lib/database/bidsmartService';
+import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject } from '../lib/database/bidsmartService';
 import { uploadPdfFile, startBatchAnalysis, type DocumentForAnalysis } from '../lib/services/mindpalService';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import SwitchLogo from '../assets/switchlogo.svg';
+import SIOLogo from '../assets/sio_horizontal_logo.jpg';
 
 const SESSION_ID_KEY = 'bidsmart_session_id';
 
@@ -20,41 +20,6 @@ function getOrCreateSessionId(): string {
   return sessionId;
 }
 
-const PHASES = [
-  {
-    number: 1,
-    label: 'GATHER',
-    title: 'Upload & Prioritize',
-    description: 'Upload contractor bids and set your priorities',
-    icon: Upload,
-    color: 'bg-switch-green-100 text-switch-green-700',
-  },
-  {
-    number: 2,
-    label: 'COMPARE',
-    title: 'Analyze Options',
-    description: 'Compare equipment, costs, and contractors side-by-side',
-    icon: BarChart3,
-    color: 'bg-blue-100 text-blue-700',
-  },
-  {
-    number: 3,
-    label: 'DECIDE',
-    title: 'Make Your Choice',
-    description: 'Review incentives and select your contractor',
-    icon: CheckCircle,
-    color: 'bg-amber-100 text-amber-700',
-  },
-  {
-    number: 4,
-    label: 'VERIFY',
-    title: 'Quality Check',
-    description: 'Ensure proper installation with our checklist',
-    icon: ClipboardCheck,
-    color: 'bg-teal-100 text-teal-700',
-  },
-];
-
 interface PrioritySliderProps {
   label: string;
   value: number;
@@ -64,7 +29,7 @@ interface PrioritySliderProps {
 
 function PrioritySlider({ label, value, onChange, description }: PrioritySliderProps) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-gray-700">{label}</label>
         <span className="text-sm text-gray-500">{value}/5</span>
@@ -121,6 +86,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
   const [dataSharingConsent, setDataSharingConsent] = useState(true);
   const [showPrivacyDetails, setShowPrivacyDetails] = useState(false);
   const [notificationEmail, setNotificationEmail] = useState('');
+  const [propertyZip, setPropertyZip] = useState('');
 
   const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -128,7 +94,6 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
   const analysisTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
-  const [demoProjectId, setDemoProjectId] = useState<string | null>(null);
   const [showPriorities, setShowPriorities] = useState(true);
   const [showProjectDetails, setShowProjectDetails] = useState(true);
   const [isHeaderSticky, setIsHeaderSticky] = useState(false);
@@ -148,7 +113,6 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
 
   useEffect(() => {
     checkForDraftProject();
-    loadDemoProject();
   }, [user.id]);
 
   // Restore waiting screen when returning from banner "View waiting page"
@@ -160,16 +124,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
     }
   }, [waitingForProject]);
 
-  const loadDemoProject = async () => {
-    try {
-      const demos = await getPublicDemoProjects();
-      if (demos.length > 0) {
-        setDemoProjectId(demos[0].id);
-      }
-    } catch (err) {
-      console.error('Failed to load demo project:', err);
-    }
-  };
+  // Demo projects are handled by TryTheToolSection via onSelectProject
 
   useEffect(() => {
     const handleScroll = () => {
@@ -236,6 +191,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
   const validPendingCount = uploadedPdfs.filter(p => p.status === 'pending' || p.status === 'uploaded').length;
   const canContinue = validPendingCount >= 1;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notificationEmail.trim());
+  const isZipValid = /^\d{5}$/.test(propertyZip.trim());
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
@@ -323,7 +279,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
   };
 
   const handleAnalyze = async () => {
-    if (!canContinue || !isEmailValid) return;
+    if (!canContinue || !isEmailValid || !isZipValid) return;
 
     setAnalysisError(null);
 
@@ -342,9 +298,12 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
 
       await updateProjectDataSharingConsent(projectId, dataSharingConsent);
 
+      // Save zip code and project details
+      const projectUpdates: Record<string, string> = { property_zip: propertyZip.trim() };
       if (projectDetails.trim()) {
-        await updateProject(projectId, { project_details: projectDetails });
+        projectUpdates.project_details = projectDetails;
       }
+      await updateProject(projectId, projectUpdates);
 
       await updateProject(projectId, { status: 'collecting_bids' });
 
@@ -411,38 +370,14 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
         // Ignore localStorage errors
       }
 
-      // Show success screen - analysis takes 20-30 minutes
-      setAnalysisState('submitted');
+      // Go directly to ResultsView — AnalysisStatusBanner will show processing state
+      onSelectProject(projectId);
     } catch (err) {
       console.error('Failed to process:', err);
       setAnalysisState('error');
       setAnalysisError(err instanceof Error ? err.message : 'An unexpected error occurred');
     }
   };
-
-  if (analysisState === 'submitted') {
-    return (
-      <AnalysisSuccessScreen
-        email={notificationEmail}
-        projectId={draftProjectId || ''}
-        onViewDemo={() => {
-          if (demoProjectId) {
-            onSelectProject(demoProjectId);
-          }
-        }}
-        onReturnHome={() => {
-          setAnalysisState('idle');
-          setUploadedPdfs([]);
-          setDraftProjectId(null);
-        }}
-        onViewResults={() => {
-          if (draftProjectId) {
-            onSelectProject(draftProjectId);
-          }
-        }}
-      />
-    );
-  }
 
   if (analysisState === 'analyzing' || analysisState === 'uploading') {
     return (
@@ -538,47 +473,6 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
               </span>
             </div>
           )}
-          <div className="flex items-center justify-between mb-3">
-            {PHASES.map((phase, index) => {
-              const isActive = phase.number === 1;
-
-              return (
-                <div key={phase.number} className="flex items-center flex-1">
-                  <div className="flex items-center gap-2 transition-all min-w-0">
-                    <div
-                      className={`
-                        w-10 h-10 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors flex-shrink-0
-                        ${isActive ? 'bg-switch-green-600 text-white' : 'bg-gray-200 text-gray-400'}
-                      `}
-                    >
-                      {phase.number}
-                    </div>
-                    <span
-                      className={`
-                        text-xs sm:text-sm font-medium hidden md:block truncate
-                        ${isActive ? 'text-gray-900' : 'text-gray-500'}
-                      `}
-                    >
-                      {phase.label}
-                    </span>
-                  </div>
-
-                  {index < PHASES.length - 1 && (
-                    <div className="flex-1 mx-2 sm:mx-3 min-w-[12px]">
-                      <div className="h-0.5 bg-gray-200 transition-colors" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-switch-green-600 transition-all duration-500"
-              style={{ width: '0%' }}
-            />
-          </div>
         </div>
       </div>
 
@@ -588,19 +482,16 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             <Upload className="w-5 h-5 text-switch-green-600" />
             Start a New Bid Comparison
           </h2>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-gray-600 mb-3">
             Upload your contractor bid documents to compare (PDF, DOC, or DOCX).
           </p>
 
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-            <div className="flex gap-3">
-              <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-amber-800">One-Time Analysis</p>
-                <p className="text-sm text-amber-700 mt-1">
-                  Upload all the bids you want to compare before clicking Analyze. All bids will be analyzed together.
-                </p>
-              </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
+            <div className="flex gap-2">
+              <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-700">
+                <span className="font-medium text-amber-800">One-Time Analysis:</span> Upload all bids you want to compare before clicking Analyze.
+              </p>
             </div>
           </div>
 
@@ -632,27 +523,28 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
             className={`
-              border-2 border-dashed rounded-xl p-5 text-center transition-colors cursor-pointer
+              border-2 border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer
               ${dragActive ? 'border-switch-green-500 bg-switch-green-50' : 'border-gray-300 hover:border-gray-400'}
             `}
           >
-            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <FileText className="w-5 h-5 text-gray-400" />
+            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <FileText className="w-4 h-4 text-gray-400" />
             </div>
-            <p className="text-gray-600 mb-1.5 text-sm">Drag and drop bid documents here</p>
-            <p className="text-sm text-gray-400 mb-3">or</p>
-            <button
-              type="button"
-              className="btn btn-secondary text-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-            >
-              Browse Files
-            </button>
-            <p className="text-xs text-gray-400 mt-3">
-              Supported formats: PDF, DOC, DOCX (max 25MB each)
+            <p className="text-gray-600 text-sm mb-1">
+              Drag and drop bid documents here, or{' '}
+              <button
+                type="button"
+                className="text-switch-green-600 hover:text-switch-green-700 font-medium underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
+              >
+                browse files
+              </button>
+            </p>
+            <p className="text-xs text-gray-400">
+              PDF, DOC, DOCX (max 25MB each)
             </p>
           </div>
 
@@ -687,15 +579,15 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             </div>
           )}
 
-          <div className="mt-8 pt-6 border-t border-gray-100">
+          <div className="mt-4 pt-4 border-t border-gray-100">
             <button
               type="button"
               onClick={() => setShowPriorities(!showPriorities)}
-              className="w-full flex items-center justify-between text-left p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center justify-between text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <div>
-                <h3 className="font-medium text-gray-900">What Matters Most to You?</h3>
-                <p className="text-sm text-gray-500">Set your priorities for the comparison (optional)</p>
+                <h3 className="font-medium text-gray-900 text-sm">What Matters Most to You?</h3>
+                <p className="text-xs text-gray-500">Set your priorities for the comparison (optional)</p>
               </div>
               <svg className={`w-5 h-5 text-gray-400 transition-transform ${showPriorities ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -703,7 +595,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             </button>
 
             {showPriorities && (
-              <div className="mt-4 space-y-6 px-1">
+              <div className="mt-3 space-y-3 px-1">
                 <PrioritySlider
                   label="Upfront Cost"
                   value={priorities.price}
@@ -738,15 +630,15 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             )}
           </div>
 
-          <div className="mt-4">
+          <div className="mt-3">
             <button
               type="button"
               onClick={() => setShowProjectDetails(!showProjectDetails)}
-              className="w-full flex items-center justify-between text-left p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center justify-between text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <div>
-                <h3 className="font-medium text-gray-900">Tell Us About Your Project</h3>
-                <p className="text-sm text-gray-500">Share details for better recommendations (optional)</p>
+                <h3 className="font-medium text-gray-900 text-sm">Tell Us About Your Project</h3>
+                <p className="text-xs text-gray-500">Share details for better recommendations (optional)</p>
               </div>
               <svg className={`w-5 h-5 text-gray-400 transition-transform ${showProjectDetails ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -791,7 +683,7 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             )}
           </div>
 
-          <div className="mt-6 bg-gray-50 rounded-xl border border-gray-200 p-5">
+          <div className="mt-4 bg-gray-50 rounded-xl border border-gray-200 p-4">
             <label className="flex items-start gap-3 cursor-pointer group">
               <div className="pt-0.5">
                 <input
@@ -844,49 +736,77 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             </label>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-gray-100">
-            <div className="mb-4">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <p className="text-xs text-gray-500 mb-2">
-                Used to retrieve your analysis later and notify you when processing is complete
-              </p>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  id="email"
-                  type="email"
-                  value={notificationEmail}
-                  onChange={(e) => setNotificationEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
-                />
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label htmlFor="zip" className="block text-sm font-medium text-gray-700 mb-1">
+                  Property Zip Code
+                </label>
+                <p className="text-xs text-gray-500 mb-1">
+                  Used to find available rebates and incentives
+                </p>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="zip"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={5}
+                    value={propertyZip}
+                    onChange={(e) => setPropertyZip(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                    placeholder="90210"
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Address
+                </label>
+                <p className="text-xs text-gray-500 mb-1">
+                  Used to retrieve your analysis and notify you when ready
+                </p>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="email"
+                    type="email"
+                    value={notificationEmail}
+                    onChange={(e) => setNotificationEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-switch-green-500 focus:border-transparent"
+                  />
+                </div>
               </div>
             </div>
 
             <button
               onClick={handleAnalyze}
-              disabled={!canContinue || !isEmailValid}
+              disabled={!canContinue || !isEmailValid || !isZipValid}
               className="btn btn-primary w-full flex items-center justify-center gap-2 py-3"
             >
               Analyze My Bids
               <ArrowRight className="w-4 h-4" />
             </button>
 
-            {(!canContinue || !isEmailValid) && (
+            {(!canContinue || !isEmailValid || !isZipValid) && (
               <p className="text-center text-sm text-gray-500 mt-3">
                 {!canContinue
                   ? 'Upload at least 1 bid to continue'
+                  : !isZipValid
+                  ? 'Enter a valid 5-digit zip code to continue'
                   : 'Enter a valid email address to continue'}
               </p>
             )}
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 text-center mt-6 pb-4">
-          Powered by TheSwitchIsOn.org
-        </p>
+        <div className="text-center mt-4 pb-4">
+          <a href="https://switchison.org" target="_blank" rel="noopener noreferrer" className="inline-flex flex-col items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors">
+            <span className="text-xs">Powered by</span>
+            <img src={SIOLogo} alt="SwitchIsOn" className="h-6 w-auto opacity-60 hover:opacity-100 transition-opacity" />
+          </a>
+        </div>
       </div>
     </div>
   );

@@ -1,11 +1,12 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { MessageCircle, Mail, Info, Maximize2, Minimize2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
-import { usePhase } from '../../context/PhaseContext';
+import { getContractorDisplayName } from '../../lib/utils/bidDeduplication';
 import { useQuestionFilters } from '../../hooks/useQuestionFilters';
 import { TierToggle } from './TierToggle';
 import { CategoryFilter } from './CategoryFilter';
 import { QuestionCard } from './QuestionCard';
+import { ContractorCardHeader } from './ContractorCardHeader';
 import { CraftEmailModal } from './CraftEmailModal';
 import type { BidQuestion, Bid, BidContractor, BidEquipment, BidScope, BidScore } from '../../lib/types';
 
@@ -20,10 +21,11 @@ interface BidEntry {
 interface ContractorQuestionsPanelProps {
   bids: BidEntry[];
   questions: BidQuestion[];
+  refreshQuestions?: () => Promise<void>;
 }
 
-export function ContractorQuestionsPanel({ bids, questions }: ContractorQuestionsPanelProps) {
-  const { refreshQuestions } = usePhase();
+export function ContractorQuestionsPanel({ bids, questions, refreshQuestions: refreshQuestionsProp }: ContractorQuestionsPanelProps) {
+  const refreshQuestions = refreshQuestionsProp || (async () => {});
   const [emailModalBidId, setEmailModalBidId] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -86,7 +88,46 @@ export function ContractorQuestionsPanel({ bids, questions }: ContractorQuestion
   const emailModalBid = emailModalBidId ? bids.find(b => b.bid.id === emailModalBidId) : null;
   const emailModalQuestions = emailModalBidId ? getSelectedQuestionsForBid(emailModalBidId) : [];
 
+  // ── Empty state: no questions yet ──
   if (questions.length === 0) {
+    // Show contractor card shells with placeholder content while generating
+    if (bids.length > 0) {
+      return (
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex items-start gap-2">
+              <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-blue-900">Questions to Ask Your Contractors</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  Questions are being generated based on your bid analysis. They'll appear below once ready.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {bids.map((bidData, bidIndex) => (
+            <div key={bidData.bid.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <ContractorCardHeader
+                bid={bidData.bid}
+                contractor={bidData.contractor}
+                index={bidIndex}
+                subtitle="Generating questions..."
+              />
+              <div className="p-4 space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="rounded-lg border border-gray-100 bg-gray-50 p-4 animate-pulse">
+                    <div className="h-3 bg-gray-200 rounded w-3/4 mb-2" />
+                    <div className="h-2 bg-gray-100 rounded w-1/2" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     return (
       <div className="bg-white rounded-xl border-2 border-gray-200 p-12 text-center">
         <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -172,32 +213,29 @@ export function ContractorQuestionsPanel({ bids, questions }: ContractorQuestion
 
         if (totalForBid === 0) return null;
 
-        return (
-          <div key={bidData.bid.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-sm font-semibold text-gray-700">
-                  {bidIndex + 1}
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900">{bidData.bid.contractor_name}</h4>
-                  <p className="text-sm text-gray-500">
-                    {totalForBid} question{totalForBid !== 1 ? 's' : ''}
-                    {answeredForBid > 0 && ` · ${answeredForBid} answered`}
-                    {selectedForBid > 0 && ` · ${selectedForBid} selected`}
-                  </p>
-                </div>
-              </div>
+        const subtitleParts: string[] = [];
+        subtitleParts.push(`${totalForBid} question${totalForBid !== 1 ? 's' : ''}`);
+        if (answeredForBid > 0) subtitleParts.push(`${answeredForBid} answered`);
+        if (selectedForBid > 0) subtitleParts.push(`${selectedForBid} selected`);
 
-              <button
-                onClick={() => setEmailModalBidId(bidData.bid.id)}
-                disabled={selectedForBid === 0}
-                className="btn btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Mail className="w-4 h-4" />
-                Craft Email ({selectedForBid})
-              </button>
-            </div>
+        return (
+          <div key={bidData.bid.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <ContractorCardHeader
+              bid={bidData.bid}
+              contractor={bidData.contractor}
+              index={bidIndex}
+              subtitle={subtitleParts.join(' · ')}
+              action={
+                <button
+                  onClick={() => setEmailModalBidId(bidData.bid.id)}
+                  disabled={selectedForBid === 0}
+                  className="btn btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Mail className="w-4 h-4" />
+                  Craft Email ({selectedForBid})
+                </button>
+              }
+            />
 
             <div className="p-4 space-y-2">
               {bidQuestions.map(question => (
@@ -226,7 +264,7 @@ export function ContractorQuestionsPanel({ bids, questions }: ContractorQuestion
     <CraftEmailModal
       isOpen={!!emailModalBidId}
       onClose={() => setEmailModalBidId(null)}
-      contractorName={emailModalBid.bid.contractor_name}
+      contractorName={getContractorDisplayName(emailModalBid.bid.contractor_name, undefined, emailModalBid.contractor)}
       contractorEmail={emailModalBid.contractor?.email}
       questions={emailModalQuestions}
     />

@@ -100,7 +100,7 @@ function flattenRow(row: BidComparisonTableRow): FlatBidRow {
   return {
     // Bid identity
     id: row.bid.id,
-    contractor_name: row.bid.contractor_name,
+    contractor_name: c?.name?.trim() || row.bid.contractor_name,
     is_favorite: row.bid.is_favorite,
 
     // Scope — pricing

@@ -111,7 +111,7 @@ Deno.serve(async (req: Request) => {
       groupedItems[item.category].push(item);
     });
 
-    const html = generateChecklistHTML(project, groupedItems);
+    const html = generateChecklistHTML(project, groupedItems, projectId);
 
     return new Response(html, {
       status: 200,
@@ -133,7 +133,7 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-function generateChecklistHTML(project: any, groupedItems: Record<string, ChecklistItem[]>): string {
+function generateChecklistHTML(project: any, groupedItems: Record<string, ChecklistItem[]>, projectId: string): string {
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const homeownerName = project?.users_ext?.full_name || 'Homeowner';
   const propertyAddress = project?.users_ext?.property_address || 'N/A';
@@ -152,7 +152,7 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Heat Pump Installation Quality Checklist - TheSwitchIsOn.org</title>
+  <title>Heat Pump Installation Quality Checklist - SwitchIsOn.org</title>
   <style>
     * {
       margin: 0;
@@ -455,7 +455,7 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
   <button class="print-button no-print" onclick="window.print()">🖨️ Print Checklist</button>
 
   <div class="header">
-    <div class="logo-text">TheSwitchIsOn.org</div>
+    <div class="logo-text">SwitchIsOn.org</div>
     <div class="tagline">Quality Heat Pump Installation Standards</div>
   </div>
 
@@ -563,8 +563,8 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
   </div>
 
   <div class="footer">
-    <p><strong>TheSwitchIsOn.org</strong> - Helping homeowners make informed decisions about heat pump installations</p>
-    <p style="margin-top: 8px;">For questions about this checklist, visit www.TheSwitchIsOn.org or email support@theswitchison.org</p>
+    <p><strong>SwitchIsOn.org</strong> - Helping homeowners make informed decisions about heat pump installations</p>
+    <p style="margin-top: 8px;">For questions about this checklist, visit switchison.org or email support@switchison.org</p>
     <p style="margin-top: 8px; font-size: 7pt;">Generated: ${today} | Project ID: ${projectId}</p>
   </div>
 </body>
