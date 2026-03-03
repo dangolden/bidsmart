@@ -54,6 +54,13 @@ function ResultsViewContent({ onNavigateHome }: { onNavigateHome?: () => void })
   const [emailingReport, setEmailingReport] = useState(false);
   const [reportSent, setReportSent] = useState(false);
 
+  // Build display title from user's property address, falling back to project name
+  // NOTE: Must be before early returns to satisfy Rules of Hooks
+  const displayTitle = useMemo(() => {
+    const parts = [user?.property_address, user?.property_city, user?.property_state].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : project?.project_name;
+  }, [user, project]);
+
   const handleDownloadReport = async () => {
     if (!projectId || !user?.email) {
       alert('Missing project or user information');
@@ -177,12 +184,6 @@ function ResultsViewContent({ onNavigateHome }: { onNavigateHome?: () => void })
   const hasContractorData = bids.some(b => !!b.contractor);
   const hasCostData = bids.some(b => !!b.scope);
   const hasQuestionData = questions.length > 0;
-
-  // Build display title from user's property address, falling back to project name
-  const displayTitle = useMemo(() => {
-    const parts = [user?.property_address, user?.property_city, user?.property_state].filter(Boolean);
-    return parts.length > 0 ? parts.join(', ') : project?.project_name;
-  }, [user, project]);
 
   // Bids from ProjectContext already match BidEntry shape (ContractorBid = Bid)
   const bidEntries = bids;
