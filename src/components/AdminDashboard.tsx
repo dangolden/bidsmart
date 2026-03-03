@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { 
-  BarChart3, 
-  Users, 
-  FileText, 
+import {
+  BarChart3,
+  Users,
+  FileText,
   ThumbsUp,
   Lightbulb,
   Bug,
@@ -11,19 +11,28 @@ import {
   Activity,
   Trash2,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Inbox,
+  Mail,
+  MailX,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
-import { 
-  getAdminStats, 
-  getFeatureUsageStats, 
+import {
+  getAdminStats,
+  getFeatureUsageStats,
   getUserFeedback,
+  getSubmissions,
+  filterSubmissions,
   listAllProjects,
   listFailedProjects,
   deleteProjectsBatch,
   type AdminStats,
   type FeatureUsageStat,
   type UserFeedback,
-  type AdminProject
+  type AdminProject,
+  type AdminSubmission,
+  type SubmissionFilter
 } from '../lib/services/adminService';
 
 interface AdminDashboardProps {
@@ -73,8 +82,11 @@ export function AdminDashboard({ onBack, userEmail }: AdminDashboardProps) {
   const [featureStats, setFeatureStats] = useState<FeatureUsageStat[]>([]);
   const [feedback, setFeedback] = useState<UserFeedback[]>([]);
   const [projects, setProjects] = useState<AdminProject[]>([]);
+  const [submissions, setSubmissions] = useState<AdminSubmission[]>([]);
+  const [submissionFilter, setSubmissionFilter] = useState<SubmissionFilter>('all');
+  const [expandedSubmission, setExpandedSubmission] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'features' | 'feedback' | 'cleanup'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'submissions' | 'features' | 'feedback' | 'cleanup'>('overview');
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [deleteMessage, setDeleteMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -149,6 +161,17 @@ export function AdminDashboard({ onBack, userEmail }: AdminDashboardProps) {
     }
   };
 
+  const loadSubmissions = async () => {
+    const data = await getSubmissions();
+    setSubmissions(data);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'submissions') {
+      loadSubmissions();
+    }
+  }, [activeTab]);
+
   useEffect(() => {
     if (activeTab === 'cleanup') {
       loadProjects();
@@ -203,7 +226,7 @@ export function AdminDashboard({ onBack, userEmail }: AdminDashboardProps) {
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex gap-1">
-            {(['overview', 'features', 'feedback', 'cleanup'] as const).map((tab) => (
+            {(['overview', 'submissions', 'features', 'feedback', 'cleanup'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -348,6 +371,239 @@ export function AdminDashboard({ onBack, userEmail }: AdminDashboardProps) {
               </div>
             </div>
           </>
+        )}
+
+        {activeTab === 'submissions' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Submissions</h2>
+                <p className="text-sm text-gray-500">Track all user submissions, errors, and notification status</p>
+              </div>
+              <button
+                onClick={loadSubmissions}
+                className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
+            </div>
+
+            {/* Filter buttons */}
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {([
+                { key: 'all' as SubmissionFilter, label: 'All', count: submissions.length },
+                { key: 'awaiting_retry' as SubmissionFilter, label: 'Awaiting Retry', count: filterSubmissions(submissions, 'awaiting_retry').length },
+                { key: 'failed' as SubmissionFilter, label: 'Failed', count: filterSubmissions(submissions, 'failed').length },
+                { key: 'analyzing' as SubmissionFilter, label: 'Analyzing', count: filterSubmissions(submissions, 'analyzing').length },
+                { key: 'completed' as SubmissionFilter, label: 'Completed', count: filterSubmissions(submissions, 'completed').length },
+              ]).map(({ key, label, count }) => (
+                <button
+                  key={key}
+                  onClick={() => setSubmissionFilter(key)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                    submissionFilter === key
+                      ? key === 'awaiting_retry'
+                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                        : key === 'failed'
+                        ? 'bg-red-100 text-red-800 border border-red-300'
+                        : 'bg-switch-green-100 text-switch-green-800 border border-switch-green-300'
+                      : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                  }`}
+                >
+                  {label}
+                  <span className="ml-1.5 text-xs opacity-75">({count})</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Awaiting retry banner */}
+            {filterSubmissions(submissions, 'awaiting_retry').length > 0 && submissionFilter !== 'awaiting_retry' && (
+              <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3">
+                <MailX className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <div>
+                  <p className="text-amber-800 font-medium text-sm">
+                    {filterSubmissions(submissions, 'awaiting_retry').length} user(s) were told "we're working on it" and are still waiting
+                  </p>
+                  <button
+                    onClick={() => setSubmissionFilter('awaiting_retry')}
+                    className="text-amber-700 text-xs underline mt-1"
+                  >
+                    View awaiting retry →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {(() => {
+              const filtered = filterSubmissions(submissions, submissionFilter);
+              if (filtered.length === 0) {
+                return (
+                  <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+                    <Inbox className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-600">No submissions match this filter.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-700 w-8"></th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Project</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">User Email</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
+                        <th className="text-center px-4 py-3 text-sm font-medium text-gray-700">Bids</th>
+                        <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Submitted</th>
+                        <th className="text-center px-4 py-3 text-sm font-medium text-gray-700">Error Email</th>
+                        <th className="text-center px-4 py-3 text-sm font-medium text-gray-700">Complete Email</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filtered.map((sub) => {
+                        const isExpanded = expandedSubmission === sub.id;
+                        const hasFailed = sub.bids?.some((b) => b.status === 'failed');
+                        return (
+                          <>
+                            <tr
+                              key={sub.id}
+                              onClick={() => setExpandedSubmission(isExpanded ? null : sub.id)}
+                              className="hover:bg-gray-50 cursor-pointer"
+                            >
+                              <td className="px-4 py-3">
+                                {isExpanded
+                                  ? <ChevronDown className="w-4 h-4 text-gray-400" />
+                                  : <ChevronRight className="w-4 h-4 text-gray-400" />
+                                }
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {sub.project_name || 'Unnamed Project'}
+                                </div>
+                                <div className="text-xs text-gray-500 font-mono">{sub.id.slice(0, 8)}...</div>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {sub.notification_email || '—'}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                  sub.status === 'completed' || sub.status === 'comparing'
+                                    ? 'bg-green-100 text-green-700'
+                                    : sub.status === 'analyzing'
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : sub.status === 'cancelled' || hasFailed
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {hasFailed && sub.status !== 'cancelled' ? `${sub.status} (has failures)` : sub.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600 text-center">
+                                {sub.bids?.length || 0}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-500">
+                                {sub.analysis_queued_at
+                                  ? new Date(sub.analysis_queued_at).toLocaleString()
+                                  : new Date(sub.created_at).toLocaleDateString()
+                                }
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {sub.error_notification_sent_at ? (
+                                  <span className="inline-flex items-center gap-1 text-xs text-amber-700" title={new Date(sub.error_notification_sent_at).toLocaleString()}>
+                                    <Mail className="w-3 h-3" />
+                                    {new Date(sub.error_notification_sent_at).toLocaleDateString()}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-300">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {sub.notification_sent_at ? (
+                                  <span className="inline-flex items-center gap-1 text-xs text-green-700" title={new Date(sub.notification_sent_at).toLocaleString()}>
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    {new Date(sub.notification_sent_at).toLocaleDateString()}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-300">—</span>
+                                )}
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr key={`${sub.id}-detail`}>
+                                <td colSpan={8} className="px-8 py-4 bg-gray-50 border-t border-gray-100">
+                                  <div className="space-y-3">
+                                    <div className="grid grid-cols-3 gap-4 text-xs">
+                                      <div>
+                                        <span className="text-gray-500 font-medium">Created:</span>{' '}
+                                        {new Date(sub.created_at).toLocaleString()}
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-500 font-medium">Updated:</span>{' '}
+                                        {new Date(sub.updated_at).toLocaleString()}
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-500 font-medium">Notify opt-in:</span>{' '}
+                                        {sub.notify_on_completion ? 'Yes' : 'No'}
+                                      </div>
+                                    </div>
+
+                                    {sub.bids && sub.bids.length > 0 ? (
+                                      <div>
+                                        <h4 className="text-xs font-semibold text-gray-700 mb-2">Bids</h4>
+                                        <div className="space-y-1">
+                                          {sub.bids.map((bid) => (
+                                            <div
+                                              key={bid.id}
+                                              className={`flex items-center gap-3 text-xs px-3 py-2 rounded ${
+                                                bid.status === 'failed'
+                                                  ? 'bg-red-50 border border-red-100'
+                                                  : bid.status === 'completed'
+                                                  ? 'bg-green-50 border border-green-100'
+                                                  : 'bg-white border border-gray-100'
+                                              }`}
+                                            >
+                                              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                                bid.status === 'failed'
+                                                  ? 'bg-red-500'
+                                                  : bid.status === 'completed'
+                                                  ? 'bg-green-500'
+                                                  : 'bg-amber-400'
+                                              }`} />
+                                              <span className="font-medium">{bid.contractor_name || 'Unknown'}</span>
+                                              <span className="text-gray-400">·</span>
+                                              <span className={`${
+                                                bid.status === 'failed' ? 'text-red-600' : 'text-gray-500'
+                                              }`}>
+                                                {bid.status}
+                                              </span>
+                                              <span className="font-mono text-gray-400 ml-auto">{bid.id.slice(0, 8)}</span>
+                                              {bid.last_error && (
+                                                <span className="text-red-500 truncate max-w-xs" title={bid.last_error}>
+                                                  {bid.last_error}
+                                                </span>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-gray-500">No bids found for this project.</p>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
         )}
 
         {activeTab === 'features' && (

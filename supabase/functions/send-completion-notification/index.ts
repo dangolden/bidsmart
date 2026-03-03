@@ -19,7 +19,8 @@ async function sendEmailViaResend(
     return { success: false, error: "Email service not configured" };
   }
 
-  const lookupUrl = `${APP_URL}`;
+  // Deep link: takes user straight to their report without re-entering email
+  const deepLink = `${APP_URL}/?project_id=${projectId}&email=${encodeURIComponent(to)}`;
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -54,11 +55,11 @@ async function sendEmailViaResend(
           </ul>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${lookupUrl}" style="display: inline-block; background-color: #16a34a; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">View Your Analysis</a>
+            <a href="${deepLink}" style="display: inline-block; background-color: #16a34a; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">View Your Analysis</a>
           </div>
 
           <p style="color: #666; font-size: 14px; margin-top: 30px;">
-            When you visit BidSmart, use the "Find My Analysis" button and enter this email address to access your results.
+            This link will take you directly to your report. If it doesn't work, visit BidSmart and use the "Find My Analysis" button.
           </p>
 
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -79,9 +80,9 @@ Our AI has extracted and compared the data from your contractor bids. You can no
 - See which contractor offers the best value for your priorities
 - Review questions to ask each contractor
 
-View your analysis at: ${lookupUrl}
+View your analysis at: ${deepLink}
 
-When you visit BidSmart, use the "Find My Analysis" button and enter this email address to access your results.
+This link will take you directly to your report. If it doesn't work, visit BidSmart and use the "Find My Analysis" button.
 
 ---
 This email was sent by BidSmart, a project of TheSwitchIsOn.org
