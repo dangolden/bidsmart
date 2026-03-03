@@ -79,21 +79,28 @@ function App() {
     if (params.get('project_id')) return;
 
     const stored = localStorage.getItem(ACTIVE_PROJECT_KEY);
-    if (stored) {
-      supabase
-        .from('projects')
-        .select('id, status')
-        .eq('id', stored)
-        .maybeSingle()
-        .then(({ data: project }) => {
-          if (project && project.status !== 'draft' && project.status !== 'cancelled') {
-            setActiveProjectId(stored);
-            setShowHome(false);
-          } else {
-            localStorage.removeItem(ACTIVE_PROJECT_KEY);
-          }
-        });
-    }
+    if (!stored) return;
+
+    const restoreProject = async () => {
+      try {
+        const { data: project } = await supabase
+          .from('projects')
+          .select('id, status')
+          .eq('id', stored)
+          .maybeSingle();
+
+        if (project && project.status !== 'draft' && project.status !== 'cancelled') {
+          setActiveProjectId(stored);
+          setShowHome(false);
+        } else {
+          localStorage.removeItem(ACTIVE_PROJECT_KEY);
+        }
+      } catch {
+        // If validation fails, clear stale stored ID and stay on homepage
+        localStorage.removeItem(ACTIVE_PROJECT_KEY);
+      }
+    };
+    restoreProject();
   }, [user]);
 
   // Check for processing project in localStorage and verify it's still active
