@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Star, CheckCircle2, AlertCircle, Loader2, Download } from 'lucide-react';
+import { Star, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 interface ContractorReviewSurveyProps {
@@ -163,11 +163,6 @@ export function ContractorReviewSurvey({
     }
   }
 
-  function handleDownloadChecklist() {
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-contractor-checklist?project_id=${projectId}`;
-    window.open(url, '_blank');
-  }
-
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -209,23 +204,6 @@ export function ContractorReviewSurvey({
           </div>
         </div>
       )}
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-        <Download className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <h3 className="font-semibold text-blue-900 mb-1">Need the Quality Checklist?</h3>
-          <p className="text-sm text-blue-800 mb-3">
-            Download a printable quality installation checklist to review with your contractor.
-          </p>
-          <button
-            type="button"
-            onClick={handleDownloadChecklist}
-            className="btn btn-secondary text-sm"
-          >
-            Download Checklist
-          </button>
-        </div>
-      </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Overall Experience</h2>

@@ -505,7 +505,7 @@ function generateChecklistHTML(project: any, groupedItems: Record<string, Checkl
     <div class="tagline">Quality Heat Pump Installation Standards</div>
   </div>
 
-  <h1>Heat Pump Installation Quality Checklist</h1>
+  <h1>Heat Pump Installation Checklist</h1>
 
   <div class="project-info">
     <div class="info-grid">
