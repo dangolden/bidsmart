@@ -5,6 +5,7 @@ import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
 import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject } from '../lib/database/bidsmartService';
 import { uploadPdfFile, startBatchAnalysis, type DocumentForAnalysis } from '../lib/services/mindpalService';
+import { quickExtractContractorInfo } from '../lib/services/quickExtractService';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import SwitchLogo from '../assets/switchlogo.svg';
 import SIOLogo from '../assets/sio_horizontal_logo.jpg';
@@ -338,6 +339,22 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
             bid_id: uploadResult.bidId,
             pdf_upload_id: uploadResult.pdfUploadId,
           });
+
+          // V4: Fire quick-extract in background (non-blocking)
+          // Extracts contractor name from PDF via Gemini 2.0 Flash
+          // Updates bids.contractor_name from 'TBD' within 3-5 seconds
+          quickExtractContractorInfo(
+            uploadResult.bidId,
+            uploadResult.pdfUploadId,
+            projectId,
+            user.email
+          )
+            .then(result => {
+              if (result?.extracted?.contractor_name) {
+                console.log(`Quick-extract: "${result.extracted.contractor_name}" for bid ${uploadResult.bidId} (${result.elapsed_ms}ms)`);
+              }
+            })
+            .catch(err => console.warn('Quick-extract failed (non-critical):', err));
         }
       }
 
