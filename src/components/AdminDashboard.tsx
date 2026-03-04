@@ -27,12 +27,14 @@ import {
   listAllProjects,
   listFailedProjects,
   deleteProjectsBatch,
+  getMarketDataStats,
   type AdminStats,
   type FeatureUsageStat,
   type UserFeedback,
   type AdminProject,
   type AdminSubmission,
-  type SubmissionFilter
+  type SubmissionFilter,
+  type CommunityBid
 } from '../lib/services/adminService';
 
 interface AdminDashboardProps {
@@ -86,7 +88,8 @@ export function AdminDashboard({ onBack, userEmail }: AdminDashboardProps) {
   const [submissionFilter, setSubmissionFilter] = useState<SubmissionFilter>('all');
   const [expandedSubmission, setExpandedSubmission] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'submissions' | 'features' | 'feedback' | 'cleanup'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'submissions' | 'features' | 'feedback' | 'cleanup' | 'market'>('overview');
+  const [marketData, setMarketData] = useState<CommunityBid[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [deleteMessage, setDeleteMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -179,6 +182,12 @@ export function AdminDashboard({ onBack, userEmail }: AdminDashboardProps) {
   }, [activeTab, showAllProjects]);
 
   useEffect(() => {
+    if (activeTab === 'market') {
+      getMarketDataStats().then(setMarketData);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -225,18 +234,18 @@ export function AdminDashboard({ onBack, userEmail }: AdminDashboardProps) {
       {/* Tabs */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex gap-1">
-            {(['overview', 'submissions', 'features', 'feedback', 'cleanup'] as const).map((tab) => (
+          <div className="flex gap-1 overflow-x-auto">
+            {(['overview', 'submissions', 'features', 'feedback', 'cleanup', 'market'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === tab
                     ? 'border-switch-green-600 text-switch-green-600'
                     : 'border-transparent text-gray-600 hover:text-gray-900'
                 }`}
               >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === 'market' ? 'Market Data' : tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </div>
@@ -826,6 +835,150 @@ export function AdminDashboard({ onBack, userEmail }: AdminDashboardProps) {
                 </table>
               </div>
             )}
+          </div>
+        )}
+        {/* ============ MARKET DATA TAB ============ */}
+        {activeTab === 'market' && (
+          <div className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">Community Market Data</h2>
+
+            {marketData.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
+                No community bid data yet. Data populates when users complete bids with data-sharing consent.
+              </div>
+            ) : (() => {
+              // ---- Client-side aggregations ----
+              const nonNull = (arr: (number | null | undefined)[]) =>
+                arr.filter((v): v is number => v != null);
+
+              const avg = (vals: number[]) =>
+                vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+
+              const uniqueStates = [...new Set(marketData.map(b => b.state).filter(Boolean))];
+              const dates = marketData.map(b => b.bid_date || b.created_at).filter(Boolean).sort();
+              const oldest = dates[0] ? new Date(dates[0]).toLocaleDateString() : '—';
+              const newest = dates[dates.length - 1] ? new Date(dates[dates.length - 1]).toLocaleDateString() : '—';
+
+              // Equipment type breakdown
+              const byType = new Map<string, CommunityBid[]>();
+              marketData.forEach(b => {
+                const k = b.equipment_type || 'unknown';
+                if (!byType.has(k)) byType.set(k, []);
+                byType.get(k)!.push(b);
+              });
+              const equipRows = [...byType.entries()].sort((a, b) => b[1].length - a[1].length);
+
+              const recent20 = marketData.slice(0, 20);
+
+              return (
+                <>
+                  {/* Summary row */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-xl border border-gray-200 p-5 text-center">
+                      <div className="text-3xl font-bold text-switch-green-700">{marketData.length}</div>
+                      <div className="text-sm text-gray-500 mt-1">Total Shared Bids</div>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-5 text-center">
+                      <div className="text-3xl font-bold text-blue-700">{uniqueStates.length}</div>
+                      <div className="text-sm text-gray-500 mt-1">Unique States</div>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-5 text-center">
+                      <div className="text-xl font-bold text-gray-800">{oldest}</div>
+                      <div className="text-sm text-gray-500 mt-1">Earliest Bid</div>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-5 text-center">
+                      <div className="text-xl font-bold text-gray-800">{newest}</div>
+                      <div className="text-sm text-gray-500 mt-1">Most Recent Bid</div>
+                    </div>
+                  </div>
+
+                  {/* Equipment type breakdown */}
+                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-100">
+                      <h3 className="font-semibold text-gray-900">By Equipment Type</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Type</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-600">Count</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-600">Avg Total</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-600">Avg Labor</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-600">Avg Equip</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-600">Avg SEER</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {equipRows.map(([type, rows]) => {
+                            const avgTotal = avg(nonNull(rows.map(r => r.total_bid_amount)));
+                            const avgLabor = avg(nonNull(rows.map(r => r.labor_cost)));
+                            const avgEquip = avg(nonNull(rows.map(r => r.equipment_cost)));
+                            const avgSeer = avg(nonNull(rows.map(r => r.primary_seer_rating)));
+                            const fmt = (n: number | null) => n != null ? `$${n.toLocaleString()}` : '—';
+                            return (
+                              <tr key={type} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 font-medium text-gray-900 capitalize">{type.replace(/_/g, ' ')}</td>
+                                <td className="px-4 py-3 text-right text-gray-600">{rows.length}</td>
+                                <td className="px-4 py-3 text-right text-gray-700 font-medium">{fmt(avgTotal)}</td>
+                                <td className="px-4 py-3 text-right text-gray-600">{fmt(avgLabor)}</td>
+                                <td className="px-4 py-3 text-right text-gray-600">{fmt(avgEquip)}</td>
+                                <td className="px-4 py-3 text-right text-gray-600">{avgSeer != null ? avgSeer.toFixed(1) : '—'}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Recent entries */}
+                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-100">
+                      <h3 className="font-semibold text-gray-900">Recent Entries <span className="text-sm font-normal text-gray-400">(last 20)</span></h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Date</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">State</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">ZIP Area</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Type</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-600">Total</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-600">Permit</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-600">Elec</th>
+                            <th className="px-4 py-3 text-center font-medium text-gray-600">Duct</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-600">SEER</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {recent20.map(row => (
+                            <tr key={row.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                                {row.bid_date ? new Date(row.bid_date).toLocaleDateString() : new Date(row.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="px-4 py-3 text-gray-600">{row.state || '—'}</td>
+                              <td className="px-4 py-3 text-gray-600 font-mono">{row.zip_code_area || '—'}</td>
+                              <td className="px-4 py-3 text-gray-700 capitalize">{row.equipment_type?.replace(/_/g, ' ') || '—'}</td>
+                              <td className="px-4 py-3 text-right font-medium text-gray-800">
+                                {row.total_bid_amount != null ? `$${row.total_bid_amount.toLocaleString()}` : '—'}
+                              </td>
+                              <td className="px-4 py-3 text-center">{row.includes_permit ? '✓' : '✗'}</td>
+                              <td className="px-4 py-3 text-center">{row.includes_electrical ? '✓' : '✗'}</td>
+                              <td className="px-4 py-3 text-center">{row.includes_ductwork ? '✓' : '✗'}</td>
+                              <td className="px-4 py-3 text-right text-gray-600">
+                                {row.primary_seer_rating != null ? row.primary_seer_rating.toFixed(1) : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
       </div>

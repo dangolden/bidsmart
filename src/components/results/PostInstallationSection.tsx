@@ -77,7 +77,7 @@ export function PostInstallationSection({ projectId, alwaysOpen = false }: PostI
       ) : (
         <>
           {/* Heat Pump Installation Checklist — interactive with real checkboxes */}
-          <QIIChecklist projectId={projectId} defaultExpanded={false} />
+          <QIIChecklist projectId={projectId} defaultExpanded={true} />
 
           {/* Contractor Review Survey */}
           <div className="bg-white border border-gray-200 rounded-xl p-6">

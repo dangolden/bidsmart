@@ -353,3 +353,62 @@ export async function deleteProject(projectId: string, userEmail: string): Promi
 export async function deleteProjectsBatch(projectIds: string[], userEmail: string): Promise<CleanupResult> {
   return callAdminCleanup({ action: 'delete_projects_batch', projectIds, userEmail });
 }
+
+// ============================================
+// MARKET DATA (Community Bids)
+// ============================================
+
+export interface CommunityBid {
+  id: string;
+  bid_date: string | null;
+  state: string | null;
+  zip_code_area: string | null;
+  equipment_type: string | null;
+  total_bid_amount: number | null;
+  labor_cost: number | null;
+  equipment_cost: number | null;
+  includes_permit: boolean | null;
+  includes_electrical: boolean | null;
+  includes_ductwork: boolean | null;
+  labor_warranty_years: number | null;
+  estimated_days: number | null;
+  primary_seer_rating: number | null;
+  primary_capacity_tons: number | null;
+  created_at: string;
+}
+
+/**
+ * Fetch all community bids for market data analysis.
+ * Returns all rows — aggregation is done client-side.
+ */
+export async function getMarketDataStats(): Promise<CommunityBid[]> {
+  const { data, error } = await supabase
+    .from('community_bids')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching market data stats:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch the most recent N community bid entries for the admin "Recent Submissions" table.
+ */
+export async function getRecentCommunityBids(limit = 20): Promise<CommunityBid[]> {
+  const { data, error } = await supabase
+    .from('community_bids')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching recent community bids:', error);
+    return [];
+  }
+
+  return data || [];
+}

@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, FileText, X, Clock, CheckCircle2, AlertCircle, ArrowRight, Users, Shield, Info, Mail, MapPin, Loader2, ChevronRight, Mic, MicOff } from 'lucide-react';
-import type { UserExt } from '../lib/types';
+import type { UserExt, Project } from '../lib/types';
 import { ReturningUserSection } from './ReturningUserSection';
 import { TryTheToolSection } from './TryTheToolSection';
-import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject } from '../lib/database/bidsmartService';
+import { DocxConversionModal } from './DocxConversionModal';
+import { updateProject, saveProjectRequirements, updateProjectDataSharingConsent, updateProjectNotificationSettings, validatePdfFile, getProjectBySessionId, createDraftProject, getProjectsByNotificationEmail } from '../lib/database/bidsmartService';
 import { uploadPdfFile, startBatchAnalysis, type DocumentForAnalysis } from '../lib/services/mindpalService';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import SwitchLogo from '../assets/switchlogo.svg';
@@ -93,10 +94,13 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
   const [analysisElapsedSeconds, setAnalysisElapsedSeconds] = useState(0);
   const analysisTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [myProjects, setMyProjects] = useState<Project[]>([]);
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
   const [showPriorities, setShowPriorities] = useState(true);
   const [showProjectDetails, setShowProjectDetails] = useState(true);
   const [isHeaderSticky, setIsHeaderSticky] = useState(false);
+  const [docxModalOpen, setDocxModalOpen] = useState(false);
+  const [docxFileName, setDocxFileName] = useState('');
   const heroSectionRef = useRef<HTMLDivElement>(null);
 
   // Speech-to-text for project details
@@ -114,6 +118,17 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
   useEffect(() => {
     checkForDraftProject();
   }, [user.id]);
+
+  // Auto-fetch completed reports for authenticated (non-demo) users
+  useEffect(() => {
+    if (user.email && user.email !== 'demo@bidsmart.app') {
+      getProjectsByNotificationEmail(user.email)
+        .then(projects => {
+          setMyProjects(projects.filter(p => p.status === 'completed' && !p.is_demo));
+        })
+        .catch(() => { /* silently ignore — banner is optional */ });
+    }
+  }, [user.email]);
 
   // Restore waiting screen when returning from banner "View waiting page"
   useEffect(() => {
@@ -200,6 +215,12 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
     for (const file of fileArray) {
       const validationError = validatePdfFile(file);
       if (validationError) {
+        // Show helpful converter modal for Word documents instead of just an error
+        if (validationError.code === 'NEEDS_PDF_CONVERSION') {
+          setDocxFileName(file.name);
+          setDocxModalOpen(true);
+          continue; // Don't add to upload list — modal guides user to convert
+        }
         validFiles.push({
           id: crypto.randomUUID(),
           file,
@@ -217,7 +238,9 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
       }
     }
 
-    setUploadedPdfs(prev => [...prev, ...validFiles]);
+    if (validFiles.length > 0) {
+      setUploadedPdfs(prev => [...prev, ...validFiles]);
+    }
   }, []);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -432,6 +455,24 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+
+      {/* Your Reports banner — shown when user has completed projects */}
+      {myProjects.length > 0 && (
+        <div className="bg-switch-green-50 border-b border-switch-green-200 px-4 py-3">
+          <div className="max-w-4xl mx-auto flex items-center gap-3 flex-wrap">
+            <span className="text-sm font-semibold text-switch-green-800">Your Reports:</span>
+            {myProjects.map(project => (
+              <button
+                key={project.id}
+                onClick={() => onSelectProject(project.id)}
+                className="text-sm bg-white border border-switch-green-300 rounded-lg px-3 py-1.5 text-switch-green-700 hover:bg-switch-green-100 font-medium transition-colors"
+              >
+                {project.project_name || (project.property_zip ? `ZIP ${project.property_zip}` : 'Bid Comparison')}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!isHeaderSticky && (
         <div ref={heroSectionRef} className="max-w-4xl w-full mx-auto px-4 py-8">
@@ -808,6 +849,13 @@ export function UnifiedHomePage({ user, onSelectProject, waitingForProject }: Un
           </a>
         </div>
       </div>
+
+      {/* DOCX Conversion Helper Modal */}
+      <DocxConversionModal
+        isOpen={docxModalOpen}
+        onClose={() => setDocxModalOpen(false)}
+        fileName={docxFileName}
+      />
     </div>
   );
 }
