@@ -9,6 +9,7 @@ import { QII_CHECKLIST_ITEMS } from '../lib/constants/qiiChecklist';
 
 interface QIIChecklistProps {
   projectId: string;
+  defaultExpanded?: boolean;
 }
 
 interface ChecklistItemWithStatus {
@@ -55,9 +56,10 @@ const CATEGORY_INFO: Record<QIICategory, { label: string; description: string; i
   },
 };
 
-export function QIIChecklist({ projectId }: QIIChecklistProps) {
+export function QIIChecklist({ projectId, defaultExpanded = false }: QIIChecklistProps) {
   const [items, setItems] = useState<ChecklistItemWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showItems, setShowItems] = useState(defaultExpanded);
   const ALL_CATEGORIES = Object.keys(CATEGORY_INFO) as QIICategory[];
   const [expandedCategories, setExpandedCategories] = useState<Set<QIICategory>>(new Set(ALL_CATEGORIES));
 
@@ -186,7 +188,7 @@ export function QIIChecklist({ projectId }: QIIChecklistProps) {
           <div>
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <ClipboardCheck className="w-6 h-6 text-switch-green-600" />
-              Quality Installation Checklist
+              Heat Pump Installation Checklist
             </h2>
             <p className="text-gray-600 mt-1">
               Use this checklist to verify your heat pump was installed correctly.
@@ -235,126 +237,140 @@ export function QIIChecklist({ projectId }: QIIChecklistProps) {
             </p>
           </div>
         </div>
+        {/* Expand/collapse toggle */}
+        <button
+          onClick={() => setShowItems(!showItems)}
+          className="mt-4 flex items-center gap-1.5 text-sm font-medium text-switch-green-700 hover:text-switch-green-800 transition-colors"
+        >
+          {showItems ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )}
+          {showItems ? 'Hide checklist items' : `Show all ${items.length} checklist items`}
+        </button>
       </div>
 
-      {/* Categories */}
-      <div className="space-y-4">
-        {categories.map((category) => {
-          const info = CATEGORY_INFO[category];
-          const categoryProgress = getCategoryProgress(category);
-          const isExpanded = expandedCategories.has(category);
-          const categoryItems = getCategoryItems(category);
-          const allVerified = categoryProgress.verified === categoryProgress.total;
+      {/* Categories, Completion Message, and Tips — shown when expanded */}
+      {showItems && (
+        <div className="space-y-4">
+          {categories.map((category) => {
+            const info = CATEGORY_INFO[category];
+            const categoryProgress = getCategoryProgress(category);
+            const isExpanded = expandedCategories.has(category);
+            const categoryItems = getCategoryItems(category);
+            const allVerified = categoryProgress.verified === categoryProgress.total;
 
-          return (
-            <div key={category} className="card overflow-hidden">
-              {/* Category Header */}
-              <button
-                onClick={() => toggleCategory(category)}
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{info.icon}</span>
-                  <div className="text-left">
-                    <h3 className="font-semibold text-gray-900">{info.label}</h3>
-                    <p className="text-sm text-gray-500">{info.description}</p>
+            return (
+              <div key={category} className="card overflow-hidden">
+                {/* Category Header */}
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{info.icon}</span>
+                    <div className="text-left">
+                      <h3 className="font-semibold text-gray-900">{info.label}</h3>
+                      <p className="text-sm text-gray-500">{info.description}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-sm font-medium ${allVerified ? 'text-green-600' : 'text-gray-500'}`}>
-                    {categoryProgress.verified}/{categoryProgress.total}
-                  </span>
-                  {allVerified && <CheckCircle2 className="w-5 h-5 text-green-600" />}
-                  {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-gray-400" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-400" />
-                  )}
-                </div>
-              </button>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-medium ${allVerified ? 'text-green-600' : 'text-gray-500'}`}>
+                      {categoryProgress.verified}/{categoryProgress.total}
+                    </span>
+                    {allVerified && <CheckCircle2 className="w-5 h-5 text-green-600" />}
+                    {isExpanded ? (
+                      <ChevronUp className="w-5 h-5 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-400" />
+                    )}
+                  </div>
+                </button>
 
-              {/* Category Items */}
-              {isExpanded && (
-                <div className="border-t border-gray-100 divide-y divide-gray-100">
-                  {categoryItems.map((item) => (
-                    <div
-                      key={item.item_key}
-                      className={`checklist-item ${item.status?.is_verified ? 'verified' : ''} ${item.is_critical ? 'critical' : ''}`}
-                    >
-                      <button
-                        onClick={() => toggleItem(item)}
-                        className="flex-shrink-0 mt-0.5"
+                {/* Category Items */}
+                {isExpanded && (
+                  <div className="border-t border-gray-100 divide-y divide-gray-100">
+                    {categoryItems.map((item) => (
+                      <div
+                        key={item.item_key}
+                        className={`checklist-item ${item.status?.is_verified ? 'verified' : ''} ${item.is_critical ? 'critical' : ''}`}
                       >
-                        {item.status?.is_verified ? (
-                          <CheckCircle2 className="w-6 h-6 text-green-600" />
-                        ) : (
-                          <Circle className="w-6 h-6 text-gray-300 hover:text-gray-400" />
-                        )}
-                      </button>
+                        <button
+                          onClick={() => toggleItem(item)}
+                          className="flex-shrink-0 mt-0.5"
+                        >
+                          {item.status?.is_verified ? (
+                            <CheckCircle2 className="w-6 h-6 text-green-600" />
+                          ) : (
+                            <Circle className="w-6 h-6 text-gray-300 hover:text-gray-400" />
+                          )}
+                        </button>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className={`font-medium ${item.status?.is_verified ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
-                            {item.item_text}
-                          </p>
-                          {item.is_critical && (
-                            <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
-                              Critical
-                            </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className={`font-medium ${item.status?.is_verified ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                              {item.item_text}
+                            </p>
+                            {item.is_critical && (
+                              <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                                Critical
+                              </span>
+                            )}
+                          </div>
+                          {item.description && (
+                            <p className="text-sm text-gray-500 mt-1">{item.description}</p>
+                          )}
+                          {item.why_it_matters && (
+                            <div className="mt-2 flex items-start gap-2 text-sm text-blue-700 bg-blue-50 rounded-lg p-2">
+                              <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                              <span><strong>Why it matters:</strong> {item.why_it_matters}</span>
+                            </div>
                           )}
                         </div>
-                        {item.description && (
-                          <p className="text-sm text-gray-500 mt-1">{item.description}</p>
-                        )}
-                        {item.why_it_matters && (
-                          <div className="mt-2 flex items-start gap-2 text-sm text-blue-700 bg-blue-50 rounded-lg p-2">
-                            <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                            <span><strong>Why it matters:</strong> {item.why_it_matters}</span>
-                          </div>
-                        )}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
-      {/* Completion Message */}
-      {progress.percentage === 100 && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-          <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-green-900">Installation Verified!</h3>
-          <p className="text-green-700 mt-1">
-            All quality installation items have been checked. Keep this checklist for your records.
-          </p>
+          {/* Completion Message */}
+          {progress.percentage === 100 && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+              <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-green-900">Installation Verified!</h3>
+              <p className="text-green-700 mt-1">
+                All quality installation items have been checked. Keep this checklist for your records.
+              </p>
+            </div>
+          )}
+
+          {/* Tips */}
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+            <h3 className="font-semibold text-gray-900 mb-3">Tips for Using This Checklist</h3>
+            <ul className="text-sm text-gray-600 space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-switch-green-600">•</span>
+                Ask your contractor to walk through critical items with you before they leave
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-switch-green-600">•</span>
+                Request documentation for items like load calculations and commissioning reports
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-switch-green-600">•</span>
+                Take photos of equipment labels showing model numbers and serial numbers
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-switch-green-600">•</span>
+                Don't sign off on the final payment until critical items are verified
+              </li>
+            </ul>
+          </div>
         </div>
       )}
-
-      {/* Tips */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
-        <h3 className="font-semibold text-gray-900 mb-3">Tips for Using This Checklist</h3>
-        <ul className="text-sm text-gray-600 space-y-2">
-          <li className="flex items-start gap-2">
-            <span className="text-switch-green-600">•</span>
-            Ask your contractor to walk through critical items with you before they leave
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-switch-green-600">•</span>
-            Request documentation for items like load calculations and commissioning reports
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-switch-green-600">•</span>
-            Take photos of equipment labels showing model numbers and serial numbers
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-switch-green-600">•</span>
-            Don't sign off on the final payment until critical items are verified
-          </li>
-        </ul>
-      </div>
     </div>
   );
 }

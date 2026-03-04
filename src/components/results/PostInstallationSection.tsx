@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, ClipboardCheck, Download, FileCheck2, MessageSquare } from 'lucide-react';
+import { ChevronDown, ChevronRight, ClipboardCheck, MessageSquare } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { getBidsByProject, getBidWithChildren } from '../../lib/database/bidsmartService';
 import { getContractorDisplayName } from '../../lib/utils/bidDeduplication';
 import { ContractorReviewSurvey } from '../ContractorReviewSurvey';
+import { QIIChecklist } from '../QIIChecklist';
 import type { BidWithChildren } from '../../lib/types';
 
 interface PostInstallationSectionProps {
@@ -66,11 +67,6 @@ export function PostInstallationSection({ projectId, alwaysOpen = false }: PostI
 
   const selectedBidForReview = allBids.find(b => b.bid.id === selectedContractorBidId) || null;
 
-  function handleDownloadChecklist() {
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-contractor-checklist?project_id=${projectId}`;
-    window.open(url, '_blank');
-  }
-
   const content = (
     <div className="space-y-6">
       {loading ? (
@@ -80,41 +76,8 @@ export function PostInstallationSection({ projectId, alwaysOpen = false }: PostI
         </div>
       ) : (
         <>
-          {/* Quality Installation Checklist */}
-          <div className="bg-gradient-to-r from-blue-50 to-switch-green-50 border border-blue-200 rounded-xl p-6">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-white rounded-lg">
-                <ClipboardCheck className="w-8 h-8 text-switch-green-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                  <FileCheck2 className="w-5 h-5" />
-                  Quality Installation Checklist
-                </h3>
-                <p className="text-gray-700 mb-4">
-                  Before your installation began, you should have provided the contractor with a quality
-                  installation checklist. This ensures industry-standard practices are followed.
-                </p>
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-gray-900 mb-1">Download the Checklist</p>
-                      <p className="text-sm text-gray-600">
-                        If you haven't already, you can still download it for your records
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleDownloadChecklist}
-                      className="btn btn-secondary flex items-center gap-2 ml-4"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Heat Pump Installation Checklist — interactive with real checkboxes */}
+          <QIIChecklist projectId={projectId} defaultExpanded={false} />
 
           {/* Contractor Review Survey */}
           <div className="bg-white border border-gray-200 rounded-xl p-6">

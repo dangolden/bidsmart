@@ -16,7 +16,7 @@ function shouldShowRow(values: unknown[]): boolean {
 }
 
 export function ContractorsTab({ bids }: ContractorsTabProps) {
-  const [showMore, setShowMore] = useState(false);
+  const [showMore, setShowMore] = useState(true);
 
   const deduplicatedBids = deduplicateBids(bids);
 
