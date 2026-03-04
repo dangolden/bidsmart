@@ -1055,17 +1055,33 @@ export async function getRebatesByState(stateCode: string): Promise<RebateProgra
 
 export async function getIncentivesByZip(zip: string, stateCode?: string): Promise<IncentiveProgramDB[]> {
   if (zip && zip.length === 5) {
-    // Primary path: filter by zip code match OR nationwide
-    // Also include state-only programs (where available_zip_codes is null but available_states matches)
+    // Fetch all candidates: nationwide + zip-matching + state programs.
+    // NOTE: We avoid nested and(is.null,...) inside or() — that PostgREST syntax
+    // is unreliable and caused state-wide programs to be silently dropped.
+    // Instead, query broadly then post-filter in JS.
     const { data, error } = await supabase
       .from('incentive_program_database')
       .select('*')
       .eq('is_active', true)
-      .or(`available_nationwide.eq.true,available_zip_codes.cs.{${zip}}${stateCode ? `,and(available_zip_codes.is.null,available_states.cs.{${stateCode}})` : ''}`)
+      .or(`available_nationwide.eq.true,available_zip_codes.cs.{${zip}}${stateCode ? `,available_states.cs.{${stateCode}}` : ''}`)
       .order('program_name');
 
     if (error) throw error;
-    return (data || []) as IncentiveProgramDB[];
+
+    // Post-filter: for programs with a zip restriction, only include if user's zip is in the list.
+    // Programs with no zip restriction (available_zip_codes null/empty) are always included.
+    const filtered = (data || []).filter((program: IncentiveProgramDB) => {
+      if (program.available_nationwide) return true;
+      const zipCodes = program.available_zip_codes as string[] | null;
+      if (zipCodes && zipCodes.length > 0) {
+        // Zip-restricted program — only show if user's zip is in the list
+        return zipCodes.includes(zip);
+      }
+      // No zip restriction — include (state-wide or utility-wide program)
+      return true;
+    });
+
+    return filtered as IncentiveProgramDB[];
   }
 
   if (stateCode) {

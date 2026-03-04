@@ -585,6 +585,7 @@ export interface RebateProgram {
   
   // Geographic availability
   available_states?: string[] | null;
+  available_zip_codes?: string[] | null;
   available_utilities?: string[] | null;
   available_nationwide: boolean;
   
