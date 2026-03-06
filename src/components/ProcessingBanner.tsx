@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Clock, CheckCircle2, ArrowRight, X, Eye } from 'lucide-react';
 import { getProject } from '../lib/database/bidsmartService';
+import { useAnalysisNotification } from '../hooks/useAnalysisNotification';
 
-const POLL_INTERVAL_MS = 30 * 1000; // Check every 30 seconds
+const POLL_INTERVAL_MS = 10 * 1000; // Check every 10 seconds
 
 interface ProcessingBannerProps {
   projectId: string;
@@ -21,6 +22,12 @@ export function ProcessingBanner({
 }: ProcessingBannerProps) {
   const [status, setStatus] = useState<'processing' | 'complete'>('processing');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { notify, requestPermission } = useAnalysisNotification();
+
+  // Request notification permission on mount so it's ready when analysis completes
+  useEffect(() => {
+    requestPermission();
+  }, [requestPermission]);
 
   const checkStatus = useCallback(async () => {
     try {
@@ -31,11 +38,18 @@ export function ProcessingBanner({
           clearInterval(pollRef.current);
           pollRef.current = null;
         }
+        // Fire sound + browser notification
+        notify(projectId, {
+          title: 'Bid Analysis Ready!',
+          body: 'Your heat pump bid comparison is complete. Click to view results.',
+          playSound: true,
+          showBrowserNotification: true,
+        });
       }
     } catch {
       // Ignore errors — keep polling
     }
-  }, [projectId]);
+  }, [projectId, notify]);
 
   useEffect(() => {
     checkStatus(); // Check immediately on mount
