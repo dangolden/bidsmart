@@ -28,7 +28,7 @@ async function sendEmailWithResend(email: string, code: string): Promise<boolean
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "BidSmart <noreply@theswitchison.org>",
+        from: "BidSmart <dangolden@pandotic.ai>",
         to: [email],
         subject: "Your BidSmart Verification Code",
         html: `

@@ -271,7 +271,7 @@ async function sendReportEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "BidSmart <bidsmart@theswitchison.org>",
+      from: "BidSmart <dangolden@pandotic.ai>",
       to: [email],
       subject: `Your ${projectName} Analysis Report`,
       html: htmlContent,

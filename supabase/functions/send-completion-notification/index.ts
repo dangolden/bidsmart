@@ -29,7 +29,7 @@ async function sendEmailViaResend(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "BidSmart <bidsmart@theswitchison.org>",
+      from: "BidSmart <dangolden@pandotic.ai>",
       to: [to],
       subject: "Your Heat Pump Bid Analysis is Ready",
       html: `
