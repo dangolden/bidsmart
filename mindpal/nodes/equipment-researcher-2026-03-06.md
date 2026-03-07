@@ -26,6 +26,8 @@ What goes where when configuring this node in MindPal:
 
 | Field | Format & Rules | When Null |
 |---|---|---|
+| `bid_id` | UUID, NOT NULL. Passthrough from currentItem input — extract the `bid_id` field exactly as received. Do NOT modify or generate. | Never — REQUIRED (always in currentItem) |
+| `config_id` | UUID. Passthrough from currentItem input — extract the `config_id` field exactly as received. Do NOT modify or generate. | Never — REQUIRED (always in currentItem) |
 | `equipment_type` | TEXT, NOT NULL. Values: `heat_pump`, `outdoor_unit`, `condenser`, `furnace`, `air_handler`, `indoor_unit`. Identify from bid context — heat_pump heats AND cools, condenser cools only. | Never — REQUIRED |
 | `system_role` | TEXT. Deterministic from equipment_type: heat_pump/outdoor_unit→`primary_both`, condenser→`primary_cooling`, furnace→`primary_heating`, air_handler/indoor_unit→`air_distribution`. | Never — REQUIRED (set deterministically) |
 | `brand` | TEXT, NOT NULL. Normalized spelling: "Lenox"→"Lennox", "Traine"→"Trane", "Goodmen"→"Goodman". | Never — REQUIRED |
@@ -555,6 +557,8 @@ NUMERIC FIELD RULE — ZERO vs NULL:
 Your output must be a JSON object with this exact structure:
 
 {
+  "bid_id": "UUID string — passthrough from currentItem bid_id field (REQUIRED)",
+  "config_id": "UUID string — passthrough from currentItem config_id field (REQUIRED)",
   "contractor_name": "string",
   "equipment": [
     {
@@ -614,7 +618,8 @@ FIELD REQUIREMENTS:
 
 The _research_meta object is for debugging — NOT inserted into the database.
 Every field in the equipment array maps 1:1 to a Supabase bid_equipment column.
-Do NOT include id, bid_id, config_id, or created_at — those are set by the database/Code Node.
+bid_id and config_id are REQUIRED — extracted from the currentItem input, NOT generated.
+Do NOT include id or created_at — those are set by the database automatically.
 </output_schema>
 ```
 
@@ -629,6 +634,12 @@ EXTRACTED BID CONTEXT:
 {{#currentItem}}
 
 STEPS:
+
+0. EXTRACT IDENTIFIERS from the currentItem input above (the JSON object at the start of the context):
+   - Find the "bid_id" field → include as "bid_id" in your output JSON (UUID string, passthrough exactly as-is)
+   - Find the "config_id" field → include as "config_id" in your output JSON (UUID string, passthrough exactly as-is)
+   - Find the "contractor_name" field → include as "contractor_name" in your output JSON
+   These identifiers are REQUIRED — the downstream Supabase Post agent needs them to write to the database.
 
 1. Parse the extracted context. Identify the contractor name and all MAJOR equipment entries mentioned in this configuration.
    - Major equipment: heat pumps, outdoor units, condensers, furnaces, air handlers, indoor units
