@@ -1,7 +1,8 @@
 # Deduplicate Contractors Code Node — Build Spec
 
-**Version:** v1.0
+**Version:** v1.1
 **Created:** 2026-03-06
+**Updated:** 2026-03-07
 **Purpose:** Prevent Contractor Research from running multiple times for the same contractor
 
 ---
@@ -31,12 +32,27 @@ Total runtime prompt: ~70,000+ characters. Gemini Flash loses track of the 4-6 s
 **Node Type:** CODE
 **Position:** Insert between `Supabase_Post_bid_equipment` (Step 8) and `Contractor Research` (Step 9)
 
-### Inputs (configured in MindPal UI as variables)
+### Inputs (configured in MindPal UI as inputParams)
 
 | Variable Name | Source | Description |
 |---|---|---|
-| `bid_extractions` | `@[Extract All Bid Info (Markdown)]` | Array of markdown strings — one per PDF |
-| `merge_report` | `@[Parse Configurations - merge_report]` | JSON with `{merges: [{primary_bid_id, secondary_bid_ids}]}` |
+| `bid_extractions` | `@[Extract All Bid Info (Markdown)]` | Array of markdown strings — one per PDF. This is a LOOP node output, so direct reference works. |
+| `parse_configs_output` | `@[Parse Configurations]` | **Full object** from Parse Configurations CODE node. Contains `{configs, merge_report}`. Per MindPal CODE node rules, you MUST reference the whole node (no `- property` path syntax for CODE nodes). The `merge_report` is extracted in code. |
+
+> **MindPal CODE Node Rule:** CODE node outputs are complex JSON objects. You CANNOT use `@[Node - property]` path syntax to extract a single property. You must reference the whole node `@[Node]` and parse the property in code. The `&path=` variant only works for AGENT and LOOP node outputs (which are strings).
+
+### Output Parameters (declared in MindPal UI as outputParams)
+
+Per MindPal Rule 5, all output keys must be declared for downstream `@[Deduplicate Contractors - key]` references to work:
+
+```json
+{
+  "outputParams": [
+    { "name": "unique_contractors" },
+    { "name": "dedup_report" }
+  ]
+}
+```
 
 ### Output
 
@@ -94,14 +110,19 @@ The Contractor Research prompt does NOT need to change. It still receives markdo
 // ====================================================================
 // Purpose: Remove duplicate contractor entries before Contractor Research
 //
-// Input variables (configured in MindPal UI):
-//   bid_extractions  → @[Extract All Bid Info (Markdown)]
-//   merge_report     → @[Parse Configurations - merge_report]
+// Input variables (configured in MindPal UI inputParams):
+//   bid_extractions       → @[Extract All Bid Info (Markdown)]
+//                           LOOP node output — array of markdown strings (one per PDF)
+//   parse_configs_output  → @[Parse Configurations]
+//                           CODE node output — full object: { configs: string, merge_report: string }
+//                           NOTE: CODE node references use FULL node mention (no &path= syntax).
+//                           We extract .merge_report from this object in code below.
 //
-// Output: { unique_contractors: [...], dedup_report: {...} }
+// Output: { unique_contractors: [...trimmed markdown strings...], dedup_report: {...} }
+// Declared outputParams: unique_contractors, dedup_report
 // ====================================================================
 
-// --- Parse inputs (MindPal Code Node inputs are always strings) ---
+// --- Parse inputs (MindPal Code Node inputs are always JSON strings) ---
 
 let extractions;
 try {
@@ -119,14 +140,38 @@ try {
   };
 }
 
+// --- Extract merge_report from full Parse Configurations output ---
+// parse_configs_output is the ENTIRE output of the Parse Configurations CODE node.
+// Expected structure: { configs: "<JSON string>", merge_report: "<JSON string>" }
+// We only need merge_report here.
+
 let merge;
 try {
-  const raw = typeof merge_report === 'string'
-    ? merge_report.replace(/```json\n?|```\n?/g, '').trim()
-    : merge_report;
-  merge = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  // Step 1: Parse the full CODE node output object
+  let configsOutput;
+  if (!parse_configs_output) {
+    console.log('WARN: parse_configs_output is null/undefined, assuming no merges');
+    configsOutput = {};
+  } else {
+    const raw = typeof parse_configs_output === 'string'
+      ? parse_configs_output.replace(/```json\n?|```\n?/g, '').trim()
+      : parse_configs_output;
+    configsOutput = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  }
+
+  // Step 2: Extract the merge_report property
+  const mergeRaw = configsOutput.merge_report;
+  if (!mergeRaw) {
+    console.log('WARN: No merge_report property in parse_configs_output, assuming no merges');
+    merge = { merges: [] };
+  } else {
+    // merge_report may itself be a JSON string that needs parsing
+    merge = typeof mergeRaw === 'string'
+      ? JSON.parse(mergeRaw.replace(/```json\n?|```\n?/g, '').trim())
+      : mergeRaw;
+  }
 } catch (e) {
-  console.log('WARN: Could not parse merge_report, assuming no merges: ' + e.message);
+  console.log('WARN: Could not parse merge_report from configs output, assuming no merges: ' + e.message);
   merge = { merges: [] };
 }
 
@@ -322,16 +367,28 @@ return {
 3. Name it: `Deduplicate Contractors`
 4. Paste the JavaScript code above
 
-### Step 2: Configure Inputs
+### Step 2: Configure Inputs (inputParams)
 
 In the Code Node's input configuration:
 
-| Input Variable | Source Reference |
-|---|---|
-| `bid_extractions` | `@[Extract All Bid Info (Markdown)]` |
-| `merge_report` | `@[Parse Configurations - merge_report]` |
+| Input Variable Name | Source Reference | Node Type |
+|---|---|---|
+| `bid_extractions` | `@[Extract All Bid Info (Markdown)]` | LOOP — direct reference OK |
+| `parse_configs_output` | `@[Parse Configurations]` | CODE — **must use full node reference, NO `- merge_report` path** |
 
-**CRITICAL:** Both variable names must be exactly `bid_extractions` and `merge_report` — these match the variable names used in the code.
+**CRITICAL:**
+- Variable names must be exactly `bid_extractions` and `parse_configs_output` — these match the variable names used in the code.
+- For `parse_configs_output`: reference the WHOLE Parse Configurations node. Do NOT use `@[Parse Configurations - merge_report]` — the `- property` path syntax does not work for CODE node outputs (only for AGENT/LOOP nodes).
+- Both references must show as **colored mention pills** (green) in the MindPal UI. If they appear as plain text or red/purple, the reference syntax is wrong.
+
+### Step 2b: Configure Output Parameters (outputParams)
+
+Declare these output keys so downstream nodes can reference them:
+
+| Output Name | Referenced By |
+|---|---|
+| `unique_contractors` | `@[Deduplicate Contractors - unique_contractors]` (Contractor Research listSource) |
+| `dedup_report` | `@[Deduplicate Contractors - dedup_report]` (debugging/logging) |
 
 ### Step 3: Wire the Edges
 
@@ -357,7 +414,9 @@ to:
 ## Validation Checklist
 
 - [ ] Code Node added between Steps 8 and 9
-- [ ] Input variables configured correctly (both must show purple in MindPal)
+- [ ] Input `bid_extractions` → `@[Extract All Bid Info (Markdown)]` — shows as green mention pill
+- [ ] Input `parse_configs_output` → `@[Parse Configurations]` — shows as green mention pill (NOT `- merge_report` path)
+- [ ] Output params declared: `unique_contractors`, `dedup_report`
 - [ ] Edges wired: Post_bid_equipment → Deduplicate → Contractor Research
 - [ ] Contractor Research listSource updated to `@[Deduplicate Contractors - unique_contractors]`
 - [ ] Test run: Contractor Research loop count matches unique contractor count (not total PDFs)
